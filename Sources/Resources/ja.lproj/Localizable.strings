@@ -1,0 +1,93 @@
+"app.menu_title.idle" = "timeSlice";
+"app.menu_title.capturing" = "timeSlice ●";
+"window.settings.title" = "timeSlice 設定";
+
+"menu.settings" = "timeSlice 設定...";
+"menu.capture.start" = "記録開始";
+"menu.capture.stop" = "記録終了";
+"menu.capture.now" = "今すぐ記録";
+"menu.report.generate" = "日報を生成";
+"menu.report.generating" = "日報生成中...";
+"menu.quit" = "終了";
+
+"settings.tab.general" = "一般";
+"settings.tab.capture" = "キャプチャ";
+"settings.tab.cli" = "CLI";
+"settings.tab.report" = "日報";
+
+"settings.section.screen_capture" = "画面収録";
+"settings.label.permission" = "権限";
+"settings.permission.granted" = "許可済み";
+"settings.permission.denied" = "未許可";
+"settings.button.refresh_permission" = "権限状態を更新";
+
+"settings.section.launch" = "起動";
+"settings.toggle.start_capture_on_launch" = "アプリ起動と同時に記録を開始";
+"settings.toggle.launch_at_login" = "ログイン時起動";
+
+"settings.section.interval" = "間隔";
+"settings.label.capture_interval" = "キャプチャ間隔";
+"settings.value.seconds" = "%d 秒";
+"settings.stepper.minimum_text_length" = "最小テキスト長: %d 文字";
+"settings.section.filter" = "フィルタ";
+"settings.footer.filter" = "この文字数以下の短文はOCR結果に記録されません。";
+"settings.section.storage" = "保存";
+"settings.toggle.save_images" = "画像も保存する";
+"settings.footer.storage" = "設定変更は次回の開始時に反映されます。";
+
+"settings.section.ai_cli" = "AI CLIコマンド";
+"settings.label.cli_command" = "CLIコマンド名";
+"settings.placeholder.cli_command" = "例: gemini";
+"settings.label.additional_arguments" = "追加引数";
+"settings.placeholder.additional_arguments" = "例: -p";
+"settings.stepper.timeout_seconds" = "タイムアウト: %d 秒";
+
+"settings.section.report_target" = "生成対象";
+"settings.stepper.report_target_day_offset" = "生成対象日オフセット: %d 日";
+"settings.section.auto_generation" = "定時自動生成";
+"settings.toggle.enabled" = "有効化";
+"settings.stepper.hour" = "時: %d";
+"settings.stepper.minute" = "分: %d";
+
+"settings.section.prompt_template" = "プロンプトテンプレート";
+"settings.prompt.placeholders" = "使用可能なプレースホルダ: {{DATE}}, {{JSON_GLOB_PATH}}, {{RECORD_COUNT}}";
+"settings.button.reset_default_prompt" = "デフォルトに戻す";
+"settings.prompt.footer" = "未カスタマイズ時は既定テンプレートを表示します。編集内容は自動保存されます。";
+
+"settings.section.manual_generation" = "手動生成";
+"settings.button.generate_report_now" = "今すぐ日報生成";
+"settings.button.generating_report" = "日報生成中...";
+
+"state.stopped" = "停止中";
+"state.capturing" = "キャプチャ中";
+"state.permission_missing" = "権限未付与";
+
+"message.record_count_refresh_failed" = "件数更新失敗: %@";
+"message.launch_at_login.requires_approval" = "ログイン時起動はシステム承認待ちです。システム設定のログイン項目で許可してください。";
+"message.launch_at_login.update_failed" = "ログイン時起動の更新に失敗: %@";
+"message.launch_at_login.sync_failed" = "ログイン時起動の同期に失敗: %@";
+
+"message.report.generating" = "日報生成中...";
+"message.report.saved" = "日報保存: %@ (%d件)";
+"message.report.failed" = "日報生成失敗: %@";
+
+"message.capture.saved" = "保存: %@";
+"message.capture.skipped" = "スキップ: %@";
+"message.capture.failed" = "失敗: %@";
+
+"capture.skip_reason.no_window" = "ウィンドウなし";
+"capture.skip_reason.short_text" = "短文";
+"capture.skip_reason.duplicate_text" = "重複テキスト";
+"capture.skip_reason.png_encoding_failed" = "PNGエンコード失敗";
+
+"message.scheduler.disabled" = "定時自動生成: 無効";
+"message.scheduler.enabled" = "定時自動生成: 有効";
+"message.scheduler.next" = "次回: %@";
+"message.scheduler.last_success" = "前回成功: %@ (%d件)";
+"message.scheduler.last_skipped_no_records" = "前回スキップ: 対象日の記録なし";
+"message.scheduler.last_failed" = "前回失敗: %@";
+
+"error.report.no_records" = "日報対象日の記録がありません: %@";
+"error.report.empty_output" = "CLIの出力が空のため、日報を保存できませんでした。";
+
+"report.prompt.default_template" = "以下は{{DATE}}の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次の相対パスに一致する JSON ファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_GLOB_PATH}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";

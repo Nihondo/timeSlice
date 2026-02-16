@@ -1,0 +1,93 @@
+"app.menu_title.idle" = "timeSlice";
+"app.menu_title.capturing" = "timeSlice ●";
+"window.settings.title" = "timeSlice Settings";
+
+"menu.settings" = "timeSlice Settings...";
+"menu.capture.start" = "Start Capture";
+"menu.capture.stop" = "Stop Capture";
+"menu.capture.now" = "Capture Now";
+"menu.report.generate" = "Generate Report";
+"menu.report.generating" = "Generating Report...";
+"menu.quit" = "Quit";
+
+"settings.tab.general" = "General";
+"settings.tab.capture" = "Capture";
+"settings.tab.cli" = "CLI";
+"settings.tab.report" = "Report";
+
+"settings.section.screen_capture" = "Screen Recording";
+"settings.label.permission" = "Permission";
+"settings.permission.granted" = "Granted";
+"settings.permission.denied" = "Not Granted";
+"settings.button.refresh_permission" = "Refresh Permission Status";
+
+"settings.section.launch" = "Launch";
+"settings.toggle.start_capture_on_launch" = "Start capturing when app launches";
+"settings.toggle.launch_at_login" = "Launch at login";
+
+"settings.section.interval" = "Interval";
+"settings.label.capture_interval" = "Capture Interval";
+"settings.value.seconds" = "%d sec";
+"settings.stepper.minimum_text_length" = "Minimum text length: %d chars";
+"settings.section.filter" = "Filter";
+"settings.footer.filter" = "Text shorter than this length will not be stored.";
+"settings.section.storage" = "Storage";
+"settings.toggle.save_images" = "Save images";
+"settings.footer.storage" = "Changes apply from the next start.";
+
+"settings.section.ai_cli" = "AI CLI Command";
+"settings.label.cli_command" = "CLI command";
+"settings.placeholder.cli_command" = "e.g. gemini";
+"settings.label.additional_arguments" = "Additional arguments";
+"settings.placeholder.additional_arguments" = "e.g. -p";
+"settings.stepper.timeout_seconds" = "Timeout: %d sec";
+
+"settings.section.report_target" = "Target";
+"settings.stepper.report_target_day_offset" = "Report target day offset: %d day(s)";
+"settings.section.auto_generation" = "Scheduled Auto Generation";
+"settings.toggle.enabled" = "Enabled";
+"settings.stepper.hour" = "Hour: %d";
+"settings.stepper.minute" = "Minute: %d";
+
+"settings.section.prompt_template" = "Prompt Template";
+"settings.prompt.placeholders" = "Available placeholders: {{DATE}}, {{JSON_GLOB_PATH}}, {{RECORD_COUNT}}";
+"settings.button.reset_default_prompt" = "Reset to Default";
+"settings.prompt.footer" = "If not customized, the default template is used. Edits are saved automatically.";
+
+"settings.section.manual_generation" = "Manual Generation";
+"settings.button.generate_report_now" = "Generate Report Now";
+"settings.button.generating_report" = "Generating Report...";
+
+"state.stopped" = "Stopped";
+"state.capturing" = "Capturing";
+"state.permission_missing" = "Permission not granted";
+
+"message.record_count_refresh_failed" = "Failed to refresh count: %@";
+"message.launch_at_login.requires_approval" = "Launch at login is awaiting system approval. Allow it in Login Items in System Settings.";
+"message.launch_at_login.update_failed" = "Failed to update launch at login: %@";
+"message.launch_at_login.sync_failed" = "Failed to sync launch at login: %@";
+
+"message.report.generating" = "Generating report...";
+"message.report.saved" = "Report saved: %@ (%d records)";
+"message.report.failed" = "Report generation failed: %@";
+
+"message.capture.saved" = "Saved: %@";
+"message.capture.skipped" = "Skipped: %@";
+"message.capture.failed" = "Failed: %@";
+
+"capture.skip_reason.no_window" = "No active window";
+"capture.skip_reason.short_text" = "Text too short";
+"capture.skip_reason.duplicate_text" = "Duplicate text";
+"capture.skip_reason.png_encoding_failed" = "PNG encoding failed";
+
+"message.scheduler.disabled" = "Scheduled auto generation: Disabled";
+"message.scheduler.enabled" = "Scheduled auto generation: Enabled";
+"message.scheduler.next" = "Next: %@";
+"message.scheduler.last_success" = "Last success: %@ (%d records)";
+"message.scheduler.last_skipped_no_records" = "Last skipped: No records for target day";
+"message.scheduler.last_failed" = "Last failed: %@";
+
+"error.report.no_records" = "No records found for report date: %@";
+"error.report.empty_output" = "CLI output is empty, so the report could not be saved.";
+
+"report.prompt.default_template" = "Below are work log records for {{DATE}}.\nThe current working directory is `timeSlice/data`.\nRead JSON files matching this relative path and summarize them into a work report:\n{{JSON_GLOB_PATH}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: OCR result text\n- `hasImage`: image-saved flag\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";
