@@ -39,8 +39,10 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 
 ## 日報生成
 
-外部の AI CLI（`claude`、`gemini` など）にプロンプトを渡して日報を生成します。
+外部の AI CLI（`opencode`、`claude`、`gemini` など）にプロンプトを渡して日報を生成します。
+opencodeなど、簡単にローカルLLMと連携できるCLIの利用を推奨します。
 
+- 生成フローは以下の通りです。
 - CLI は `data/` ディレクトリをカレントディレクトリとして実行される
 - プロンプトで `./YYYY/MM/DD/*.json` の相対パスを参照指示し、CLI が直接ファイルを読む方式
 - 既定プロンプトでは、`captureTrigger = manual` の記録を重要ログとして優先的に要約するよう指示される
@@ -113,6 +115,20 @@ timeSlice は最前面ウィンドウのキャプチャに画面収録権限が�
 1. システム設定を開く
 2. 「プライバシーとセキュリティ」 > 「画面収録」 に移動
 3. timeSlice を見つけてチェックを入れる
+
+## ソースからビルド
+
+Xcode プロジェクトのみ対応です（`swift build` / `swift run` は使用不可）。
+
+```bash
+# ビルド
+xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived build
+
+# 起動
+open ./.xcode-derived/Build/Products/Debug/timeSlice.app
+```
+
+画面収録権限はアプリバンドル（`.app`）に紐づくため、ターミナルから直接実行せず `.app` として起動してください。
 
 ## 注意事項 / トラブルシューティング
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-timeSlice is a macOS menu bar app that periodically captures the frontmost window, runs OCR, and stores results locally for automated work report generation. Privacy-first design: all data stays local.
+timeSlice is a macOS menu bar app that periodically captures the frontmost window, runs OCR, and stores results locally for automated work report generation. Privacy-first design: all data stays local. Menu bar only (no Dock icon via `LSUIElement = YES`).
 
 ## Build & Run Commands
 
@@ -45,7 +45,7 @@ CaptureScheduler (actor, periodic loop)
 ```
 
 - `CaptureScheduler.performCaptureCycle(captureTrigger:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
-- `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button)
+- `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
 - `CaptureRecord` includes: `windowTitle: String?` and `captureTrigger: CaptureTrigger`
 
 ### Report Pipeline
@@ -75,11 +75,33 @@ ReportScheduler (actor, daily auto-generation)
 ```
 
 - Configurable schedule (hour 0-23, minute 0-59), enable/disable toggle
+- `snapshot()` returns `ReportSchedulerState` for UI status display
 - Notification on completion — clicking opens the generated `report.md`
+
+### Global Keyboard Shortcuts
+
+- **`GlobalHotKeyManager`** (in AppState.swift): registers system-wide hotkey using Carbon `RegisterEventHotKey` API
+- User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
+- Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
+- Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
+- Triggers manual capture + shows completion notification
+
+### Notifications
+
+- **Capture completion**: manual captures post notification with app name + window title (or fallback text)
+- **Report generation**: both manual and scheduled, showing report file name + record count
+- **`ReportNotificationManager`** (nested in AppState): manages `UNUserNotificationCenter` authorization and posting
+- **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click → opens report file via `/usr/bin/open`
+
+### Localization
+
+- Full i18n with `ja.lproj/Localizable.strings` and `en.lproj/Localizable.strings` in `Sources/Resources/`
+- `Localization.swift` provides `L10n` enum with `string(_:)` and `format(_:args...)` helpers
+- All UI strings, menu items, notifications, and error messages are localized
 
 ### Storage Layout
 
-App Sandbox is **disabled**. All data goes to `~/Library/Application Support/timeSlice/`.
+App Sandbox is **disabled** (Hardened Runtime is enabled). All data goes to `~/Library/Application Support/timeSlice/`.
 
 Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
@@ -90,11 +112,13 @@ Stored structure:
 
 ### App Layer (timeSliceApp)
 
-- **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler` and `ReportNotificationManager`, coordinates UI state, handles capture start/stop and report generation
-- **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`.
+- **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
+- **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
   - Report settings: `reportTargetDayOffset`, `reportAutoGenerationEnabled`, `reportAutoGenerationHour/Minute`, `reportOutputDirectoryPath`, `reportPromptTemplate`
-- **`SettingsView`**: `Form` + `grouped` style with 4 tabs (General / Capture / CLI / Report)
-- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (start/stop, single capture, generate report, settings, quit)
+  - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
+  - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
+- **`SettingsView`**: `Form` + `grouped` style with 4 tabs (General / Capture / CLI / Report). Uses `Window` scene with `defaultSize(width: 700, height: 640)`
+- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, quit)
 
 ### Key Design Patterns
 
