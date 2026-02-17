@@ -71,6 +71,11 @@ public struct PromptBuilder: Sendable {
     - `capturedAt`: ISO 8601 の記録時刻
     - `ocrText`: OCR結果テキスト
     - `hasImage`: 画像保存フラグ
+    - `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）
+
+    重要:
+    - `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。
+    - 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。
 
     日報を Markdown で作成してください。次の構成を厳守してください:
     1. 概要（2-3文）

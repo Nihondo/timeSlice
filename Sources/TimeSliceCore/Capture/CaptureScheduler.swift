@@ -80,7 +80,7 @@ public actor CaptureScheduler {
     }
 
     @discardableResult
-    public func performCaptureCycle() async -> CaptureCycleOutcome {
+    public func performCaptureCycle(captureTrigger: CaptureTrigger = .scheduled) async -> CaptureCycleOutcome {
         do {
             guard let capturedWindow = try await screenCapturer.captureFrontWindow() else {
                 return .skipped(.noWindow)
@@ -112,7 +112,8 @@ public actor CaptureScheduler {
                 windowTitle: capturedWindow.windowTitle,
                 capturedAt: capturedWindow.capturedAt,
                 ocrText: normalizedText,
-                hasImage: imageData != nil
+                hasImage: imageData != nil,
+                captureTrigger: captureTrigger
             )
             try dataStore.saveRecord(captureRecord)
 

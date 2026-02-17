@@ -26,7 +26,7 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 |------|------|
 | **timeSlice 設定...** (⌘,) | 設定ウィンドウを開く |
 | **記録開始** / **記録終了** | キャプチャの開始・停止を切り替え |
-| **今すぐ記録** | 1回だけキャプチャを実行 |
+| **今すぐ記録** | 1回だけキャプチャを実行（`captureTrigger: "manual"` として保存） |
 | **日報を生成** | 設定済みの AI CLI で日報を生成 |
 | **終了** (⌘Q) | アプリを終了 |
 
@@ -35,7 +35,7 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 1. 設定間隔（デフォルト 60 秒）ごとに最前面ウィンドウをキャプチャ
 2. Vision Framework で OCR テキストを抽出
 3. 直前の記録と重複する場合はスキップ（ハッシュベース重複排除）
-4. JSON レコード + PNG 画像（任意）をローカルに保存
+4. JSON レコード + PNG 画像（任意）をローカルに保存（JSON には `captureTrigger` として `manual` / `scheduled` を記録）
 
 ## 日報生成
 
@@ -43,6 +43,7 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 
 - CLI は `data/` ディレクトリをカレントディレクトリとして実行される
 - プロンプトで `./YYYY/MM/DD/*.json` の相対パスを参照指示し、CLI が直接ファイルを読む方式
+- 既定プロンプトでは、`captureTrigger = manual` の記録を重要ログとして優先的に要約するよう指示される
 - 生成された Markdown は `reports/YYYY/MM/DD/report.md` に保存される
 - `-p` / `--prompt` が末尾引数の場合、プロンプト文字列を自動的に引数値として注入
 - 定時自動生成を有効化すると、設定した時刻に同じ生成フローが毎日実行される
@@ -85,19 +86,10 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 
 ## データ保存先
 
-`App Sandbox` 有効時（署名付きビルド / Archive）は、保存先がコンテナ配下になります。
+Debug / Release ともに `App Sandbox` が有効（コード署名あり）のため、すべてのビルドでコンテナ配下に保存されます。
 
 ```
 ~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/
-├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
-├── images/YYYY/MM/DD/HHMMSS_xxxx.png   # スクリーンショット（3日保持）
-└── reports/YYYY/MM/DD/report.md         # 生成された日報
-```
-
-`App Sandbox` 無効時（ローカル開発ビルドなど）は、従来どおり次の保存先を使用します。
-
-```
-~/Library/Application Support/timeSlice/
 ├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
 ├── images/YYYY/MM/DD/HHMMSS_xxxx.png   # スクリーンショット（3日保持）
 └── reports/YYYY/MM/DD/report.md         # 生成された日報

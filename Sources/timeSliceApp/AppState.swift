@@ -120,9 +120,9 @@ final class AppState {
         statusMessage = L10n.string("state.stopped")
     }
 
-    func performSingleCaptureCycle() async {
+    func performSingleCaptureCycle(captureTrigger: CaptureTrigger = .scheduled) async {
         let scheduler = buildCaptureSchedulerIfNeeded()
-        let cycleOutcome = await scheduler.performCaptureCycle()
+        let cycleOutcome = await scheduler.performCaptureCycle(captureTrigger: captureTrigger)
         lastCaptureResultMessage = makeOutcomeMessage(from: cycleOutcome)
         await refreshTodayRecordCount()
     }

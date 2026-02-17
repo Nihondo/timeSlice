@@ -61,8 +61,7 @@ ReportGenerator (struct, orchestrator)
 
 ### Storage Layout
 
-With `App Sandbox` enabled (signed/archive builds), files go to `~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/`.
-Without sandbox, files go to `~/Library/Application Support/timeSlice/`.
+App Sandbox is enabled for both Debug and Release builds (code signing enabled in both). All data goes to `~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/`.
 
 Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
@@ -88,7 +87,7 @@ Stored structure:
 
 - Swift 6 strict concurrency mode is active
 - The Xcode project has `SWIFT_DEFAULT_ACTOR_ISOLATION` removed from the Core target — only the app target uses `@MainActor` explicitly on UI types
-- Code signing is disabled (`CODE_SIGNING_ALLOWED = NO`) for local builds
+- Code signing is enabled for both Debug and Release builds (App Sandbox active in all configurations)
 
 ### Screen Capture Permission
 

@@ -1,6 +1,9 @@
 import AppKit
 import Observation
 import SwiftUI
+#if canImport(TimeSliceCore)
+import TimeSliceCore
+#endif
 
 @main
 struct TimeSliceApp: App {
@@ -61,7 +64,7 @@ private struct MenuBarMenuContentView: View {
 
         Button {
             Task {
-                await appState.performSingleCaptureCycle()
+                await appState.performSingleCaptureCycle(captureTrigger: .manual)
             }
         } label: {
             Label("menu.capture.now", systemImage: "camera.viewfinder")
