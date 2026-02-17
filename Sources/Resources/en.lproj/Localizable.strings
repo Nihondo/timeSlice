@@ -21,6 +21,13 @@
 "settings.permission.denied" = "Not Granted";
 "settings.button.refresh_permission" = "Refresh Permission Status";
 
+"settings.section.keyboard_shortcut" = "Keyboard Shortcut";
+"settings.label.capture_now_shortcut" = "Capture Now";
+"settings.button.record_shortcut" = "Set Shortcut";
+"settings.button.shortcut_recording" = "Waiting for key...";
+"settings.button.clear_shortcut" = "Clear";
+"settings.footer.keyboard_shortcut" = "Click the button, then press a key combination with modifiers. Press Esc to cancel or Delete to disable. While the app is running, it works system-wide.";
+
 "settings.section.launch" = "Launch";
 "settings.toggle.start_capture_on_launch" = "Start capturing when app launches";
 "settings.toggle.launch_at_login" = "Launch at login";
@@ -81,6 +88,9 @@
 "notification.report.title.manual" = "Report Generation Completed";
 "notification.report.title.scheduled" = "Scheduled Report Generation Completed";
 "notification.report.body" = "Saved %@ (%d records)";
+"notification.capture.title.manual" = "OCR Capture Completed";
+"notification.capture.body.window_title" = "%@";
+"notification.capture.value.window_title_unavailable" = "(No Title)";
 
 "message.capture.saved" = "Saved: %@";
 "message.capture.skipped" = "Skipped: %@";

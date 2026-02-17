@@ -25,6 +25,9 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.reportAutoGenerationMinute) private var reportAutoGenerationMinute = 0
     @AppStorage(AppSettingsKey.reportOutputDirectoryPath) private var reportOutputDirectoryPath = ""
     @AppStorage(AppSettingsKey.reportPromptTemplate) private var reportPromptTemplate = ""
+    @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
+    @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
     @State private var promptTemplateEditorText = ""
     @State private var hasInitializedPromptTemplateEditor = false
 
@@ -92,6 +95,23 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                HStack {
+                    Text("settings.label.capture_now_shortcut")
+                    Spacer()
+                    CaptureNowShortcutRecorderView(
+                        shortcutDisplayText: captureNowShortcutDisplayText,
+                        hasShortcut: captureNowShortcutConfiguration != nil,
+                        onShortcutCaptured: updateCaptureNowShortcut(key:keyCode:modifiers:),
+                        onShortcutCleared: clearCaptureNowShortcut
+                    )
+                }
+            } header: {
+                Text("settings.section.keyboard_shortcut")
+            } footer: {
+                Text("settings.footer.keyboard_shortcut")
+            }
+
             Section("settings.section.launch") {
                 Toggle("settings.toggle.start_capture_on_launch", isOn: startCaptureOnAppLaunchBinding)
                 Toggle("settings.toggle.launch_at_login", isOn: launchAtLoginBinding)
@@ -104,6 +124,29 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var captureNowShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        AppSettingsResolver.resolveCaptureNowShortcutConfiguration()
+    }
+
+    private var captureNowShortcutDisplayText: String {
+        guard let captureNowShortcutConfiguration else {
+            return L10n.string("settings.button.record_shortcut")
+        }
+        return captureNowShortcutConfiguration.displayText
+    }
+
+    private func updateCaptureNowShortcut(key: String, keyCode: Int, modifiers: EventModifiers) {
+        captureNowShortcutKey = key
+        captureNowShortcutKeyCode = keyCode
+        captureNowShortcutModifiersRawValue = Int(modifiers.intersection(CaptureNowShortcutResolver.allowedModifiers).rawValue)
+    }
+
+    private func clearCaptureNowShortcut() {
+        captureNowShortcutKey = ""
+        captureNowShortcutKeyCode = 0
+        captureNowShortcutModifiersRawValue = 0
     }
 
     private var launchAtLoginBinding: Binding<Bool> {
@@ -335,5 +378,121 @@ struct SettingsView: View {
             return
         }
         reportPromptTemplate = editorText
+    }
+}
+
+private struct CaptureNowShortcutRecorderView: View {
+    let shortcutDisplayText: String
+    let hasShortcut: Bool
+    let onShortcutCaptured: (String, Int, EventModifiers) -> Void
+    let onShortcutCleared: () -> Void
+
+    @State private var isRecordingShortcut = false
+    @State private var keyEventMonitor: Any?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(isRecordingShortcut ? L10n.string("settings.button.shortcut_recording") : shortcutDisplayText) {
+                beginShortcutRecording()
+            }
+            .buttonStyle(BorderedButtonStyle())
+
+            if hasShortcut {
+                Button("settings.button.clear_shortcut") {
+                    onShortcutCleared()
+                }
+                .buttonStyle(BorderedButtonStyle())
+                .disabled(isRecordingShortcut)
+            }
+        }
+        .onChange(of: isRecordingShortcut) { _, isRecordingShortcut in
+            if isRecordingShortcut {
+                startKeyEventMonitor()
+            } else {
+                stopKeyEventMonitor()
+            }
+        }
+        .onDisappear {
+            stopKeyEventMonitor()
+        }
+    }
+
+    private func beginShortcutRecording() {
+        isRecordingShortcut = true
+    }
+
+    private func startKeyEventMonitor() {
+        guard keyEventMonitor == nil else {
+            return
+        }
+
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard isRecordingShortcut else {
+                return event
+            }
+            return handleKeyDownEvent(event)
+        }
+    }
+
+    private func stopKeyEventMonitor() {
+        guard let keyEventMonitor else {
+            return
+        }
+        NSEvent.removeMonitor(keyEventMonitor)
+        self.keyEventMonitor = nil
+    }
+
+    private func handleKeyDownEvent(_ event: NSEvent) -> NSEvent? {
+        if event.keyCode == 53 {
+            isRecordingShortcut = false
+            return nil
+        }
+
+        if event.keyCode == 51 || event.keyCode == 117 {
+            onShortcutCleared()
+            isRecordingShortcut = false
+            return nil
+        }
+
+        guard let capturedKey = resolveCapturedKey(event: event) else {
+            NSSound.beep()
+            return nil
+        }
+
+        let capturedModifiers = resolveCapturedModifiers(eventModifierFlags: event.modifierFlags)
+        if capturedModifiers.isEmpty {
+            NSSound.beep()
+            return nil
+        }
+
+        onShortcutCaptured(capturedKey, Int(event.keyCode), capturedModifiers)
+        isRecordingShortcut = false
+        return nil
+    }
+
+    private func resolveCapturedModifiers(eventModifierFlags: NSEvent.ModifierFlags) -> EventModifiers {
+        var capturedModifiers: EventModifiers = []
+
+        if eventModifierFlags.contains(.command) {
+            capturedModifiers.insert(.command)
+        }
+        if eventModifierFlags.contains(.control) {
+            capturedModifiers.insert(.control)
+        }
+        if eventModifierFlags.contains(.option) {
+            capturedModifiers.insert(.option)
+        }
+        if eventModifierFlags.contains(.shift) {
+            capturedModifiers.insert(.shift)
+        }
+
+        return capturedModifiers
+    }
+
+    private func resolveCapturedKey(event: NSEvent) -> String? {
+        guard let inputCharacters = event.charactersIgnoringModifiers, let firstCharacter = inputCharacters.first else {
+            return nil
+        }
+        return CaptureNowShortcutResolver.normalizeStoredKey(String(firstCharacter))
     }
 }

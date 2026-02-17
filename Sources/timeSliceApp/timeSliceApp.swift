@@ -64,6 +64,9 @@ private enum SettingsWindowIdentifier {
 private struct MenuBarMenuContentView: View {
     @Bindable var appState: AppState
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
+    @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
 
     var body: some View {
         Button {
@@ -71,7 +74,6 @@ private struct MenuBarMenuContentView: View {
         } label: {
             Label("menu.settings", systemImage: "gearshape")
         }
-        .keyboardShortcut(",", modifiers: .command)
 
         Divider()
 
@@ -93,13 +95,7 @@ private struct MenuBarMenuContentView: View {
             }
         }
 
-        Button {
-            Task {
-                await appState.performSingleCaptureCycle(captureTrigger: .manual)
-            }
-        } label: {
-            Label("menu.capture.now", systemImage: "camera.viewfinder")
-        }
+        captureNowButton
 
         Button {
             Task {
@@ -120,6 +116,43 @@ private struct MenuBarMenuContentView: View {
         } label: {
             Label("menu.quit", systemImage: "xmark.circle")
         }
-        .keyboardShortcut("q", modifiers: .command)
+    }
+
+    @ViewBuilder
+    private var captureNowButton: some View {
+        if
+            let captureNowShortcutConfiguration,
+            let shortcutCharacter = captureNowShortcutConfiguration.key.first
+        {
+            Button {
+                Task {
+                    await appState.performSingleCaptureCycle(captureTrigger: .manual)
+                }
+            } label: {
+                Label("menu.capture.now", systemImage: "camera.viewfinder")
+            }
+            .keyboardShortcut(
+                KeyEquivalent(shortcutCharacter),
+                modifiers: captureNowShortcutConfiguration.eventModifiers
+            )
+        } else {
+            Button {
+                Task {
+                    await appState.performSingleCaptureCycle(captureTrigger: .manual)
+                }
+            } label: {
+                Label("menu.capture.now", systemImage: "camera.viewfinder")
+            }
+        }
+    }
+
+    private var captureNowShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        CaptureNowShortcutResolver.resolveConfiguration(
+            shortcutKey: captureNowShortcutKey,
+            storedModifiersRawValue: captureNowShortcutModifiersRawValue,
+            hasStoredModifiers: UserDefaults.standard.object(forKey: AppSettingsKey.captureNowShortcutModifiers) != nil,
+            storedKeyCode: captureNowShortcutKeyCode,
+            hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.captureNowShortcutKeyCode) != nil
+        )
     }
 }

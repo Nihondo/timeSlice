@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import ServiceManagement
 import UserNotifications
+import Carbon
 #if canImport(TimeSliceCore)
 import TimeSliceCore
 #endif
@@ -18,11 +19,13 @@ final class AppState {
     private let duplicateDetector: DuplicateDetector
     private let screenCaptureManager: ScreenCaptureManager
     private let ocrManager: OCRManager
+    private let globalHotKeyManager: GlobalHotKeyManager
 
     private var captureScheduler: CaptureScheduler?
     private var recordCountRefreshTask: Task<Void, Never>?
     private var reportSchedulerRefreshTask: Task<Void, Never>?
     private var lastNotifiedScheduledReportFilePath: String?
+    private var userDefaultsDidChangeObserver: NSObjectProtocol?
 
     var isCapturing = false
     var hasScreenCapturePermission = false
@@ -63,6 +66,7 @@ final class AppState {
         self.duplicateDetector = DuplicateDetector()
         self.screenCaptureManager = ScreenCaptureManager()
         self.ocrManager = OCRManager()
+        self.globalHotKeyManager = GlobalHotKeyManager()
         reportNotificationManager.configureIfNeeded()
         refreshPermissionStatus()
         Task {
@@ -75,6 +79,7 @@ final class AppState {
         startReportSchedulerRefreshLoop()
         synchronizeLaunchAtLoginSetting()
         synchronizeStartCaptureOnAppLaunchSetting()
+        configureCaptureNowGlobalHotKey()
         if isStartCaptureOnAppLaunchEnabled {
             Task {
                 await startCapture()
@@ -128,8 +133,17 @@ final class AppState {
     func performSingleCaptureCycle(captureTrigger: CaptureTrigger = .scheduled) async {
         let scheduler = buildCaptureSchedulerIfNeeded()
         let cycleOutcome = await scheduler.performCaptureCycle(captureTrigger: captureTrigger)
-        lastCaptureResultMessage = makeOutcomeMessage(from: cycleOutcome)
+        let cycleOutcomeMessage = makeOutcomeMessage(from: cycleOutcome)
+        let cycleOutcomeNotificationMessage = makeNotificationMessage(from: cycleOutcome)
+        let cycleOutcomeWindowTitle = resolveCaptureWindowTitle(from: cycleOutcome)
+        lastCaptureResultMessage = cycleOutcomeMessage
         await refreshTodayRecordCount()
+        if captureTrigger == .manual {
+            await reportNotificationManager.postCaptureCompletedNotification(
+                resultMessage: cycleOutcomeNotificationMessage,
+                windowTitle: cycleOutcomeWindowTitle
+            )
+        }
     }
 
     func refreshTodayRecordCount() async {
@@ -313,6 +327,24 @@ final class AppState {
         }
     }
 
+    private func makeNotificationMessage(from cycleOutcome: CaptureCycleOutcome) -> String {
+        switch cycleOutcome {
+        case let .saved(captureRecord):
+            return captureRecord.applicationName
+        case let .skipped(captureSkipReason):
+            return localizedCaptureSkipReason(captureSkipReason)
+        case let .failed(errorDescription):
+            return errorDescription
+        }
+    }
+
+    private func resolveCaptureWindowTitle(from cycleOutcome: CaptureCycleOutcome) -> String? {
+        guard case let .saved(captureRecord) = cycleOutcome else {
+            return nil
+        }
+        return captureRecord.windowTitle
+    }
+
     private func makeSchedulerStatusMessage(from schedulerState: ReportSchedulerState) -> String {
         guard schedulerState.isEnabled else {
             return L10n.string("message.scheduler.disabled")
@@ -370,6 +402,36 @@ final class AppState {
         )
     }
 
+    private func configureCaptureNowGlobalHotKey() {
+        globalHotKeyManager.onHotKeyPressed = { [weak self] in
+            guard let self else {
+                return
+            }
+            Task { @MainActor in
+                await self.performSingleCaptureCycle(captureTrigger: .manual)
+            }
+        }
+        refreshCaptureNowGlobalHotKeyRegistration()
+        startUserDefaultsObservationForCaptureNowGlobalHotKey()
+    }
+
+    private func startUserDefaultsObservationForCaptureNowGlobalHotKey() {
+        userDefaultsDidChangeObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: userDefaults,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshCaptureNowGlobalHotKeyRegistration()
+            }
+        }
+    }
+
+    private func refreshCaptureNowGlobalHotKeyRegistration() {
+        let captureNowShortcut = AppSettingsResolver.resolveCaptureNowShortcutConfiguration(userDefaults: userDefaults)
+        globalHotKeyManager.updateRegistration(captureNowShortcut)
+    }
+
     @discardableResult
     private func applyLaunchAtLoginStateFromSystem() -> SMAppService.Status {
         let serviceStatus = LaunchAtLoginManager.resolveServiceStatus()
@@ -407,6 +469,147 @@ final class AppState {
             return L10n.string("capture.skip_reason.png_encoding_failed")
         }
     }
+}
+
+private final class GlobalHotKeyManager {
+    var onHotKeyPressed: (() -> Void)?
+
+    private var eventHandlerRef: EventHandlerRef?
+    private var registeredHotKeyRef: EventHotKeyRef?
+    private let hotKeyID = EventHotKeyID(signature: 0x5453484B, id: 1)
+
+    init() {
+        installHotKeyEventHandlerIfNeeded()
+    }
+
+    deinit {
+        unregisterHotKeyIfNeeded()
+        removeHotKeyEventHandlerIfNeeded()
+    }
+
+    func updateRegistration(_ shortcutConfiguration: CaptureNowShortcutConfiguration?) {
+        unregisterHotKeyIfNeeded()
+
+        guard
+            let shortcutConfiguration,
+            let keyCode = shortcutConfiguration.keyCode
+        else {
+            return
+        }
+
+        let carbonModifiers = resolveCarbonModifiers(shortcutConfiguration.modifiersRawValue)
+        guard keyCode >= 0 else {
+            return
+        }
+
+        var createdHotKeyRef: EventHotKeyRef?
+        let registrationStatus = RegisterEventHotKey(
+            UInt32(keyCode),
+            carbonModifiers,
+            hotKeyID,
+            GetEventDispatcherTarget(),
+            0,
+            &createdHotKeyRef
+        )
+        guard registrationStatus == noErr else {
+            return
+        }
+        registeredHotKeyRef = createdHotKeyRef
+    }
+
+    fileprivate func handleHotKeyPressedEvent(_ eventRef: EventRef?) -> OSStatus {
+        guard let eventRef else {
+            return OSStatus(eventNotHandledErr)
+        }
+
+        var pressedHotKeyID = EventHotKeyID()
+        let parameterStatus = GetEventParameter(
+            eventRef,
+            EventParamName(kEventParamDirectObject),
+            EventParamType(typeEventHotKeyID),
+            nil,
+            MemoryLayout<EventHotKeyID>.size,
+            nil,
+            &pressedHotKeyID
+        )
+        guard parameterStatus == noErr else {
+            return parameterStatus
+        }
+        guard pressedHotKeyID.signature == hotKeyID.signature, pressedHotKeyID.id == hotKeyID.id else {
+            return OSStatus(eventNotHandledErr)
+        }
+
+        onHotKeyPressed?()
+        return noErr
+    }
+
+    private func installHotKeyEventHandlerIfNeeded() {
+        guard eventHandlerRef == nil else {
+            return
+        }
+
+        var hotKeyPressedEventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+
+        let installationStatus = InstallEventHandler(
+            GetEventDispatcherTarget(),
+            captureNowGlobalHotKeyEventHandler,
+            1,
+            &hotKeyPressedEventType,
+            UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+            &eventHandlerRef
+        )
+        guard installationStatus == noErr else {
+            return
+        }
+    }
+
+    private func removeHotKeyEventHandlerIfNeeded() {
+        guard let eventHandlerRef else {
+            return
+        }
+        RemoveEventHandler(eventHandlerRef)
+        self.eventHandlerRef = nil
+    }
+
+    private func unregisterHotKeyIfNeeded() {
+        guard let registeredHotKeyRef else {
+            return
+        }
+        UnregisterEventHotKey(registeredHotKeyRef)
+        self.registeredHotKeyRef = nil
+    }
+
+    private func resolveCarbonModifiers(_ shortcutModifiersRawValue: Int) -> UInt32 {
+        var carbonModifiers: UInt32 = 0
+        if shortcutModifiersRawValue & 16 != 0 {
+            carbonModifiers |= UInt32(cmdKey)
+        }
+        if shortcutModifiersRawValue & 8 != 0 {
+            carbonModifiers |= UInt32(optionKey)
+        }
+        if shortcutModifiersRawValue & 4 != 0 {
+            carbonModifiers |= UInt32(controlKey)
+        }
+        if shortcutModifiersRawValue & 2 != 0 {
+            carbonModifiers |= UInt32(shiftKey)
+        }
+        return carbonModifiers
+    }
+}
+
+private func captureNowGlobalHotKeyEventHandler(
+    _ nextHandler: EventHandlerCallRef?,
+    _ eventRef: EventRef?,
+    _ userData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let userData else {
+        return OSStatus(eventNotHandledErr)
+    }
+    let hotKeyManager = Unmanaged<GlobalHotKeyManager>.fromOpaque(userData).takeUnretainedValue()
+    return hotKeyManager.handleHotKeyPressedEvent(eventRef)
 }
 
 private enum ReportGenerationSource {
@@ -484,6 +687,37 @@ private final class ReportNotificationManager {
             try await notificationCenter.add(notificationRequest)
         } catch {
             // Ignore notification submission failures to avoid blocking report generation.
+        }
+    }
+
+    func postCaptureCompletedNotification(resultMessage: String, windowTitle: String?) async {
+        await refreshAuthorizationState()
+        guard isNotificationAuthorized else {
+            return
+        }
+
+        let resolvedWindowTitle: String
+        if let windowTitle, windowTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            resolvedWindowTitle = windowTitle
+        } else {
+            resolvedWindowTitle = L10n.string("notification.capture.value.window_title_unavailable")
+        }
+        let captureDetailMessage = L10n.format("notification.capture.body.window_title", resolvedWindowTitle)
+
+        let notificationContent = UNMutableNotificationContent()
+        notificationContent.title = L10n.string("notification.capture.title.manual")
+        notificationContent.body = [resultMessage, captureDetailMessage].joined(separator: "\n")
+        notificationContent.sound = .default
+
+        let notificationRequest = UNNotificationRequest(
+            identifier: "capture-completed-\(UUID().uuidString)",
+            content: notificationContent,
+            trigger: nil
+        )
+        do {
+            try await notificationCenter.add(notificationRequest)
+        } catch {
+            // Ignore notification submission failures to avoid blocking capture flow.
         }
     }
 

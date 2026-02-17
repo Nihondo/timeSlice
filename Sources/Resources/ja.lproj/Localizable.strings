@@ -21,6 +21,13 @@
 "settings.permission.denied" = "未許可";
 "settings.button.refresh_permission" = "権限状態を更新";
 
+"settings.section.keyboard_shortcut" = "キーボードショートカット";
+"settings.label.capture_now_shortcut" = "今すぐ記録";
+"settings.button.record_shortcut" = "ショートカットを設定";
+"settings.button.shortcut_recording" = "キー入力待ち...";
+"settings.button.clear_shortcut" = "クリア";
+"settings.footer.keyboard_shortcut" = "ボタンをクリック後、キーと修飾キーを同時に押すと確定します。Esc でキャンセル、Delete で無効化。アプリ起動中は他アプリ操作中でも実行できます。";
+
 "settings.section.launch" = "起動";
 "settings.toggle.start_capture_on_launch" = "アプリ起動と同時に記録を開始";
 "settings.toggle.launch_at_login" = "ログイン時起動";
@@ -81,6 +88,9 @@
 "notification.report.title.manual" = "日報生成が完了しました";
 "notification.report.title.scheduled" = "定時日報生成が完了しました";
 "notification.report.body" = "%@ を保存しました（%d件）";
+"notification.capture.title.manual" = "OCR記録が完了しました";
+"notification.capture.body.window_title" = "%@";
+"notification.capture.value.window_title_unavailable" = "（タイトルなし）";
 
 "message.capture.saved" = "保存: %@";
 "message.capture.skipped" = "スキップ: %@";
