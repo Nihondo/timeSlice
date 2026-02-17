@@ -90,4 +90,4 @@
 "error.report.no_records" = "日報対象日の記録がありません: %@";
 "error.report.empty_output" = "CLIの出力が空のため、日報を保存できませんでした。";
 
-"report.prompt.default_template" = "以下は{{DATE}}の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次の相対パスに一致する JSON ファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_GLOB_PATH}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
+"report.prompt.default_template" = "以下は{{DATE}}の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次の相対パスに一致する JSON ファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_GLOB_PATH}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";

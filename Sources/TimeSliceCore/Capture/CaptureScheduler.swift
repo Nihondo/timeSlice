@@ -109,6 +109,7 @@ public actor CaptureScheduler {
 
             let captureRecord = CaptureRecord(
                 applicationName: capturedWindow.applicationName,
+                windowTitle: capturedWindow.windowTitle,
                 capturedAt: capturedWindow.capturedAt,
                 ocrText: normalizedText,
                 hasImage: imageData != nil

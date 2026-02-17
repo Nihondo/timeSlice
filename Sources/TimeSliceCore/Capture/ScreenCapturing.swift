@@ -5,11 +5,18 @@ import Foundation
 public struct CapturedWindow: @unchecked Sendable {
     public let image: CGImage
     public let applicationName: String
+    public let windowTitle: String?
     public let capturedAt: Date
 
-    public init(image: CGImage, applicationName: String, capturedAt: Date) {
+    public init(
+        image: CGImage,
+        applicationName: String,
+        windowTitle: String? = nil,
+        capturedAt: Date
+    ) {
         self.image = image
         self.applicationName = applicationName
+        self.windowTitle = windowTitle
         self.capturedAt = capturedAt
     }
 }

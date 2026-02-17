@@ -67,6 +67,7 @@ public struct PromptBuilder: Sendable {
 
     各 JSON の構造:
     - `applicationName`: フロントアプリ名
+    - `windowTitle`: ウィンドウタイトル（null の場合あり）
     - `capturedAt`: ISO 8601 の記録時刻
     - `ocrText`: OCR結果テキスト
     - `hasImage`: 画像保存フラグ

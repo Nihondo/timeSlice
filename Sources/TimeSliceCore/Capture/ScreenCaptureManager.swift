@@ -68,6 +68,7 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
         return CapturedWindow(
             image: capturedImage,
             applicationName: frontmostApplicationName,
+            windowTitle: targetWindow.title,
             capturedAt: Date()
         )
     }
