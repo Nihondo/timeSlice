@@ -86,14 +86,18 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 
 ## データ保存先
 
-Debug / Release ともに `App Sandbox` が有効（コード署名あり）のため、すべてのビルドでコンテナ配下に保存されます。
+Debug / Release ともに `App Sandbox` を無効化しているため、データはユーザー領域の Application Support 配下に保存されます。
 
 ```
-~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/
+~/Library/Application Support/timeSlice/
 ├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
 ├── images/YYYY/MM/DD/HHMMSS_xxxx.png   # スクリーンショット（3日保持）
 └── reports/YYYY/MM/DD/report.md         # 生成された日報
 ```
+
+過去に Sandbox 有効版を利用していた場合、旧データは次のコンテナパスに残ります。
+
+`~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/`
 
 ## 画面収録権限について
 timeSlice は最前面ウィンドウのキャプチャに画面収録権限が必要です。初回起動時に許可を求めるダイアログが表示されますが、もし表示されない場合は以下の手順で手動で許可してください。

@@ -33,6 +33,7 @@
 
 /* Begin PBXFileReference section */
 		42A760902F433B8200FA9E46 /* timeSlice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = timeSlice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		42A760CF2F433BDF00FA9E46 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		42A760D12F433BDF00FA9E46 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42A760D22F433BDF00FA9E46 /* timeSliceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timeSliceApp.swift; sourceTree = "<group>"; };
@@ -72,9 +73,18 @@
 		42A760872F433B8200FA9E46 = {
 			isa = PBXGroup;
 			children = (
+				42A761192F4E100000FA9E46 /* Configurations */,
 				42A760E62F433BDF00FA9E46 /* Sources */,
 				42A760912F433B8200FA9E46 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		42A761192F4E100000FA9E46 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */,
+			);
+			path = Configurations;
 			sourceTree = "<group>";
 		};
 		42A760912F433B8200FA9E46 /* Products */ = {
@@ -300,6 +310,7 @@
 /* Begin XCBuildConfiguration section */
 		42A760AF2F433B8300FA9E46 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -335,7 +346,6 @@
 				CODE_SIGNING_REQUIRED = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -366,6 +376,7 @@
 		};
 		42A760B02F433B8300FA9E46 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -401,7 +412,6 @@
 				CODE_SIGNING_REQUIRED = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -424,6 +434,7 @@
 		};
 		42A760B22F433B8300FA9E46 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -433,11 +444,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UAC4B833KN;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -460,6 +470,7 @@
 		};
 		42A760B32F433B8300FA9E46 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -468,11 +479,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UAC4B833KN;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
