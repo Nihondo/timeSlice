@@ -4,15 +4,20 @@ public struct CaptureSchedulerConfiguration: Sendable {
     public let captureIntervalSeconds: TimeInterval
     public let minimumTextLength: Int
     public let shouldSaveImages: Bool
+    public let excludedApplications: [String]
 
     public init(
         captureIntervalSeconds: TimeInterval = 60,
         minimumTextLength: Int = 10,
-        shouldSaveImages: Bool = true
+        shouldSaveImages: Bool = true,
+        excludedApplications: [String] = []
     ) {
         self.captureIntervalSeconds = captureIntervalSeconds
         self.minimumTextLength = minimumTextLength
         self.shouldSaveImages = shouldSaveImages
+        self.excludedApplications = excludedApplications
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.isEmpty == false }
     }
 }
 
@@ -84,6 +89,25 @@ public actor CaptureScheduler {
         do {
             guard let capturedWindow = try await screenCapturer.captureFrontWindow() else {
                 return .skipped(.noWindow)
+            }
+
+            let isExcludedApplication = configuration.excludedApplications.contains {
+                capturedWindow.applicationName.localizedCaseInsensitiveCompare($0) == .orderedSame
+            }
+            if isExcludedApplication {
+                let captureRecord = CaptureRecord(
+                    applicationName: capturedWindow.applicationName,
+                    windowTitle: capturedWindow.windowTitle,
+                    capturedAt: capturedWindow.capturedAt,
+                    ocrText: "",
+                    hasImage: false,
+                    captureTrigger: captureTrigger
+                )
+                try dataStore.saveRecord(captureRecord)
+                try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
+                try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
+                lastErrorDescription = nil
+                return .saved(captureRecord)
             }
 
             let recognizedText = try await textRecognizer.recognizeText(from: capturedWindow.image)

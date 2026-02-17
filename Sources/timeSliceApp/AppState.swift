@@ -10,6 +10,22 @@ import TimeSliceCore
 @MainActor
 @Observable
 final class AppState {
+    private struct CaptureRuntimeSettings: Equatable {
+        let captureIntervalSeconds: TimeInterval
+        let minimumTextLength: Int
+        let shouldSaveImages: Bool
+        let excludedApplications: [String]
+
+        var schedulerConfiguration: CaptureSchedulerConfiguration {
+            CaptureSchedulerConfiguration(
+                captureIntervalSeconds: captureIntervalSeconds,
+                minimumTextLength: minimumTextLength,
+                shouldSaveImages: shouldSaveImages,
+                excludedApplications: excludedApplications
+            )
+        }
+    }
+
     private let userDefaults: UserDefaults
     private let dataStore: DataStore
     private let imageStore: ImageStore
@@ -26,6 +42,7 @@ final class AppState {
     private var reportSchedulerRefreshTask: Task<Void, Never>?
     private var lastNotifiedScheduledReportFilePath: String?
     private var userDefaultsDidChangeObserver: NSObjectProtocol?
+    private var appliedCaptureSettings: CaptureRuntimeSettings?
 
     var isCapturing = false
     var hasScreenCapturePermission = false
@@ -238,9 +255,7 @@ final class AppState {
             return captureScheduler
         }
 
-        let captureIntervalSeconds = AppSettingsResolver.resolveCaptureIntervalSeconds()
-        let minimumTextLength = AppSettingsResolver.resolveMinimumTextLength()
-        let shouldSaveImages = AppSettingsResolver.resolveShouldSaveImages()
+        let resolvedCaptureSettings = resolveCaptureRuntimeSettings()
 
         let createdScheduler = CaptureScheduler(
             screenCapturer: screenCaptureManager,
@@ -248,14 +263,20 @@ final class AppState {
             duplicateDetector: duplicateDetector,
             dataStore: dataStore,
             imageStore: imageStore,
-            configuration: CaptureSchedulerConfiguration(
-                captureIntervalSeconds: captureIntervalSeconds,
-                minimumTextLength: minimumTextLength,
-                shouldSaveImages: shouldSaveImages
-            )
+            configuration: resolvedCaptureSettings.schedulerConfiguration
         )
         captureScheduler = createdScheduler
+        appliedCaptureSettings = resolvedCaptureSettings
         return createdScheduler
+    }
+
+    private func resolveCaptureRuntimeSettings() -> CaptureRuntimeSettings {
+        CaptureRuntimeSettings(
+            captureIntervalSeconds: AppSettingsResolver.resolveCaptureIntervalSeconds(userDefaults: userDefaults),
+            minimumTextLength: AppSettingsResolver.resolveMinimumTextLength(userDefaults: userDefaults),
+            shouldSaveImages: AppSettingsResolver.resolveShouldSaveImages(userDefaults: userDefaults),
+            excludedApplications: AppSettingsResolver.resolveExcludedApplications(userDefaults: userDefaults)
+        )
     }
 
     private func startRecordCountRefreshLoop() {
@@ -412,19 +433,43 @@ final class AppState {
             }
         }
         refreshCaptureNowGlobalHotKeyRegistration()
-        startUserDefaultsObservationForCaptureNowGlobalHotKey()
+        startUserDefaultsObservationForSettingsChanges()
     }
 
-    private func startUserDefaultsObservationForCaptureNowGlobalHotKey() {
+    private func startUserDefaultsObservationForSettingsChanges() {
         userDefaultsDidChangeObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: userDefaults,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.refreshCaptureNowGlobalHotKeyRegistration()
+                guard let self else {
+                    return
+                }
+                self.refreshCaptureNowGlobalHotKeyRegistration()
+                await self.refreshCaptureSchedulerForUpdatedSettings()
             }
         }
+    }
+
+    private func refreshCaptureSchedulerForUpdatedSettings() async {
+        let resolvedCaptureSettings = resolveCaptureRuntimeSettings()
+        guard resolvedCaptureSettings != appliedCaptureSettings else {
+            return
+        }
+        appliedCaptureSettings = resolvedCaptureSettings
+
+        guard isCapturing else {
+            return
+        }
+
+        if let captureScheduler {
+            await captureScheduler.stop()
+        }
+        captureScheduler = nil
+
+        let scheduler = buildCaptureSchedulerIfNeeded()
+        await scheduler.start()
     }
 
     private func refreshCaptureNowGlobalHotKeyRegistration() {

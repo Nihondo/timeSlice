@@ -30,6 +30,9 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
     @State private var promptTemplateEditorText = ""
     @State private var hasInitializedPromptTemplateEditor = false
+    @State private var excludedApplications: [String] = []
+    @State private var excludedApplicationNameInput = ""
+    @State private var hasInitializedExcludedApplications = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -67,6 +70,7 @@ struct SettingsView: View {
         )
         .onAppear {
             initializePromptTemplateEditorIfNeeded()
+            initializeExcludedApplicationsIfNeeded()
         }
         .onChange(of: promptTemplateEditorText) { _, newValue in
             updateStoredPromptTemplate(editorText: newValue)
@@ -185,6 +189,42 @@ struct SettingsView: View {
                 Text("settings.section.filter")
             } footer: {
                 Text("settings.footer.filter")
+            }
+
+            Section {
+                HStack {
+                    TextField("settings.placeholder.excluded_app_name", text: $excludedApplicationNameInput)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit {
+                            addExcludedApplication()
+                        }
+
+                    Button("settings.button.add_excluded_app") {
+                        addExcludedApplication()
+                    }
+                    .disabled(canAddExcludedApplication == false)
+                }
+
+                if excludedApplications.isEmpty == false {
+                    List {
+                        ForEach(excludedApplications, id: \.self) { applicationName in
+                            HStack {
+                                Text(applicationName)
+                                Spacer()
+                                Button("settings.button.delete_excluded_app") {
+                                    removeExcludedApplication(named: applicationName)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        .onDelete(perform: deleteExcludedApplications)
+                    }
+                    .frame(minHeight: 120, maxHeight: 180)
+                }
+            } header: {
+                Text("settings.section.excluded_apps")
+            } footer: {
+                Text("settings.footer.excluded_apps")
             }
 
             Section {
@@ -332,6 +372,81 @@ struct SettingsView: View {
         }
         promptTemplateEditorText = resolveStoredPromptTemplateText()
         hasInitializedPromptTemplateEditor = true
+    }
+
+    private var canAddExcludedApplication: Bool {
+        let trimmedApplicationName = excludedApplicationNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedApplicationName.isEmpty == false else {
+            return false
+        }
+        return containsExcludedApplication(named: trimmedApplicationName) == false
+    }
+
+    private func initializeExcludedApplicationsIfNeeded() {
+        guard hasInitializedExcludedApplications == false else {
+            return
+        }
+        excludedApplications = AppSettingsResolver.resolveExcludedApplications()
+        hasInitializedExcludedApplications = true
+    }
+
+    private func addExcludedApplication() {
+        let trimmedApplicationName = excludedApplicationNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedApplicationName.isEmpty == false else {
+            return
+        }
+        guard containsExcludedApplication(named: trimmedApplicationName) == false else {
+            return
+        }
+
+        excludedApplications.append(trimmedApplicationName)
+        saveExcludedApplications()
+        excludedApplicationNameInput = ""
+    }
+
+    private func deleteExcludedApplications(at offsets: IndexSet) {
+        excludedApplications.remove(atOffsets: offsets)
+        saveExcludedApplications()
+    }
+
+    private func removeExcludedApplication(named applicationName: String) {
+        excludedApplications.removeAll { existingApplicationName in
+            existingApplicationName.caseInsensitiveCompare(applicationName) == .orderedSame
+        }
+        saveExcludedApplications()
+    }
+
+    private func containsExcludedApplication(named applicationName: String) -> Bool {
+        excludedApplications.contains { existingApplicationName in
+            existingApplicationName.caseInsensitiveCompare(applicationName) == .orderedSame
+        }
+    }
+
+    private func saveExcludedApplications() {
+        let normalizedApplications = normalizeExcludedApplications(excludedApplications)
+        excludedApplications = normalizedApplications
+        UserDefaults.standard.set(normalizedApplications, forKey: AppSettingsKey.captureExcludedApplications)
+    }
+
+    private func normalizeExcludedApplications(_ applicationNames: [String]) -> [String] {
+        var normalizedApplicationNames = Set<String>()
+        var normalizedApplications: [String] = []
+
+        for applicationName in applicationNames {
+            let trimmedApplicationName = applicationName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedApplicationName.isEmpty == false else {
+                continue
+            }
+
+            let normalizedApplicationName = trimmedApplicationName.lowercased()
+            let isInserted = normalizedApplicationNames.insert(normalizedApplicationName).inserted
+            guard isInserted else {
+                continue
+            }
+            normalizedApplications.append(trimmedApplicationName)
+        }
+
+        return normalizedApplications
     }
 
     private func resolveStoredPromptTemplateText() -> String {

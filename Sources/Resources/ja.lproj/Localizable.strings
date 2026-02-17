@@ -38,9 +38,14 @@
 "settings.stepper.minimum_text_length" = "最小テキスト長: %d 文字";
 "settings.section.filter" = "フィルタ";
 "settings.footer.filter" = "この文字数以下の短文はOCR結果に記録されません。";
+"settings.section.excluded_apps" = "OCR除外アプリ";
+"settings.footer.excluded_apps" = "指定されたアプリがフロントの場合、OCRを実行せずにアプリ名のみ記録します。";
+"settings.placeholder.excluded_app_name" = "アプリ名を入力";
+"settings.button.add_excluded_app" = "追加";
+"settings.button.delete_excluded_app" = "削除";
 "settings.section.storage" = "保存";
 "settings.toggle.save_images" = "画像も保存する";
-"settings.footer.storage" = "設定変更は次回の開始時に反映されます。";
+"settings.footer.storage" = "設定変更は即時反映されます（記録中は次回キャプチャから反映）。";
 
 "settings.section.ai_cli" = "AI CLIコマンド";
 "settings.label.cli_command" = "CLIコマンド名";

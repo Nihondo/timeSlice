@@ -10,6 +10,7 @@ enum AppSettingsKey {
     static let captureIntervalSeconds = "capture.intervalSeconds"
     static let captureMinimumTextLength = "capture.minimumTextLength"
     static let captureShouldSaveImages = "capture.shouldSaveImages"
+    static let captureExcludedApplications = "capture.excludedApplications"
     static let reportCLICommand = "report.cliCommand"
     static let reportCLIArguments = "report.cliArguments"
     static let reportCLITimeoutSeconds = "report.cliTimeoutSeconds"
@@ -153,6 +154,28 @@ enum AppSettingsResolver {
     static func resolveShouldSaveImages(userDefaults: UserDefaults = .standard) -> Bool {
         let hasValue = userDefaults.object(forKey: AppSettingsKey.captureShouldSaveImages) != nil
         return hasValue ? userDefaults.bool(forKey: AppSettingsKey.captureShouldSaveImages) : true
+    }
+
+    static func resolveExcludedApplications(userDefaults: UserDefaults = .standard) -> [String] {
+        let storedApplications = userDefaults.stringArray(forKey: AppSettingsKey.captureExcludedApplications) ?? []
+        var resolvedApplications: [String] = []
+        var normalizedApplicationNames = Set<String>()
+
+        for applicationName in storedApplications {
+            let trimmedApplicationName = applicationName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedApplicationName.isEmpty == false else {
+                continue
+            }
+
+            let normalizedApplicationName = trimmedApplicationName.lowercased()
+            let isInserted = normalizedApplicationNames.insert(normalizedApplicationName).inserted
+            guard isInserted else {
+                continue
+            }
+            resolvedApplications.append(trimmedApplicationName)
+        }
+
+        return resolvedApplications
     }
 
     static func resolveReportCommand(userDefaults: UserDefaults = .standard) -> String {

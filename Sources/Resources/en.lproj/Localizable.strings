@@ -38,9 +38,14 @@
 "settings.stepper.minimum_text_length" = "Minimum text length: %d chars";
 "settings.section.filter" = "Filter";
 "settings.footer.filter" = "Text shorter than this length will not be stored.";
+"settings.section.excluded_apps" = "OCR Excluded Apps";
+"settings.footer.excluded_apps" = "When these apps are in the foreground, only the app name is recorded without OCR.";
+"settings.placeholder.excluded_app_name" = "Enter app name";
+"settings.button.add_excluded_app" = "Add";
+"settings.button.delete_excluded_app" = "Delete";
 "settings.section.storage" = "Storage";
 "settings.toggle.save_images" = "Save images";
-"settings.footer.storage" = "Changes apply from the next start.";
+"settings.footer.storage" = "Changes apply immediately (during recording, from the next capture).";
 
 "settings.section.ai_cli" = "AI CLI Command";
 "settings.label.cli_command" = "CLI command";
