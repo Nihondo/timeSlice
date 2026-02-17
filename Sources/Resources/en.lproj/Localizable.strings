@@ -53,6 +53,14 @@
 "settings.prompt.placeholders" = "Available placeholders: {{DATE}}, {{JSON_GLOB_PATH}}, {{RECORD_COUNT}}";
 "settings.button.reset_default_prompt" = "Reset to Default";
 "settings.prompt.footer" = "If not customized, the default template is used. Edits are saved automatically.";
+"settings.section.report_output" = "Output";
+"settings.label.report_output_directory" = "Report Output Directory";
+"settings.button.select_report_output_directory" = "Select Output Directory";
+"settings.button.reset_report_output_directory" = "Reset to Default";
+"settings.value.report_output_default" = "Default: Application Support/timeSlice/reports";
+"settings.footer.report_output_directory" = "Reports are saved as YYYY/MM/DD/report.md under the selected directory.";
+"settings.panel.select_report_output_directory.title" = "Select Report Output Directory";
+"settings.panel.select_report_output_directory.message" = "Choose the folder where reports should be saved.";
 
 "settings.section.manual_generation" = "Manual Generation";
 "settings.button.generate_report_now" = "Generate Report Now";
@@ -70,6 +78,9 @@
 "message.report.generating" = "Generating report...";
 "message.report.saved" = "Report saved: %@ (%d records)";
 "message.report.failed" = "Report generation failed: %@";
+"notification.report.title.manual" = "Report Generation Completed";
+"notification.report.title.scheduled" = "Scheduled Report Generation Completed";
+"notification.report.body" = "Saved %@ (%d records)";
 
 "message.capture.saved" = "Saved: %@";
 "message.capture.skipped" = "Skipped: %@";

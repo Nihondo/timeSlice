@@ -16,6 +16,7 @@ enum AppSettingsKey {
     static let reportAutoGenerationEnabled = "report.autoGenerationEnabled"
     static let reportAutoGenerationHour = "report.autoGenerationHour"
     static let reportAutoGenerationMinute = "report.autoGenerationMinute"
+    static let reportOutputDirectoryPath = "report.outputDirectoryPath"
     static let reportPromptTemplate = "report.promptTemplate"
 }
 
@@ -75,6 +76,7 @@ enum AppSettingsResolver {
             command: resolveReportCommand(userDefaults: userDefaults),
             arguments: resolveReportArguments(userDefaults: userDefaults),
             timeoutSeconds: resolveReportTimeoutSeconds(userDefaults: userDefaults),
+            outputDirectoryURL: resolveReportOutputDirectoryURL(userDefaults: userDefaults),
             promptTemplate: resolveReportPromptTemplate(userDefaults: userDefaults)
         )
     }
@@ -115,6 +117,22 @@ enum AppSettingsResolver {
         argumentsText
             .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
+    }
+
+    static func resolveReportOutputDirectoryPath(userDefaults: UserDefaults = .standard) -> String? {
+        let configuredPath = userDefaults.string(forKey: AppSettingsKey.reportOutputDirectoryPath)
+        guard let configuredPath else {
+            return nil
+        }
+        let trimmedPath = configuredPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedPath.isEmpty ? nil : trimmedPath
+    }
+
+    static func resolveReportOutputDirectoryURL(userDefaults: UserDefaults = .standard) -> URL? {
+        guard let outputDirectoryPath = resolveReportOutputDirectoryPath(userDefaults: userDefaults) else {
+            return nil
+        }
+        return URL(fileURLWithPath: outputDirectoryPath, isDirectory: true)
     }
 
     static func resolveReportPromptTemplate(userDefaults: UserDefaults = .standard) -> String? {

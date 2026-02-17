@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ServiceManagement
+import UserNotifications
 #if canImport(TimeSliceCore)
 import TimeSliceCore
 #endif
@@ -13,6 +14,7 @@ final class AppState {
     private let imageStore: ImageStore
     private let reportGenerator: ReportGenerator
     private let reportScheduler: ReportScheduler
+    private let reportNotificationManager: ReportNotificationManager
     private let duplicateDetector: DuplicateDetector
     private let screenCaptureManager: ScreenCaptureManager
     private let ocrManager: OCRManager
@@ -20,6 +22,7 @@ final class AppState {
     private var captureScheduler: CaptureScheduler?
     private var recordCountRefreshTask: Task<Void, Never>?
     private var reportSchedulerRefreshTask: Task<Void, Never>?
+    private var lastNotifiedScheduledReportFilePath: String?
 
     var isCapturing = false
     var hasScreenCapturePermission = false
@@ -44,6 +47,7 @@ final class AppState {
         self.dataStore = createdDataStore
         self.imageStore = createdImageStore
         self.reportGenerator = createdReportGenerator
+        self.reportNotificationManager = ReportNotificationManager()
         self.reportScheduler = ReportScheduler(
             reportGenerator: createdReportGenerator,
             generationConfigurationProvider: { [userDefaults] in
@@ -59,6 +63,7 @@ final class AppState {
         self.duplicateDetector = DuplicateDetector()
         self.screenCaptureManager = ScreenCaptureManager()
         self.ocrManager = OCRManager()
+        reportNotificationManager.configureIfNeeded()
         refreshPermissionStatus()
         Task {
             await refreshTodayRecordCount()
@@ -204,6 +209,11 @@ final class AppState {
                 generatedReport.reportFileURL.lastPathComponent,
                 generatedReport.sourceRecordCount
             )
+            await reportNotificationManager.postReportGeneratedNotification(
+                reportFileURL: generatedReport.reportFileURL,
+                sourceRecordCount: generatedReport.sourceRecordCount,
+                generationSource: .manual
+            )
         } catch {
             lastReportResultMessage = L10n.format("message.report.failed", error.localizedDescription)
         }
@@ -271,6 +281,25 @@ final class AppState {
     private func refreshReportSchedulerStatus() async {
         let schedulerState = await reportScheduler.snapshot()
         lastScheduledReportMessage = makeSchedulerStatusMessage(from: schedulerState)
+        await notifyIfNeededForScheduledReport(schedulerState.lastResult)
+    }
+
+    private func notifyIfNeededForScheduledReport(_ schedulerResult: ReportSchedulerResult?) async {
+        guard case let .succeeded(generatedReport)? = schedulerResult else {
+            return
+        }
+
+        let reportFilePath = generatedReport.reportFileURL.path
+        guard reportFilePath != lastNotifiedScheduledReportFilePath else {
+            return
+        }
+        lastNotifiedScheduledReportFilePath = reportFilePath
+
+        await reportNotificationManager.postReportGeneratedNotification(
+            reportFileURL: generatedReport.reportFileURL,
+            sourceRecordCount: generatedReport.sourceRecordCount,
+            generationSource: .scheduled
+        )
     }
 
     private func makeOutcomeMessage(from cycleOutcome: CaptureCycleOutcome) -> String {
@@ -376,6 +405,110 @@ final class AppState {
             return L10n.string("capture.skip_reason.duplicate_text")
         case .pngEncodingFailed:
             return L10n.string("capture.skip_reason.png_encoding_failed")
+        }
+    }
+}
+
+private enum ReportGenerationSource {
+    case manual
+    case scheduled
+}
+
+enum ReportNotificationUserInfoKey {
+    static let reportFilePath = "reportFilePath"
+}
+
+enum ReportFileOpeningExecutor {
+    static func executeOpenCommand(reportFilePath: String) {
+        let openProcess = Process()
+        openProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        openProcess.arguments = [reportFilePath]
+        do {
+            try openProcess.run()
+        } catch {
+            // Ignore open-command failures.
+        }
+    }
+}
+
+@MainActor
+private final class ReportNotificationManager {
+    private let notificationCenter: UNUserNotificationCenter
+    private var hasConfigured = false
+    private var isNotificationAuthorized = false
+
+    init() {
+        notificationCenter = UNUserNotificationCenter.current()
+    }
+
+    func configureIfNeeded() {
+        guard hasConfigured == false else {
+            return
+        }
+        hasConfigured = true
+
+        Task { [weak self] in
+            guard let self else {
+                return
+            }
+            await refreshAuthorizationState()
+        }
+    }
+
+    func postReportGeneratedNotification(
+        reportFileURL: URL,
+        sourceRecordCount: Int,
+        generationSource: ReportGenerationSource
+    ) async {
+        await refreshAuthorizationState()
+        guard isNotificationAuthorized else {
+            return
+        }
+
+        let notificationContent = UNMutableNotificationContent()
+        notificationContent.title = resolveNotificationTitle(for: generationSource)
+        notificationContent.body = L10n.format(
+            "notification.report.body",
+            reportFileURL.lastPathComponent,
+            sourceRecordCount
+        )
+        notificationContent.userInfo = [ReportNotificationUserInfoKey.reportFilePath: reportFileURL.path]
+        notificationContent.sound = .default
+
+        let notificationRequest = UNNotificationRequest(
+            identifier: "report-generated-\(UUID().uuidString)",
+            content: notificationContent,
+            trigger: nil
+        )
+        do {
+            try await notificationCenter.add(notificationRequest)
+        } catch {
+            // Ignore notification submission failures to avoid blocking report generation.
+        }
+    }
+
+    private func resolveNotificationTitle(for generationSource: ReportGenerationSource) -> String {
+        switch generationSource {
+        case .manual:
+            return L10n.string("notification.report.title.manual")
+        case .scheduled:
+            return L10n.string("notification.report.title.scheduled")
+        }
+    }
+
+    private func refreshAuthorizationState() async {
+        let notificationSettings = await notificationCenter.notificationSettings()
+        switch notificationSettings.authorizationStatus {
+        case .authorized, .provisional:
+            isNotificationAuthorized = true
+        case .notDetermined:
+            do {
+                isNotificationAuthorized = try await notificationCenter.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                isNotificationAuthorized = false
+            }
+        default:
+            isNotificationAuthorized = false
         }
     }
 }

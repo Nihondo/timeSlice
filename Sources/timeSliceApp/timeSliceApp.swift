@@ -1,12 +1,14 @@
 import AppKit
 import Observation
 import SwiftUI
+import UserNotifications
 #if canImport(TimeSliceCore)
 import TimeSliceCore
 #endif
 
 @main
 struct TimeSliceApp: App {
+    @NSApplicationDelegateAdaptor(TimeSliceAppDelegate.self) private var appDelegate
     @State private var appState = AppState()
 
     var body: some Scene {
@@ -23,6 +25,35 @@ struct TimeSliceApp: App {
         }
         .defaultSize(width: 700, height: 640)
         .windowResizability(.contentSize)
+    }
+}
+
+final class TimeSliceAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
+            return
+        }
+        guard
+            let reportFilePath = response.notification.request.content.userInfo[ReportNotificationUserInfoKey.reportFilePath] as? String
+        else {
+            return
+        }
+
+        ReportFileOpeningExecutor.executeOpenCommand(reportFilePath: reportFilePath)
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
     }
 }
 

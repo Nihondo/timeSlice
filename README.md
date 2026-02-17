@@ -45,8 +45,10 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 - プロンプトで `./YYYY/MM/DD/*.json` の相対パスを参照指示し、CLI が直接ファイルを読む方式
 - 既定プロンプトでは、`captureTrigger = manual` の記録を重要ログとして優先的に要約するよう指示される
 - 生成された Markdown は `reports/YYYY/MM/DD/report.md` に保存される
+- 同日に再生成した場合は、上書き前の内容をファイル更新時刻ベースの `report-YYYY-MM-DD-HHmmss.md` として同じディレクトリにバックアップ保存し、最新は常に `report.md` として更新される
 - `-p` / `--prompt` が末尾引数の場合、プロンプト文字列を自動的に引数値として注入
 - 定時自動生成を有効化すると、設定した時刻に同じ生成フローが毎日実行される
+- 日報生成完了時に通知センターへ通知され、通知クリックで `open` コマンドにより保存済み `report.md` を開ける
 
 ## 設定ガイド
 
@@ -82,17 +84,20 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
    - `{{JSON_GLOB_PATH}}` — JSON ファイルの相対 glob パス
    - `{{RECORD_COUNT}}` — 対象日のレコード数
 5. 「デフォルトに戻す」で既定テンプレートにリセット可能。
-6. **今すぐ日報生成** ボタンで手動実行。
+6. **日報保存先** で保存先ディレクトリを指定可能（未指定時は既定パス）。
+7. **今すぐ日報生成** ボタンで手動実行。
 
 ## データ保存先
 
-Debug / Release ともに `App Sandbox` を無効化しているため、データはユーザー領域の Application Support 配下に保存されます。
+Debug / Release ともに `App Sandbox` を無効化しているため、データはローカルに保存されます。日報保存先を未指定の場合は Application Support 配下、指定した場合はそのディレクトリ配下に `YYYY/MM/DD/report.md` で保存されます。
 
 ```
 ~/Library/Application Support/timeSlice/
 ├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
 ├── images/YYYY/MM/DD/HHMMSS_xxxx.png   # スクリーンショット（3日保持）
-└── reports/YYYY/MM/DD/report.md         # 生成された日報
+└── reports/YYYY/MM/DD/
+    ├── report.md                        # 生成された日報（既定・最新）
+    └── report-YYYY-MM-DD-HHmmss.md      # 再生成時のバックアップ（ファイル更新時刻ベース）
 ```
 
 過去に Sandbox 有効版を利用していた場合、旧データは次のコンテナパスに残ります。

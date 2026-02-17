@@ -53,6 +53,14 @@
 "settings.prompt.placeholders" = "使用可能なプレースホルダ: {{DATE}}, {{JSON_GLOB_PATH}}, {{RECORD_COUNT}}";
 "settings.button.reset_default_prompt" = "デフォルトに戻す";
 "settings.prompt.footer" = "未カスタマイズ時は既定テンプレートを表示します。編集内容は自動保存されます。";
+"settings.section.report_output" = "保存先";
+"settings.label.report_output_directory" = "日報保存先";
+"settings.button.select_report_output_directory" = "保存先を選択";
+"settings.button.reset_report_output_directory" = "既定に戻す";
+"settings.value.report_output_default" = "既定: Application Support/timeSlice/reports";
+"settings.footer.report_output_directory" = "指定したディレクトリ配下に YYYY/MM/DD/report.md として保存します。";
+"settings.panel.select_report_output_directory.title" = "日報保存先を選択";
+"settings.panel.select_report_output_directory.message" = "日報の保存先となるフォルダを選択してください。";
 
 "settings.section.manual_generation" = "手動生成";
 "settings.button.generate_report_now" = "今すぐ日報生成";
@@ -70,6 +78,9 @@
 "message.report.generating" = "日報生成中...";
 "message.report.saved" = "日報保存: %@ (%d件)";
 "message.report.failed" = "日報生成失敗: %@";
+"notification.report.title.manual" = "日報生成が完了しました";
+"notification.report.title.scheduled" = "定時日報生成が完了しました";
+"notification.report.body" = "%@ を保存しました（%d件）";
 
 "message.capture.saved" = "保存: %@";
 "message.capture.skipped" = "スキップ: %@";

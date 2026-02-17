@@ -6,6 +6,7 @@ public struct ReportGenerationConfiguration: Sendable {
     public let arguments: [String]
     public let timeoutSeconds: TimeInterval
     public let outputFileName: String
+    public let outputDirectoryURL: URL?
     public let promptTemplate: String?
 
     public init(
@@ -13,12 +14,14 @@ public struct ReportGenerationConfiguration: Sendable {
         arguments: [String],
         timeoutSeconds: TimeInterval = 300,
         outputFileName: String = "report.md",
+        outputDirectoryURL: URL? = nil,
         promptTemplate: String? = nil
     ) {
         self.command = command
         self.arguments = arguments
         self.timeoutSeconds = timeoutSeconds
         self.outputFileName = outputFileName
+        self.outputDirectoryURL = outputDirectoryURL
         self.promptTemplate = promptTemplate
     }
 }
@@ -116,6 +119,7 @@ public struct ReportGenerator: @unchecked Sendable {
         let reportFileURL = try saveReportMarkdown(
             normalizedMarkdownText,
             date: reportDate,
+            outputDirectoryURL: configuration.outputDirectoryURL,
             outputFileName: configuration.outputFileName
         )
         return GeneratedReport(
@@ -129,12 +133,17 @@ public struct ReportGenerator: @unchecked Sendable {
     private func saveReportMarkdown(
         _ markdownText: String,
         date: Date,
+        outputDirectoryURL: URL?,
         outputFileName: String
     ) throws -> URL {
-        let reportDirectoryURL = pathResolver.reportDirectoryURL(for: date)
+        let reportDirectoryURL = resolveReportDirectoryURL(
+            date: date,
+            outputDirectoryURL: outputDirectoryURL
+        )
         try createDirectoryIfNeeded(at: reportDirectoryURL)
 
         let reportFileURL = reportDirectoryURL.appendingPathComponent(outputFileName)
+        try saveExistingReportAsBackupIfNeeded(reportFileURL: reportFileURL, fallbackDate: date)
         guard let markdownData = markdownText.data(using: .utf8) else {
             throw ReportGenerationError.emptyReportContent
         }
@@ -157,5 +166,88 @@ public struct ReportGenerator: @unchecked Sendable {
         let month = dayComponents.month ?? 0
         let day = dayComponents.day ?? 0
         return String(format: "./%04d/%02d/%02d/*.json", year, month, day)
+    }
+
+    private func resolveReportDirectoryURL(date: Date, outputDirectoryURL: URL?) -> URL {
+        guard let outputDirectoryURL else {
+            return pathResolver.reportDirectoryURL(for: date)
+        }
+
+        let dayComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let year = dayComponents.year ?? 0
+        let month = dayComponents.month ?? 0
+        let day = dayComponents.day ?? 0
+        return outputDirectoryURL
+            .appendingPathComponent(String(format: "%04d", year), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", month), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", day), isDirectory: true)
+    }
+
+    private func saveExistingReportAsBackupIfNeeded(reportFileURL: URL, fallbackDate: Date) throws {
+        guard fileManager.fileExists(atPath: reportFileURL.path) else {
+            return
+        }
+
+        let sourceFileTimestamp = resolveFileTimestamp(for: reportFileURL) ?? fallbackDate
+        let backupFileName = makeBackupFileName(for: sourceFileTimestamp, outputFileName: reportFileURL.lastPathComponent)
+        let backupFileURL = makeAvailableBackupFileURL(
+            in: reportFileURL.deletingLastPathComponent(),
+            preferredFileName: backupFileName
+        )
+        try fileManager.copyItem(at: reportFileURL, to: backupFileURL)
+    }
+
+    private func makeBackupFileName(for date: Date, outputFileName: String) -> String {
+        let fileName = outputFileName as NSString
+        let fileNameWithoutExtension = fileName.deletingPathExtension
+        let fileExtension = fileName.pathExtension
+        let dateStamp = makeTimestamp(for: date)
+        if fileExtension.isEmpty {
+            return "\(fileNameWithoutExtension)-\(dateStamp)"
+        }
+        return "\(fileNameWithoutExtension)-\(dateStamp).\(fileExtension)"
+    }
+
+    private func makeTimestamp(for date: Date) -> String {
+        let dateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let year = dateComponents.year ?? 0
+        let month = dateComponents.month ?? 0
+        let day = dateComponents.day ?? 0
+        let hour = dateComponents.hour ?? 0
+        let minute = dateComponents.minute ?? 0
+        let second = dateComponents.second ?? 0
+        return String(format: "%04d-%02d-%02d-%02d%02d%02d", year, month, day, hour, minute, second)
+    }
+
+    private func resolveFileTimestamp(for fileURL: URL) -> Date? {
+        guard let fileAttributes = try? fileManager.attributesOfItem(atPath: fileURL.path) else {
+            return nil
+        }
+        return fileAttributes[.modificationDate] as? Date
+    }
+
+    private func makeAvailableBackupFileURL(in directoryURL: URL, preferredFileName: String) -> URL {
+        let preferredURL = directoryURL.appendingPathComponent(preferredFileName)
+        guard fileManager.fileExists(atPath: preferredURL.path) else {
+            return preferredURL
+        }
+
+        let fileName = preferredFileName as NSString
+        let fileNameWithoutExtension = fileName.deletingPathExtension
+        let fileExtension = fileName.pathExtension
+        var suffix = 1
+        while true {
+            let candidateFileName: String
+            if fileExtension.isEmpty {
+                candidateFileName = "\(fileNameWithoutExtension)_\(suffix)"
+            } else {
+                candidateFileName = "\(fileNameWithoutExtension)_\(suffix).\(fileExtension)"
+            }
+            let candidateURL = directoryURL.appendingPathComponent(candidateFileName)
+            if fileManager.fileExists(atPath: candidateURL.path) == false {
+                return candidateURL
+            }
+            suffix += 1
+        }
     }
 }

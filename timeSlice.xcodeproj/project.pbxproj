@@ -33,7 +33,6 @@
 
 /* Begin PBXFileReference section */
 		42A760902F433B8200FA9E46 /* timeSlice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = timeSlice.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		42A760CF2F433BDF00FA9E46 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		42A760D12F433BDF00FA9E46 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42A760D22F433BDF00FA9E46 /* timeSliceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timeSliceApp.swift; sourceTree = "<group>"; };
@@ -57,6 +56,7 @@
 		42A761112F449A3C00FA9E46 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		42A761162F449A3C00FA9E46 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		42A761172F449A3C00FA9E46 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,14 +77,6 @@
 				42A760E62F433BDF00FA9E46 /* Sources */,
 				42A760912F433B8200FA9E46 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		42A761192F4E100000FA9E46 /* Configurations */ = {
-			isa = PBXGroup;
-			children = (
-				42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */,
-			);
-			path = Configurations;
 			sourceTree = "<group>";
 		};
 		42A760912F433B8200FA9E46 /* Products */ = {
@@ -194,6 +186,14 @@
 				42A761152F449A3C00FA9E46 /* Localizable.strings */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		42A761192F4E100000FA9E46 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */,
+			);
+			path = Configurations;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -455,7 +455,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.9.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -490,7 +490,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.9.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

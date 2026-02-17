@@ -1,3 +1,4 @@
+import AppKit
 import Observation
 import SwiftUI
 
@@ -22,6 +23,7 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.reportAutoGenerationEnabled) private var isReportAutoGenerationEnabled = false
     @AppStorage(AppSettingsKey.reportAutoGenerationHour) private var reportAutoGenerationHour = 18
     @AppStorage(AppSettingsKey.reportAutoGenerationMinute) private var reportAutoGenerationMinute = 0
+    @AppStorage(AppSettingsKey.reportOutputDirectoryPath) private var reportOutputDirectoryPath = ""
     @AppStorage(AppSettingsKey.reportPromptTemplate) private var reportPromptTemplate = ""
     @State private var promptTemplateEditorText = ""
     @State private var hasInitializedPromptTemplateEditor = false
@@ -236,6 +238,32 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("settings.section.report_output") {
+                LabeledContent("settings.label.report_output_directory") {
+                    Text(resolveReportOutputDirectoryDisplayText())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                HStack {
+                    Button("settings.button.select_report_output_directory") {
+                        selectReportOutputDirectory()
+                    }
+
+                    if reportOutputDirectoryPath.isEmpty == false {
+                        Button("settings.button.reset_report_output_directory") {
+                            reportOutputDirectoryPath = ""
+                        }
+                    }
+                }
+
+                Text("settings.footer.report_output_directory")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("settings.section.manual_generation") {
                 Button(appState.isGeneratingReport ? L10n.string("settings.button.generating_report") : L10n.string("settings.button.generate_report_now")) {
                     Task {
@@ -273,6 +301,31 @@ struct SettingsView: View {
 
     private func resolveDefaultPromptTemplateText() -> String {
         PromptBuilder.defaultTemplate
+    }
+
+    private func resolveReportOutputDirectoryDisplayText() -> String {
+        reportOutputDirectoryPath.isEmpty
+            ? L10n.string("settings.value.report_output_default")
+            : reportOutputDirectoryPath
+    }
+
+    private func selectReportOutputDirectory() {
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseFiles = false
+        openPanel.canChooseDirectories = true
+        openPanel.allowsMultipleSelection = false
+        openPanel.canCreateDirectories = true
+        openPanel.prompt = L10n.string("settings.button.select_report_output_directory")
+        openPanel.title = L10n.string("settings.panel.select_report_output_directory.title")
+        openPanel.message = L10n.string("settings.panel.select_report_output_directory.message")
+        if reportOutputDirectoryPath.isEmpty == false {
+            openPanel.directoryURL = URL(fileURLWithPath: reportOutputDirectoryPath, isDirectory: true)
+        }
+
+        guard openPanel.runModal() == .OK, let selectedDirectoryURL = openPanel.url else {
+            return
+        }
+        reportOutputDirectoryPath = selectedDirectoryURL.path
     }
 
     private func updateStoredPromptTemplate(editorText: String) {
