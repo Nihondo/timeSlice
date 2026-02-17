@@ -61,7 +61,10 @@ ReportGenerator (struct, orchestrator)
 
 ### Storage Layout
 
-Files go to `~/Library/Application Support/timeSlice/`:
+With `App Sandbox` enabled (signed/archive builds), files go to `~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/`.
+Without sandbox, files go to `~/Library/Application Support/timeSlice/`.
+
+Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
 - `images/YYYY/MM/DD/HHMMSS_xxxx.png` — screenshots (3-day retention)
 - `reports/YYYY/MM/DD/` — generated reports

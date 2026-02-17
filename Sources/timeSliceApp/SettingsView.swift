@@ -15,7 +15,7 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.captureIntervalSeconds) private var captureIntervalSeconds = 60.0
     @AppStorage(AppSettingsKey.captureMinimumTextLength) private var minimumTextLength = 10
     @AppStorage(AppSettingsKey.captureShouldSaveImages) private var shouldSaveImages = true
-    @AppStorage(AppSettingsKey.reportCLICommand) private var reportCLICommand = "claude"
+    @AppStorage(AppSettingsKey.reportCLICommand) private var reportCLICommand = "gemini"
     @AppStorage(AppSettingsKey.reportCLIArguments) private var reportCLIArguments = "-p"
     @AppStorage(AppSettingsKey.reportCLITimeoutSeconds) private var reportCLITimeoutSeconds = 300
     @AppStorage(AppSettingsKey.reportTargetDayOffset) private var reportTargetDayOffset = 0

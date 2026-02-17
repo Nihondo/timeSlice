@@ -85,6 +85,17 @@ UI文言は `Localizable.strings` により多言語化されており、現在�
 
 ## データ保存先
 
+`App Sandbox` 有効時（署名付きビルド / Archive）は、保存先がコンテナ配下になります。
+
+```
+~/Library/Containers/com.dmng.timeslice.timeSlice/Data/Library/Application Support/timeSlice/
+├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
+├── images/YYYY/MM/DD/HHMMSS_xxxx.png   # スクリーンショット（3日保持）
+└── reports/YYYY/MM/DD/report.md         # 生成された日報
+```
+
+`App Sandbox` 無効時（ローカル開発ビルドなど）は、従来どおり次の保存先を使用します。
+
 ```
 ~/Library/Application Support/timeSlice/
 ├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # OCR レコード（30日保持）
