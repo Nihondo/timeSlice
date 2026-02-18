@@ -14,7 +14,7 @@ struct TimeSliceApp: App {
     var body: some Scene {
         MenuBarExtra(
             appState.isCapturing ? L10n.string("app.menu_title.capturing") : L10n.string("app.menu_title.idle"),
-            systemImage: appState.isCapturing ? "record.circle.fill" : "record.circle"
+            systemImage: appState.isCapturing ? "rectangle.fill.on.rectangle.fill" : "rectangle.on.rectangle"
         ) {
             MenuBarMenuContentView(appState: appState)
         }
