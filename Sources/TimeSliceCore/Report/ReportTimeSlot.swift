@@ -34,7 +34,6 @@ public struct ReportTimeRange: Sendable, Equatable {
 /// Configurable time slot for periodic report generation.
 public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
-    public var label: String
     public var startHour: Int
     public var startMinute: Int
     public var endHour: Int
@@ -43,7 +42,6 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
 
     public init(
         id: UUID = UUID(),
-        label: String,
         startHour: Int,
         startMinute: Int,
         endHour: Int,
@@ -51,7 +49,6 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         isEnabled: Bool = true
     ) {
         self.id = id
-        self.label = label
         self.startHour = startHour
         self.startMinute = startMinute
         self.endHour = endHour
@@ -59,12 +56,42 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         self.isEnabled = isEnabled
     }
 
-    /// Converts to `ReportTimeRange` for record filtering.
-    public func toTimeRange() -> ReportTimeRange {
-        ReportTimeRange(
+    /// Decodes from JSON, ignoring unknown keys (e.g. legacy "label" field).
+    enum CodingKeys: String, CodingKey {
+        case id, startHour, startMinute, endHour, endMinute, isEnabled
+    }
+
+    /// Actual execution hour (endHour modulo 24).
+    public var executionHour: Int { endHour % 24 }
+
+    /// Actual execution minute.
+    public var executionMinute: Int { endMinute }
+
+    /// Whether execution fires on the next calendar day (endHour >= 24).
+    public var executionIsNextDay: Bool { endHour >= 24 }
+
+    /// Time range filter for the primary (logical) day: [startHour:startMinute, min(endHour,24):00).
+    public var primaryDayTimeRange: ReportTimeRange {
+        let clampedEndHour = min(endHour, 24)
+        let clampedEndMinute = endHour >= 24 ? 0 : endMinute
+        return ReportTimeRange(
             startHour: startHour,
             startMinute: startMinute,
-            endHour: endHour,
+            endHour: clampedEndHour,
+            endMinute: clampedEndMinute
+        )
+    }
+
+    /// Time range filter for the overflow (next calendar) day: [00:00, endHour%24:endMinute).
+    /// Returns nil if the slot does not cross midnight.
+    public var overflowDayTimeRange: ReportTimeRange? {
+        guard executionIsNextDay else { return nil }
+        let overflowHour = endHour % 24
+        guard overflowHour > 0 || endMinute > 0 else { return nil }
+        return ReportTimeRange(
+            startHour: 0,
+            startMinute: 0,
+            endHour: overflowHour,
             endMinute: endMinute
         )
     }
@@ -74,25 +101,25 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         String(format: "report-%02d%02d-%02d%02d.md", startHour, startMinute, endHour, endMinute)
     }
 
-    /// Display label for time range like "08:00-12:00".
+    /// Display label for time range like "08:00-25:00".
     public var timeRangeLabel: String {
-        toTimeRange().label
+        String(format: "%02d:%02d-%02d:%02d", startHour, startMinute, endHour, endMinute)
     }
 
-    /// Default time slots: Morning, Afternoon, Evening.
+    /// Default time slots: Full day (enabled) + Morning/Afternoon/Evening (disabled).
     public static var defaults: [ReportTimeSlot] {
         [
             ReportTimeSlot(
-                label: NSLocalizedString("time_slot.morning", value: "午前", comment: ""),
-                startHour: 8, startMinute: 0, endHour: 12, endMinute: 0
+                startHour: 8, startMinute: 0, endHour: 25, endMinute: 0, isEnabled: true
             ),
             ReportTimeSlot(
-                label: NSLocalizedString("time_slot.afternoon", value: "午後", comment: ""),
-                startHour: 12, startMinute: 0, endHour: 18, endMinute: 0
+                startHour: 8, startMinute: 0, endHour: 12, endMinute: 0, isEnabled: false
             ),
             ReportTimeSlot(
-                label: NSLocalizedString("time_slot.evening", value: "夜", comment: ""),
-                startHour: 18, startMinute: 0, endHour: 24, endMinute: 0
+                startHour: 12, startMinute: 0, endHour: 18, endMinute: 0, isEnabled: false
+            ),
+            ReportTimeSlot(
+                startHour: 18, startMinute: 0, endHour: 25, endMinute: 0, isEnabled: false
             ),
         ]
     }

@@ -14,6 +14,7 @@
 "settings.tab.capture" = "キャプチャ";
 "settings.tab.cli" = "CLI";
 "settings.tab.report" = "日報";
+"settings.tab.prompt" = "プロンプト";
 
 "settings.section.screen_capture" = "画面収録";
 "settings.label.permission" = "権限";
@@ -54,16 +55,13 @@
 "settings.placeholder.additional_arguments" = "例: -p";
 "settings.stepper.timeout_seconds" = "タイムアウト: %d 秒";
 
-"settings.section.report_target" = "生成対象";
-"settings.stepper.report_target_day_offset" = "生成対象日オフセット: %d 日";
 "settings.section.auto_generation" = "定時自動生成";
 "settings.toggle.enabled" = "有効化";
-"settings.toggle.use_time_slots" = "タイムスロットを使用";
-"settings.stepper.hour" = "時: %d";
-"settings.stepper.minute" = "分: %d";
-"settings.placeholder.time_slot_label" = "ラベル";
 "settings.button.add_time_slot" = "スロットを追加";
 "settings.button.generate_slot_report" = "このスロットの日報を生成";
+"settings.label.next_day" = "+翌日";
+"settings.footer.time_slots" = "終了時刻が25:00以降のスロットは翌日0時以降に実行され、前日のレコードを対象とします。";
+"settings.label.report_target_date" = "対象日";
 
 "settings.section.prompt_template" = "プロンプトテンプレート";
 "settings.prompt.placeholders" = "使用可能なプレースホルダ: {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}";
@@ -120,10 +118,6 @@
 "error.report.no_records" = "日報対象日の記録がありません: %@";
 "error.report.empty_output" = "CLIの出力が空のため、日報を保存できませんでした。";
 
-"time_slot.morning" = "午前";
-"time_slot.afternoon" = "午後";
-"time_slot.evening" = "夜";
-"time_slot.new" = "新規";
 "report.prompt.all_day" = "全日";
 
 "report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";

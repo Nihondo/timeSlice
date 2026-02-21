@@ -112,7 +112,44 @@ public struct ReportGenerator: @unchecked Sendable {
         timeRange: ReportTimeRange? = nil
     ) async throws -> GeneratedReport {
         let dailyRecords = try dataStore.loadRecords(on: reportDate, timeRange: timeRange)
-        guard dailyRecords.isEmpty == false else {
+        return try await generateReportFromRecords(
+            dailyRecords,
+            reportDate: reportDate,
+            configuration: configuration,
+            timeRangeLabel: timeRange?.label
+        )
+    }
+
+    /// Generates a report for a specific time slot, supporting cross-midnight slots.
+    public func generateReport(
+        for slot: ReportTimeSlot,
+        targetDate: Date,
+        configuration: ReportGenerationConfiguration
+    ) async throws -> GeneratedReport {
+        let overflowDate = slot.executionIsNextDay
+            ? Calendar.current.date(byAdding: .day, value: 1, to: targetDate)
+            : nil
+        let dailyRecords = try dataStore.loadRecordsForSlot(
+            primaryDate: targetDate,
+            primaryTimeRange: slot.primaryDayTimeRange,
+            overflowDate: overflowDate,
+            overflowTimeRange: slot.overflowDayTimeRange
+        )
+        return try await generateReportFromRecords(
+            dailyRecords,
+            reportDate: targetDate,
+            configuration: configuration,
+            timeRangeLabel: slot.timeRangeLabel
+        )
+    }
+
+    private func generateReportFromRecords(
+        _ records: [CaptureRecord],
+        reportDate: Date,
+        configuration: ReportGenerationConfiguration,
+        timeRangeLabel: String?
+    ) async throws -> GeneratedReport {
+        guard records.isEmpty == false else {
             throw ReportGenerationError.noRecords(reportDate)
         }
 
@@ -123,9 +160,9 @@ public struct ReportGenerator: @unchecked Sendable {
         let promptText = promptBuilder.buildDailyReportPrompt(
             date: reportDate,
             relativeJSONGlobPath: relativeJSONGlobPath,
-            sourceRecordCount: dailyRecords.count,
+            sourceRecordCount: records.count,
             customTemplate: configuration.promptTemplate,
-            timeRangeLabel: timeRange?.label
+            timeRangeLabel: timeRangeLabel
         )
         let markdownText = try await cliExecutor.execute(
             command: configuration.command,
@@ -149,8 +186,8 @@ public struct ReportGenerator: @unchecked Sendable {
             reportDate: reportDate,
             reportFileURL: reportFileURL,
             markdownText: normalizedMarkdownText,
-            sourceRecordCount: dailyRecords.count,
-            timeSlotLabel: timeRange?.label
+            sourceRecordCount: records.count,
+            timeSlotLabel: timeRangeLabel
         )
     }
 

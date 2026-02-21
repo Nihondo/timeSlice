@@ -8,6 +8,7 @@ struct SettingsView: View {
         case capture
         case cli
         case report
+        case prompt
     }
 
     @Bindable var appState: AppState
@@ -19,13 +20,9 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.reportCLICommand) private var reportCLICommand = "gemini"
     @AppStorage(AppSettingsKey.reportCLIArguments) private var reportCLIArguments = "-p"
     @AppStorage(AppSettingsKey.reportCLITimeoutSeconds) private var reportCLITimeoutSeconds = 300
-    @AppStorage(AppSettingsKey.reportTargetDayOffset) private var reportTargetDayOffset = 0
     @AppStorage(AppSettingsKey.reportAutoGenerationEnabled) private var isReportAutoGenerationEnabled = false
-    @AppStorage(AppSettingsKey.reportAutoGenerationHour) private var reportAutoGenerationHour = 18
-    @AppStorage(AppSettingsKey.reportAutoGenerationMinute) private var reportAutoGenerationMinute = 0
     @AppStorage(AppSettingsKey.reportOutputDirectoryPath) private var reportOutputDirectoryPath = ""
     @AppStorage(AppSettingsKey.reportPromptTemplate) private var reportPromptTemplate = ""
-    @AppStorage(AppSettingsKey.reportTimeSlotsEnabled) private var isTimeSlotsEnabled = false
     @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
     @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
@@ -36,6 +33,7 @@ struct SettingsView: View {
     @State private var hasInitializedExcludedApplications = false
     @State private var timeSlots: [ReportTimeSlot] = []
     @State private var hasInitializedTimeSlots = false
+    @State private var manualReportTargetDate = Date()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -62,6 +60,12 @@ struct SettingsView: View {
                     Label("settings.tab.report", systemImage: "doc.text")
                 }
                 .tag(SettingsTab.report)
+
+            promptSettingsView
+                .tabItem {
+                    Label("settings.tab.prompt", systemImage: "text.page")
+                }
+                .tag(SettingsTab.prompt)
         }
         .frame(
             minWidth: 580,
@@ -80,15 +84,6 @@ struct SettingsView: View {
             updateStoredPromptTemplate(editorText: newValue)
         }
         .onChange(of: isReportAutoGenerationEnabled) { _, _ in
-            appState.updateReportSchedule()
-        }
-        .onChange(of: reportAutoGenerationHour) { _, _ in
-            appState.updateReportSchedule()
-        }
-        .onChange(of: reportAutoGenerationMinute) { _, _ in
-            appState.updateReportSchedule()
-        }
-        .onChange(of: isTimeSlotsEnabled) { _, _ in
             appState.updateReportSchedule()
         }
     }
@@ -281,26 +276,11 @@ struct SettingsView: View {
 
     private var reportSettingsView: some View {
         Form {
-            Section("settings.section.report_target") {
-                Stepper(
-                    L10n.format("settings.stepper.report_target_day_offset", reportTargetDayOffset),
-                    value: $reportTargetDayOffset,
-                    in: -7...0
-                )
-            }
-
             Section("settings.section.auto_generation") {
                 Toggle("settings.toggle.enabled", isOn: $isReportAutoGenerationEnabled)
 
                 if isReportAutoGenerationEnabled {
-                    Toggle("settings.toggle.use_time_slots", isOn: $isTimeSlotsEnabled)
-
-                    if isTimeSlotsEnabled {
-                        timeSlotsListView
-                    } else {
-                        Stepper(L10n.format("settings.stepper.hour", reportAutoGenerationHour), value: $reportAutoGenerationHour, in: 0...23)
-                        Stepper(L10n.format("settings.stepper.minute", reportAutoGenerationMinute), value: $reportAutoGenerationMinute, in: 0...59)
-                    }
+                    timeSlotsListView
                 }
 
                 if appState.lastScheduledReportMessage.isEmpty == false {
@@ -309,29 +289,6 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
-            }
-
-            Section("settings.section.prompt_template") {
-                Text("settings.prompt.placeholders")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                TextEditor(text: $promptTemplateEditorText)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 180)
-
-                HStack {
-                    Button("settings.button.reset_default_prompt") {
-                        promptTemplateEditorText = resolveDefaultPromptTemplateText()
-                        reportPromptTemplate = ""
-                    }
-
-                    Spacer()
-                }
-
-                Text("settings.prompt.footer")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("settings.section.report_output") {
@@ -361,9 +318,16 @@ struct SettingsView: View {
             }
 
             Section("settings.section.manual_generation") {
+                DatePicker(
+                    L10n.string("settings.label.report_target_date"),
+                    selection: $manualReportTargetDate,
+                    in: ...Date(),
+                    displayedComponents: .date
+                )
+
                 Button(appState.isGeneratingReport ? L10n.string("settings.button.generating_report") : L10n.string("settings.button.generate_report_now")) {
                     Task {
-                        await appState.generateDailyReport()
+                        await appState.generateDailyReport(targetDate: manualReportTargetDate)
                     }
                 }
                 .disabled(appState.isGeneratingReport)
@@ -379,6 +343,38 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
+    private var promptSettingsView: some View {
+        Form {
+            Section("settings.section.prompt_template") {
+                Text("settings.prompt.placeholders")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                TextEditor(text: $promptTemplateEditorText)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 280)
+
+                HStack {
+                    Button("settings.button.reset_default_prompt") {
+                        promptTemplateEditorText = resolveDefaultPromptTemplateText()
+                        reportPromptTemplate = ""
+                    }
+
+                    Spacer()
+                }
+
+                Text("settings.prompt.footer")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var enabledTimeSlotCount: Int {
+        timeSlots.filter(\.isEnabled).count
+    }
+
     private var timeSlotsListView: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach($timeSlots) { $slot in
@@ -389,17 +385,10 @@ struct SettingsView: View {
                             saveTimeSlots()
                         }
 
-                    TextField("settings.placeholder.time_slot_label", text: $slot.label)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
-                        .onChange(of: slot.label) { _, _ in
-                            saveTimeSlots()
-                        }
-
                     Stepper(
                         String(format: "%02d:%02d", slot.startHour, slot.startMinute),
                         value: $slot.startHour,
-                        in: 0...23
+                        in: 0...29
                     )
                     .onChange(of: slot.startHour) { _, _ in
                         saveTimeSlots()
@@ -410,10 +399,16 @@ struct SettingsView: View {
                     Stepper(
                         String(format: "%02d:%02d", slot.endHour, slot.endMinute),
                         value: $slot.endHour,
-                        in: 0...24
+                        in: 1...30
                     )
                     .onChange(of: slot.endHour) { _, _ in
                         saveTimeSlots()
+                    }
+
+                    if slot.executionIsNextDay {
+                        Text(L10n.string("settings.label.next_day"))
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
                     }
 
                     Button {
@@ -425,7 +420,8 @@ struct SettingsView: View {
 
                     Button {
                         Task {
-                            await appState.generateReportForTimeSlot(slot)
+                            let isSole = enabledTimeSlotCount == 1
+                            await appState.generateReportForTimeSlot(slot, isSoleEnabledSlot: isSole)
                         }
                     } label: {
                         Image(systemName: "play.fill")
@@ -439,6 +435,10 @@ struct SettingsView: View {
             Button("settings.button.add_time_slot") {
                 addTimeSlot()
             }
+
+            Text(L10n.string("settings.footer.time_slots"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -447,20 +447,11 @@ struct SettingsView: View {
             return
         }
         hasInitializedTimeSlots = true
-
-        if let jsonData = UserDefaults.standard.data(forKey: AppSettingsKey.reportTimeSlotsJSON),
-           let decoded = try? JSONDecoder().decode([ReportTimeSlot].self, from: jsonData),
-           decoded.isEmpty == false {
-            timeSlots = decoded
-        } else {
-            timeSlots = ReportTimeSlot.defaults
-            AppSettingsResolver.saveReportTimeSlots(timeSlots)
-        }
+        timeSlots = AppSettingsResolver.resolveReportTimeSlots()
     }
 
     private func addTimeSlot() {
         let newSlot = ReportTimeSlot(
-            label: L10n.string("time_slot.new"),
             startHour: 0, startMinute: 0, endHour: 24, endMinute: 0
         )
         timeSlots.append(newSlot)

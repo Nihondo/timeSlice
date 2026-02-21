@@ -14,6 +14,7 @@
 "settings.tab.capture" = "Capture";
 "settings.tab.cli" = "CLI";
 "settings.tab.report" = "Report";
+"settings.tab.prompt" = "Prompt";
 
 "settings.section.screen_capture" = "Screen Recording";
 "settings.label.permission" = "Permission";
@@ -54,16 +55,13 @@
 "settings.placeholder.additional_arguments" = "e.g. -p";
 "settings.stepper.timeout_seconds" = "Timeout: %d sec";
 
-"settings.section.report_target" = "Target";
-"settings.stepper.report_target_day_offset" = "Report target day offset: %d day(s)";
 "settings.section.auto_generation" = "Scheduled Auto Generation";
 "settings.toggle.enabled" = "Enabled";
-"settings.toggle.use_time_slots" = "Use time slots";
-"settings.stepper.hour" = "Hour: %d";
-"settings.stepper.minute" = "Minute: %d";
-"settings.placeholder.time_slot_label" = "Label";
 "settings.button.add_time_slot" = "Add time slot";
 "settings.button.generate_slot_report" = "Generate report for this slot";
+"settings.label.next_day" = "+next day";
+"settings.footer.time_slots" = "Slots ending at 25:00 or later execute after midnight and target the previous day's records.";
+"settings.label.report_target_date" = "Target date";
 
 "settings.section.prompt_template" = "Prompt Template";
 "settings.prompt.placeholders" = "Available placeholders: {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}";
@@ -120,10 +118,6 @@
 "error.report.no_records" = "No records found for report date: %@";
 "error.report.empty_output" = "CLI output is empty, so the report could not be saved.";
 
-"time_slot.morning" = "Morning";
-"time_slot.afternoon" = "Afternoon";
-"time_slot.evening" = "Evening";
-"time_slot.new" = "New";
 "report.prompt.all_day" = "All day";
 
 "report.prompt.default_template" = "Below are work log records for {{DATE}} ({{TIME_RANGE}}).\nThe current working directory is `timeSlice/data`.\nRead the following files and summarize them into a work report:\n{{JSON_FILE_LIST}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `windowTitle`: window title (may be null)\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: OCR result text\n- `hasImage`: image-saved flag\n- `captureTrigger`: capture trigger (`manual` = Capture Now, `scheduled` = periodic capture)\n\nImportant:\n- Target time range is {{TIME_RANGE}}. Only consider records whose `capturedAt` falls within this range.\n- Treat records with `captureTrigger = manual` as intentionally captured high-priority logs.\n- Always reflect manual records in Summary, Work timeline, and Deliverables/progress.\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";

@@ -74,6 +74,22 @@ public struct DataStore: @unchecked Sendable {
         return sortedRecords.filter { timeRange.contains($0.capturedAt, calendar: calendar) }
     }
 
+    /// Loads records for a time slot that may span across midnight.
+    /// Merges records from the primary date and optional overflow (next calendar) date.
+    public func loadRecordsForSlot(
+        primaryDate: Date,
+        primaryTimeRange: ReportTimeRange?,
+        overflowDate: Date?,
+        overflowTimeRange: ReportTimeRange?
+    ) throws -> [CaptureRecord] {
+        let primaryRecords = try loadRecords(on: primaryDate, timeRange: primaryTimeRange)
+        guard let overflowDate, let overflowTimeRange else {
+            return primaryRecords
+        }
+        let overflowRecords = try loadRecords(on: overflowDate, timeRange: overflowTimeRange)
+        return (primaryRecords + overflowRecords).sorted { $0.capturedAt < $1.capturedAt }
+    }
+
     /// Deletes data directories older than retention period and returns removed directories.
     @discardableResult
     public func cleanupExpiredData(referenceDate: Date) throws -> [URL] {

@@ -59,6 +59,7 @@ final class AppState {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        AppSettingsResolver.migrateReportSettingsIfNeeded(userDefaults: userDefaults)
         let rootDirectoryURL = Self.resolveRootDirectoryURL()
         let pathResolver = StoragePathResolver(rootDirectoryURL: rootDirectoryURL)
         let createdDataStore = DataStore(pathResolver: pathResolver)
@@ -71,22 +72,17 @@ final class AppState {
         let resolvedTimeSlots = AppSettingsResolver.resolveReportTimeSlots(userDefaults: userDefaults)
         self.reportScheduler = ReportScheduler(
             reportGenerator: createdReportGenerator,
-            generationConfigurationProvider: { [userDefaults] timeSlot in
-                var config = AppSettingsResolver.resolveReportGenerationConfiguration(userDefaults: userDefaults)
-                if let timeSlot {
-                    config = config.withOutputFileName(timeSlot.outputFileName)
-                }
-                return config
-            },
-            reportTargetDateProvider: { [userDefaults] in
-                AppSettingsResolver.resolveReportTargetDate(userDefaults: userDefaults)
+            generationConfigurationProvider: { [userDefaults] timeSlot, isSoleEnabledSlot in
+                AppSettingsResolver.resolveReportGenerationConfigurationForSlot(
+                    timeSlot,
+                    isSoleEnabledSlot: isSoleEnabledSlot,
+                    userDefaults: userDefaults
+                )
             },
             timeSlotsProvider: { [userDefaults] in
                 AppSettingsResolver.resolveReportTimeSlots(userDefaults: userDefaults)
             },
             isEnabled: AppSettingsResolver.resolveReportAutoGenerationEnabled(userDefaults: userDefaults),
-            hour: AppSettingsResolver.resolveReportAutoGenerationHour(userDefaults: userDefaults),
-            minute: AppSettingsResolver.resolveReportAutoGenerationMinute(userDefaults: userDefaults),
             timeSlots: resolvedTimeSlots
         )
         self.duplicateDetector = DuplicateDetector()
@@ -214,15 +210,13 @@ final class AppState {
         Task {
             await reportScheduler.updateSchedule(
                 isEnabled: AppSettingsResolver.resolveReportAutoGenerationEnabled(userDefaults: userDefaults),
-                hour: AppSettingsResolver.resolveReportAutoGenerationHour(userDefaults: userDefaults),
-                minute: AppSettingsResolver.resolveReportAutoGenerationMinute(userDefaults: userDefaults),
                 timeSlots: AppSettingsResolver.resolveReportTimeSlots(userDefaults: userDefaults)
             )
             await refreshReportSchedulerStatus()
         }
     }
 
-    func generateDailyReport() async {
+    func generateDailyReport(targetDate: Date = Date()) async {
         guard isGeneratingReport == false else {
             return
         }
@@ -236,10 +230,9 @@ final class AppState {
         do {
             let localReportGenerator = reportGenerator
             let generationConfiguration = AppSettingsResolver.resolveReportGenerationConfiguration()
-            let targetReportDate = AppSettingsResolver.resolveReportTargetDate()
             let generatedReport = try await Task.detached(priority: .userInitiated) {
                 try await localReportGenerator.generateReport(
-                    on: targetReportDate,
+                    on: targetDate,
                     configuration: generationConfiguration
                 )
             }.value
@@ -260,7 +253,7 @@ final class AppState {
         }
     }
 
-    func generateReportForTimeSlot(_ timeSlot: ReportTimeSlot) async {
+    func generateReportForTimeSlot(_ timeSlot: ReportTimeSlot, targetDate: Date = Date(), isSoleEnabledSlot: Bool = false) async {
         guard isGeneratingReport == false else {
             return
         }
@@ -273,15 +266,15 @@ final class AppState {
 
         do {
             let localReportGenerator = reportGenerator
-            var generationConfiguration = AppSettingsResolver.resolveReportGenerationConfiguration()
-            generationConfiguration = generationConfiguration.withOutputFileName(timeSlot.outputFileName)
-            let targetReportDate = AppSettingsResolver.resolveReportTargetDate()
-            let timeRange = timeSlot.toTimeRange()
+            let generationConfiguration = AppSettingsResolver.resolveReportGenerationConfigurationForSlot(
+                timeSlot,
+                isSoleEnabledSlot: isSoleEnabledSlot
+            )
             let generatedReport = try await Task.detached(priority: .userInitiated) {
                 try await localReportGenerator.generateReport(
-                    on: targetReportDate,
-                    configuration: generationConfiguration,
-                    timeRange: timeRange
+                    for: timeSlot,
+                    targetDate: targetDate,
+                    configuration: generationConfiguration
                 )
             }.value
 
@@ -427,7 +420,7 @@ final class AppState {
             var nextMessage = L10n.format(
                 "message.scheduler.next", Self.reportScheduleDateFormatter.string(from: nextExecutionDate)
             )
-            if let slotLabel = schedulerState.nextTimeSlotLabel {
+            if let slotLabel = schedulerState.nextTimeSlotRangeLabel {
                 nextMessage += " (\(slotLabel))"
             }
             messageParts.append(nextMessage)

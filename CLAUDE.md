@@ -68,21 +68,25 @@ ReportGenerator (struct, orchestrator)
 ### Report Scheduling
 
 ```
-ReportScheduler (actor, auto-generation with time slot support)
-  → checks enabled + configured schedule (single time or multiple time slots)
-  → ReportGenerator.generate(on:configuration:timeRange:)
+ReportScheduler (actor, time-slot-based auto-generation)
+  → checks enabled + configured time slots
+  → ReportGenerator.generateReport(for:targetDate:configuration:)
   → ReportSchedulerResult (.succeeded / .skippedNoRecords / .failed)
   → ReportNotificationManager (UNUserNotificationCenter)
 ```
 
-- **Single-time mode**: traditional single daily execution at configured hour/minute
-- **Time slot mode**: multiple executions per day, each slot triggers at its `endHour:endMinute`
-- `ReportTimeSlot` (Codable, Identifiable): configurable time window with label, start/end times, enable/disable
+- **Time-slot-only model**: no single-time mode — all scheduling uses time slots
+- `ReportTimeSlot` (Codable, Identifiable): configurable time window with start/end times, enable/disable. No label field — uses auto-generated `timeRangeLabel` (e.g. "08:00-25:00")
+- `endHour` supports values up to 30 (next day 06:00). `endHour >= 24` means execution fires after midnight, targeting the previous day's records
+- `executionIsNextDay`, `executionHour`, `primaryDayTimeRange`, `overflowDayTimeRange` — computed properties for cross-midnight handling
 - `ReportTimeRange`: lightweight filter struct with `contains(_:Date)` for record filtering
-- Default slots: Morning (8-12), Afternoon (12-18), Evening (18-24)
-- Output naming: `report-0800-1200.md` per slot, `report.md` for full-day
-- `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotLabel`) for UI status display
+- Default slots: Full day 08:00-25:00 (enabled), Morning 08:00-12:00, Afternoon 12:00-18:00, Evening 18:00-25:00 (all disabled)
+- Output naming: `report.md` when only one slot is enabled, `report-HHMM-HHMM.md` when multiple slots are enabled
+- `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotRangeLabel`) for UI status display
+- Target date auto-calculated per slot: `executionIsNextDay` → previous day, otherwise current day
+- `DataStore.loadRecordsForSlot()` handles cross-midnight loading by merging records from two calendar days
 - Notification on completion — clicking opens the generated report file
+- Migration from legacy settings (`reportTargetDayOffset`, `reportTimeSlotsEnabled`, `reportAutoGenerationHour/Minute`) via `AppSettingsResolver.migrateReportSettingsIfNeeded()`
 
 ### Global Keyboard Shortcuts
 
@@ -121,10 +125,10 @@ Stored structure:
 
 - **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
-  - Report settings: `reportTargetDayOffset`, `reportAutoGenerationEnabled`, `reportAutoGenerationHour/Minute`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsEnabled`, `reportTimeSlotsJSON`
+  - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
-- **`SettingsView`**: `Form` + `grouped` style with 4 tabs (General / Capture / CLI / Report). Uses `Window` scene with `defaultSize(width: 700, height: 640)`
+- **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, quit)
 
 ### Key Design Patterns

@@ -14,13 +14,9 @@ enum AppSettingsKey {
     static let reportCLICommand = "report.cliCommand"
     static let reportCLIArguments = "report.cliArguments"
     static let reportCLITimeoutSeconds = "report.cliTimeoutSeconds"
-    static let reportTargetDayOffset = "report.targetDayOffset"
     static let reportAutoGenerationEnabled = "report.autoGenerationEnabled"
-    static let reportAutoGenerationHour = "report.autoGenerationHour"
-    static let reportAutoGenerationMinute = "report.autoGenerationMinute"
     static let reportOutputDirectoryPath = "report.outputDirectoryPath"
     static let reportPromptTemplate = "report.promptTemplate"
-    static let reportTimeSlotsEnabled = "report.timeSlotsEnabled"
     static let reportTimeSlotsJSON = "report.timeSlotsJSON"
     static let captureNowShortcutKey = "shortcut.captureNowKey"
     static let captureNowShortcutModifiers = "shortcut.captureNowModifiers"
@@ -215,36 +211,27 @@ enum AppSettingsResolver {
         )
     }
 
-    static func resolveReportTargetDate(
-        baseDate: Date = Date(),
-        calendar: Calendar = .current,
+    /// Returns report generation configuration for a specific time slot.
+    /// When `isSoleEnabledSlot` is true, uses "report.md" as the output file name.
+    static func resolveReportGenerationConfigurationForSlot(
+        _ slot: ReportTimeSlot,
+        isSoleEnabledSlot: Bool,
         userDefaults: UserDefaults = .standard
-    ) -> Date {
-        let dayOffset = userDefaults.integer(forKey: AppSettingsKey.reportTargetDayOffset)
-        return calendar.date(byAdding: .day, value: dayOffset, to: baseDate) ?? baseDate
+    ) -> ReportGenerationConfiguration {
+        let outputFileName = isSoleEnabledSlot ? "report.md" : slot.outputFileName
+        return ReportGenerationConfiguration(
+            command: resolveReportCommand(userDefaults: userDefaults),
+            arguments: resolveReportArguments(userDefaults: userDefaults),
+            timeoutSeconds: resolveReportTimeoutSeconds(userDefaults: userDefaults),
+            outputFileName: outputFileName,
+            outputDirectoryURL: resolveReportOutputDirectoryURL(userDefaults: userDefaults),
+            promptTemplate: resolveReportPromptTemplate(userDefaults: userDefaults)
+        )
     }
 
     static func resolveReportAutoGenerationEnabled(userDefaults: UserDefaults = .standard) -> Bool {
         let hasValue = userDefaults.object(forKey: AppSettingsKey.reportAutoGenerationEnabled) != nil
         return hasValue ? userDefaults.bool(forKey: AppSettingsKey.reportAutoGenerationEnabled) : false
-    }
-
-    static func resolveReportAutoGenerationHour(userDefaults: UserDefaults = .standard) -> Int {
-        let hasValue = userDefaults.object(forKey: AppSettingsKey.reportAutoGenerationHour) != nil
-        guard hasValue else {
-            return 18
-        }
-        let configuredHour = userDefaults.integer(forKey: AppSettingsKey.reportAutoGenerationHour)
-        return min(max(configuredHour, 0), 23)
-    }
-
-    static func resolveReportAutoGenerationMinute(userDefaults: UserDefaults = .standard) -> Int {
-        let hasValue = userDefaults.object(forKey: AppSettingsKey.reportAutoGenerationMinute) != nil
-        guard hasValue else {
-            return 0
-        }
-        let configuredMinute = userDefaults.integer(forKey: AppSettingsKey.reportAutoGenerationMinute)
-        return min(max(configuredMinute, 0), 59)
     }
 
     private static func parseCLIArguments(_ argumentsText: String) -> [String] {
@@ -269,22 +256,15 @@ enum AppSettingsResolver {
         return URL(fileURLWithPath: outputDirectoryPath, isDirectory: true)
     }
 
-    static func resolveReportTimeSlotsEnabled(userDefaults: UserDefaults = .standard) -> Bool {
-        let hasValue = userDefaults.object(forKey: AppSettingsKey.reportTimeSlotsEnabled) != nil
-        return hasValue ? userDefaults.bool(forKey: AppSettingsKey.reportTimeSlotsEnabled) : false
-    }
-
+    /// Loads time slots from UserDefaults. Returns defaults if no saved configuration exists.
     static func resolveReportTimeSlots(userDefaults: UserDefaults = .standard) -> [ReportTimeSlot] {
-        let isEnabled = resolveReportTimeSlotsEnabled(userDefaults: userDefaults)
-        guard isEnabled else {
-            return []
-        }
         guard let jsonData = userDefaults.data(forKey: AppSettingsKey.reportTimeSlotsJSON) else {
-            return []
+            return ReportTimeSlot.defaults
         }
         let decoder = JSONDecoder()
-        guard let timeSlots = try? decoder.decode([ReportTimeSlot].self, from: jsonData) else {
-            return []
+        guard let timeSlots = try? decoder.decode([ReportTimeSlot].self, from: jsonData),
+              timeSlots.isEmpty == false else {
+            return ReportTimeSlot.defaults
         }
         return timeSlots
     }
@@ -304,5 +284,29 @@ enum AppSettingsResolver {
         }
         let trimmedTemplate = configuredTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedTemplate.isEmpty ? nil : configuredTemplate
+    }
+
+    /// Migrates legacy report settings to the new time-slot-only model.
+    /// Safe to call multiple times; runs only once per installation.
+    static func migrateReportSettingsIfNeeded(userDefaults: UserDefaults = .standard) {
+        let migrationKey = "migration.reportSettings.v2"
+        guard userDefaults.bool(forKey: migrationKey) == false else { return }
+
+        let hadTimeSlotsEnabled = userDefaults.object(forKey: "report.timeSlotsEnabled") != nil
+            && userDefaults.bool(forKey: "report.timeSlotsEnabled")
+
+        if hadTimeSlotsEnabled {
+            // User had time slots enabled with existing JSON — keep their configuration.
+            // The Codable decoder will ignore the legacy "label" field automatically.
+        } else {
+            // User was using single-time mode or fresh install — set defaults.
+            if userDefaults.data(forKey: AppSettingsKey.reportTimeSlotsJSON) != nil {
+                // Had JSON but timeSlotsEnabled was off — reset to defaults
+                saveReportTimeSlots(ReportTimeSlot.defaults, userDefaults: userDefaults)
+            }
+            // If no JSON exists, resolveReportTimeSlots will return defaults automatically.
+        }
+
+        userDefaults.set(true, forKey: migrationKey)
     }
 }
