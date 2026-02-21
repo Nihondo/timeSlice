@@ -112,10 +112,12 @@ public struct ReportGenerator: @unchecked Sendable {
         timeRange: ReportTimeRange? = nil
     ) async throws -> GeneratedReport {
         let dailyRecords = try dataStore.loadRecords(on: reportDate, timeRange: timeRange)
+        let relativeJSONGlobPaths = [buildRelativeJSONGlobPath(for: reportDate)]
         return try await generateReportFromRecords(
             dailyRecords,
             reportDate: reportDate,
             configuration: configuration,
+            relativeJSONGlobPaths: relativeJSONGlobPaths,
             timeRangeLabel: timeRange?.label
         )
     }
@@ -129,6 +131,10 @@ public struct ReportGenerator: @unchecked Sendable {
         let overflowDate = slot.executionIsNextDay
             ? Calendar.current.date(byAdding: .day, value: 1, to: targetDate)
             : nil
+        var relativeJSONGlobPaths = [buildRelativeJSONGlobPath(for: targetDate)]
+        if let overflowDate {
+            relativeJSONGlobPaths.append(buildRelativeJSONGlobPath(for: overflowDate))
+        }
         let dailyRecords = try dataStore.loadRecordsForSlot(
             primaryDate: targetDate,
             primaryTimeRange: slot.primaryDayTimeRange,
@@ -139,6 +145,7 @@ public struct ReportGenerator: @unchecked Sendable {
             dailyRecords,
             reportDate: targetDate,
             configuration: configuration,
+            relativeJSONGlobPaths: relativeJSONGlobPaths,
             timeRangeLabel: slot.timeRangeLabel
         )
     }
@@ -147,6 +154,7 @@ public struct ReportGenerator: @unchecked Sendable {
         _ records: [CaptureRecord],
         reportDate: Date,
         configuration: ReportGenerationConfiguration,
+        relativeJSONGlobPaths: [String],
         timeRangeLabel: String?
     ) async throws -> GeneratedReport {
         guard records.isEmpty == false else {
@@ -155,11 +163,10 @@ public struct ReportGenerator: @unchecked Sendable {
 
         let dataRootDirectoryURL = pathResolver.rootDirectoryURL
             .appendingPathComponent("data", isDirectory: true)
-        let relativeJSONGlobPath = buildRelativeJSONGlobPath(for: reportDate)
 
         let promptText = promptBuilder.buildDailyReportPrompt(
             date: reportDate,
-            relativeJSONGlobPath: relativeJSONGlobPath,
+            relativeJSONGlobPaths: relativeJSONGlobPaths,
             sourceRecordCount: records.count,
             customTemplate: configuration.promptTemplate,
             timeRangeLabel: timeRangeLabel

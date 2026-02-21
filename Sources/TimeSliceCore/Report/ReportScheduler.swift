@@ -187,11 +187,6 @@ public actor ReportScheduler {
 
             var candidateDate = calendar.date(from: dayComponents) ?? referenceDate
 
-            // If end time crosses midnight, execution fires on the next calendar day
-            if slot.executionIsNextDay {
-                candidateDate = calendar.date(byAdding: .day, value: 1, to: candidateDate) ?? candidateDate
-            }
-
             // If already past, schedule for tomorrow
             if candidateDate <= referenceDate {
                 candidateDate = calendar.date(byAdding: .day, value: 1, to: candidateDate)

@@ -53,6 +53,7 @@ CaptureScheduler (actor, periodic loop)
 ```
 ReportGenerator (struct, orchestrator)
   → DataStore.loadRecords(on:timeRange:) — loads daily CaptureRecords (optionally filtered by time range)
+  → DataStore.loadRecordsForSlot(...) — merges primary-day and overflow-day records for cross-midnight slots
   → PromptBuilder.buildDailyReportPrompt(...) — template with {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}
   → CLIExecutor (runs external AI CLI, e.g. gemini -p "...")
   → saves markdown → GeneratedReport { reportDate, reportFileURL, markdownText, sourceRecordCount, timeSlotLabel? }
@@ -62,7 +63,10 @@ ReportGenerator (struct, orchestrator)
 - **CLIExecutor** runs with cwd set to `data/` directory so the AI CLI can read `./YYYY/MM/DD/*.json` directly
 - Handles SIGPIPE, PATH injection for GUI context, `-p`/`--prompt` trailing-flag auto-fill, and configurable timeout
 - **PromptBuilder** uses file-reference strategy with customizable template (localized default via `NSLocalizedString`)
-- **Time slot mode**: always uses glob path (both `{{JSON_GLOB_PATH}}` and `{{JSON_FILE_LIST}}` resolve to same glob). Time filtering is delegated to the AI CLI via `{{TIME_RANGE}}` label (e.g. "08:00-12:00") in the prompt
+- Placeholder expansion:
+  - `{{JSON_GLOB_PATH}}`: space-separated glob paths
+  - `{{JSON_FILE_LIST}}`: newline-separated glob paths
+  - cross-midnight slots include both target-day and next-day globs
 - **Backup on re-generation**: existing report is backed up as `report-YYYY-MM-DD-HHmmss.md` before overwriting
 
 ### Report Scheduling
@@ -83,6 +87,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - Default slots: Full day 08:00-25:00 (enabled), Morning 08:00-12:00, Afternoon 12:00-18:00, Evening 18:00-25:00 (all disabled)
 - Output naming: `report.md` when only one slot is enabled, `report-HHMM-HHMM.md` when multiple slots are enabled
 - `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotRangeLabel`) for UI status display
+- Next execution time is calculated from each slot's `executionHour:executionMinute` on the current day, then shifted to next day only when already past
 - Target date auto-calculated per slot: `executionIsNextDay` → previous day, otherwise current day
 - `DataStore.loadRecordsForSlot()` handles cross-midnight loading by merging records from two calendar days
 - Notification on completion — clicking opens the generated report file
@@ -128,6 +133,7 @@ Stored structure:
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
+- Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, quit)
 

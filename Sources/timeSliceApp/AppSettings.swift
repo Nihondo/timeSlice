@@ -266,7 +266,11 @@ enum AppSettingsResolver {
               timeSlots.isEmpty == false else {
             return ReportTimeSlot.defaults
         }
-        return timeSlots
+        let normalizedTimeSlots = timeSlots.map(normalizeReportTimeSlot)
+        if normalizedTimeSlots != timeSlots {
+            saveReportTimeSlots(normalizedTimeSlots, userDefaults: userDefaults)
+        }
+        return normalizedTimeSlots
     }
 
     static func saveReportTimeSlots(_ timeSlots: [ReportTimeSlot], userDefaults: UserDefaults = .standard) {
@@ -308,5 +312,16 @@ enum AppSettingsResolver {
         }
 
         userDefaults.set(true, forKey: migrationKey)
+    }
+
+    private static func normalizeReportTimeSlot(_ slot: ReportTimeSlot) -> ReportTimeSlot {
+        ReportTimeSlot(
+            id: slot.id,
+            startHour: min(max(slot.startHour, 0), 23),
+            startMinute: min(max(slot.startMinute, 0), 59),
+            endHour: min(max(slot.endHour, 1), 30),
+            endMinute: min(max(slot.endMinute, 0), 59),
+            isEnabled: slot.isEnabled
+        )
     }
 }

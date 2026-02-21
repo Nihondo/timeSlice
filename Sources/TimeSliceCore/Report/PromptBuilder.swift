@@ -8,16 +8,21 @@ public struct PromptBuilder: Sendable {
         self.calendar = calendar
     }
 
-    /// Builds one-day report prompt text using relative JSON file references.
+    /// Builds report prompt text using one or more relative JSON file references.
     public func buildDailyReportPrompt(
         date: Date,
-        relativeJSONGlobPath: String,
+        relativeJSONGlobPaths: [String],
         sourceRecordCount: Int,
         customTemplate: String? = nil,
         timeRangeLabel: String? = nil
     ) -> String {
         let dateLabel = makeDateLabel(from: date)
         let resolvedTemplate = resolveTemplate(customTemplate: customTemplate)
+        let resolvedJSONGlobPaths = relativeJSONGlobPaths.filter { path in
+            path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        }
+        let joinedJSONGlobPath = resolvedJSONGlobPaths.joined(separator: " ")
+        let joinedJSONFileList = resolvedJSONGlobPaths.joined(separator: "\n")
         let resolvedTimeRangeLabel = timeRangeLabel ?? NSLocalizedString(
             "report.prompt.all_day", value: "全日", comment: ""
         )
@@ -25,7 +30,8 @@ public struct PromptBuilder: Sendable {
         return replacePlaceholders(
             in: resolvedTemplate,
             dateLabel: dateLabel,
-            relativeJSONGlobPath: relativeJSONGlobPath,
+            joinedJSONGlobPath: joinedJSONGlobPath,
+            joinedJSONFileList: joinedJSONFileList,
             sourceRecordCount: sourceRecordCount,
             timeRangeLabel: resolvedTimeRangeLabel
         )
@@ -45,16 +51,17 @@ public struct PromptBuilder: Sendable {
     private func replacePlaceholders(
         in template: String,
         dateLabel: String,
-        relativeJSONGlobPath: String,
+        joinedJSONGlobPath: String,
+        joinedJSONFileList: String,
         sourceRecordCount: Int,
         timeRangeLabel: String
     ) -> String {
         template
             .replacingOccurrences(of: "{{DATE}}", with: dateLabel)
-            .replacingOccurrences(of: "{{JSON_GLOB_PATH}}", with: relativeJSONGlobPath)
+            .replacingOccurrences(of: "{{JSON_GLOB_PATH}}", with: joinedJSONGlobPath)
             .replacingOccurrences(of: "{{RECORD_COUNT}}", with: String(sourceRecordCount))
             .replacingOccurrences(of: "{{TIME_RANGE}}", with: timeRangeLabel)
-            .replacingOccurrences(of: "{{JSON_FILE_LIST}}", with: relativeJSONGlobPath)
+            .replacingOccurrences(of: "{{JSON_FILE_LIST}}", with: joinedJSONFileList)
     }
 
     static var defaultTemplate: String {

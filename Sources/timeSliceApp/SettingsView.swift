@@ -378,38 +378,40 @@ struct SettingsView: View {
     private var timeSlotsListView: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach($timeSlots) { $slot in
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     Toggle("", isOn: $slot.isEnabled)
                         .labelsHidden()
+                        .frame(width: 46, alignment: .leading)
                         .onChange(of: slot.isEnabled) { _, _ in
                             saveTimeSlots()
                         }
 
-                    Stepper(
-                        String(format: "%02d:%02d", slot.startHour, slot.startMinute),
-                        value: $slot.startHour,
-                        in: 0...29
+                    timeSlotHourControl(
+                        hour: $slot.startHour,
+                        minute: slot.startMinute,
+                        range: 0...23
                     )
                     .onChange(of: slot.startHour) { _, _ in
                         saveTimeSlots()
                     }
 
                     Text("-")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
 
-                    Stepper(
-                        String(format: "%02d:%02d", slot.endHour, slot.endMinute),
-                        value: $slot.endHour,
-                        in: 1...30
+                    timeSlotHourControl(
+                        hour: $slot.endHour,
+                        minute: slot.endMinute,
+                        range: 1...30
                     )
                     .onChange(of: slot.endHour) { _, _ in
                         saveTimeSlots()
                     }
 
-                    if slot.executionIsNextDay {
-                        Text(L10n.string("settings.label.next_day"))
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
+                    Text(slot.executionIsNextDay ? L10n.string("settings.label.next_day") : "")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .frame(width: 44, alignment: .leading)
 
                     Button {
                         removeTimeSlot(id: slot.id)
@@ -430,6 +432,7 @@ struct SettingsView: View {
                     .disabled(appState.isGeneratingReport)
                     .help(L10n.string("settings.button.generate_slot_report"))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Button("settings.button.add_time_slot") {
@@ -440,6 +443,24 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .controlSize(.small)
+    }
+
+    private func timeSlotHourControl(
+        hour: Binding<Int>,
+        minute: Int,
+        range: ClosedRange<Int>
+    ) -> some View {
+        HStack(spacing: 6) {
+            Text(String(format: "%02d:%02d", hour.wrappedValue, minute))
+                .font(.system(.body, design: .monospaced))
+                .frame(width: 58, alignment: .leading)
+
+            Stepper("", value: hour, in: range)
+                .labelsHidden()
+                .fixedSize()
+        }
+        .frame(width: 108, alignment: .leading)
     }
 
     private func initializeTimeSlotsIfNeeded() {
