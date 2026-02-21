@@ -48,6 +48,7 @@ final class AppState {
     private var userDefaultsDidChangeObserver: NSObjectProtocol?
     private var appliedCaptureSettings: CaptureRuntimeSettings?
     private var manualCaptureReturnApplication: NSRunningApplication?
+    private var hasRequestedAccessibilityPermissionThisSession = false
 
     var isCapturing = false
     var hasScreenCapturePermission = false
@@ -167,8 +168,16 @@ final class AppState {
                 self.manualCaptureCommentPanelPresenter.dismissActivePanelIfNeeded()
                 return
             }
-            self.manualCaptureReturnApplication = NSWorkspace.shared.frontmostApplication
+            let frontmostApplication = NSWorkspace.shared.frontmostApplication
+            self.manualCaptureReturnApplication = frontmostApplication
+            let shouldPromptForAccessibilityPermission = self.hasRequestedAccessibilityPermissionThisSession == false
+            let initialComment = FrontmostSelectionTextResolver.resolveInitialComment(
+                from: frontmostApplication,
+                shouldPromptForPermission: shouldPromptForAccessibilityPermission
+            )
+            self.hasRequestedAccessibilityPermissionThisSession = true
             self.manualCaptureCommentPanelPresenter.present(
+                initialComment: initialComment,
                 onSubmitComment: { [weak self] manualComment in
                     guard let self else {
                         return
@@ -801,6 +810,76 @@ private func captureNowGlobalHotKeyEventHandler(
     }
     let hotKeyManager = Unmanaged<GlobalHotKeyManager>.fromOpaque(userData).takeUnretainedValue()
     return hotKeyManager.handleHotKeyPressedEvent(eventRef)
+}
+
+private enum FrontmostSelectionTextResolver {
+    static func resolveInitialComment(
+        from application: NSRunningApplication?,
+        shouldPromptForPermission: Bool
+    ) -> String {
+        guard isAccessibilityTrusted(shouldPromptForPermission: shouldPromptForPermission) else {
+            return ""
+        }
+        guard let processIdentifier = application?.processIdentifier else {
+            return ""
+        }
+
+        let applicationElement = AXUIElementCreateApplication(processIdentifier)
+        guard
+            let focusedElementValue = copyAttributeValue(
+                of: applicationElement,
+                attribute: kAXFocusedUIElementAttribute as CFString
+            ),
+            CFGetTypeID(focusedElementValue) == AXUIElementGetTypeID()
+        else {
+            return ""
+        }
+        let focusedElement = unsafeBitCast(focusedElementValue, to: AXUIElement.self)
+        guard
+            let selectedTextValue = copyAttributeValue(
+                of: focusedElement,
+                attribute: kAXSelectedTextAttribute as CFString
+            )
+        else {
+            return ""
+        }
+        return normalizeSelectedText(selectedTextValue)
+    }
+
+    private static func copyAttributeValue(of element: AXUIElement, attribute: CFString) -> CFTypeRef? {
+        var attributeValue: CFTypeRef?
+        let copyStatus = AXUIElementCopyAttributeValue(element, attribute, &attributeValue)
+        guard copyStatus == .success else {
+            return nil
+        }
+        return attributeValue
+    }
+
+    private static func normalizeSelectedText(_ selectedTextValue: CFTypeRef) -> String {
+        let selectedText: String
+        if let plainText = selectedTextValue as? String {
+            selectedText = plainText
+        } else if let attributedText = selectedTextValue as? NSAttributedString {
+            selectedText = attributedText.string
+        } else {
+            return ""
+        }
+
+        return selectedText
+            .replacingOccurrences(of: #"\s*\n+\s*"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isAccessibilityTrusted(shouldPromptForPermission: Bool) -> Bool {
+        guard shouldPromptForPermission else {
+            return AXIsProcessTrusted()
+        }
+        let promptOptions = [
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
+        ] as CFDictionary
+        return AXIsProcessTrustedWithOptions(promptOptions)
+    }
 }
 
 private enum ReportGenerationSource {

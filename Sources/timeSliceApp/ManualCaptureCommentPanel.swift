@@ -20,7 +20,11 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         cancelAndClosePanel()
     }
 
-    func present(onSubmitComment: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+    func present(
+        initialComment: String = "",
+        onSubmitComment: @escaping (String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
         closePanelIfNeeded()
         onCancelAction = onCancel
 
@@ -42,6 +46,7 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         panel.animationBehavior = .utilityWindow
 
         let commentView = ManualCaptureCommentView(
+            initialComment: initialComment,
             onSubmitComment: { [weak self] commentText in
                 guard let self else {
                     return
@@ -147,9 +152,19 @@ private struct ManualCaptureCommentView: View {
     let onSubmitComment: (String) -> Void
     let onCancel: () -> Void
 
-    @State private var commentText = ""
+    @State private var commentText: String
     @State private var isViewVisible = false
     @FocusState private var isInputFocused: Bool
+
+    init(
+        initialComment: String = "",
+        onSubmitComment: @escaping (String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.onSubmitComment = onSubmitComment
+        self.onCancel = onCancel
+        self._commentText = State(initialValue: initialComment)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

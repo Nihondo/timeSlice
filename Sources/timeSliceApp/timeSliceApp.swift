@@ -112,6 +112,15 @@ private struct MenuBarMenuContentView: View {
         Divider()
 
         Button {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.orderFrontStandardAboutPanel(nil)
+        } label: {
+            Label("menu.about", systemImage: "info.circle")
+        }
+
+        Divider()
+
+        Button {
             NSApplication.shared.terminate(nil)
         } label: {
             Label("menu.quit", systemImage: "xmark.circle")
