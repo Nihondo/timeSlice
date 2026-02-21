@@ -224,10 +224,10 @@ private struct ManualCaptureCommentView: View {
         .overlay(
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.24), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.30), lineWidth: 2.2)
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .inset(by: 1.2)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .inset(by: 1.8)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.9)
             }
         )
         .shadow(color: Color.black.opacity(0.24), radius: 20, x: 0, y: 10)
