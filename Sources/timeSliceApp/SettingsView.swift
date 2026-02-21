@@ -446,9 +446,16 @@ struct SettingsView: View {
         guard hasInitializedTimeSlots == false else {
             return
         }
-        let storedSlots = AppSettingsResolver.resolveReportTimeSlots()
-        timeSlots = storedSlots.isEmpty ? ReportTimeSlot.defaults : storedSlots
         hasInitializedTimeSlots = true
+
+        if let jsonData = UserDefaults.standard.data(forKey: AppSettingsKey.reportTimeSlotsJSON),
+           let decoded = try? JSONDecoder().decode([ReportTimeSlot].self, from: jsonData),
+           decoded.isEmpty == false {
+            timeSlots = decoded
+        } else {
+            timeSlots = ReportTimeSlot.defaults
+            AppSettingsResolver.saveReportTimeSlots(timeSlots)
+        }
     }
 
     private func addTimeSlot() {
