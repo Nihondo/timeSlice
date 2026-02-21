@@ -15,6 +15,7 @@ public struct ReportSchedulerState: Sendable {
     public let nextExecutionDate: Date?
     public let nextTimeSlotRangeLabel: String?
     public let lastResult: ReportSchedulerResult?
+    public let lastResultSequence: UInt64
 
     public init(
         isRunning: Bool,
@@ -22,7 +23,8 @@ public struct ReportSchedulerState: Sendable {
         timeSlots: [ReportTimeSlot] = [],
         nextExecutionDate: Date?,
         nextTimeSlotRangeLabel: String? = nil,
-        lastResult: ReportSchedulerResult?
+        lastResult: ReportSchedulerResult?,
+        lastResultSequence: UInt64 = 0
     ) {
         self.isRunning = isRunning
         self.isEnabled = isEnabled
@@ -30,6 +32,7 @@ public struct ReportSchedulerState: Sendable {
         self.nextExecutionDate = nextExecutionDate
         self.nextTimeSlotRangeLabel = nextTimeSlotRangeLabel
         self.lastResult = lastResult
+        self.lastResultSequence = lastResultSequence
     }
 }
 
@@ -37,6 +40,7 @@ public struct ReportSchedulerState: Sendable {
 public actor ReportScheduler {
     public private(set) var isRunning = false
     public private(set) var lastResult: ReportSchedulerResult?
+    public private(set) var lastResultSequence: UInt64 = 0
     public private(set) var nextExecutionDate: Date?
     public private(set) var nextTimeSlot: ReportTimeSlot?
 
@@ -84,6 +88,7 @@ public actor ReportScheduler {
             return
         }
 
+        updateNextExecutionPreview(referenceDate: dateProvider.now)
         isRunning = true
         schedulerLoopTask = Task {
             await runSchedulerLoop()
@@ -118,16 +123,27 @@ public actor ReportScheduler {
             timeSlots: timeSlots,
             nextExecutionDate: nextExecutionDate,
             nextTimeSlotRangeLabel: nextTimeSlot?.timeRangeLabel,
-            lastResult: lastResult
+            lastResult: lastResult,
+            lastResultSequence: lastResultSequence
         )
     }
 
     private func restartSchedulerLoop() {
-        stop()
+        schedulerLoopTask?.cancel()
+        schedulerLoopTask = nil
+
         guard isEnabled else {
+            isRunning = false
+            nextExecutionDate = nil
+            nextTimeSlot = nil
             return
         }
-        start()
+
+        updateNextExecutionPreview(referenceDate: dateProvider.now)
+        isRunning = true
+        schedulerLoopTask = Task {
+            await runSchedulerLoop()
+        }
     }
 
     private func runSchedulerLoop() async {
@@ -153,10 +169,12 @@ public actor ReportScheduler {
 
             let currentEnabledSlots = timeSlotsProvider().filter(\.isEnabled)
             let isSoleEnabledSlot = currentEnabledSlots.count == 1
-            lastResult = await executeScheduledReportGeneration(
+            let executionResult = await executeScheduledReportGeneration(
                 timeSlot: result.slot,
                 isSoleEnabledSlot: isSoleEnabledSlot
             )
+            lastResult = executionResult
+            lastResultSequence &+= 1
         }
 
         schedulerLoopTask = nil
@@ -207,6 +225,17 @@ public actor ReportScheduler {
             return
         }
         try await Task.sleep(for: .seconds(waitSeconds))
+    }
+
+    private func updateNextExecutionPreview(referenceDate: Date) {
+        let enabledSlots = timeSlotsProvider().filter(\.isEnabled)
+        guard let nextExecution = calculateNextSlotExecution(from: referenceDate, slots: enabledSlots) else {
+            nextExecutionDate = nil
+            nextTimeSlot = nil
+            return
+        }
+        nextExecutionDate = nextExecution.date
+        nextTimeSlot = nextExecution.slot
     }
 
     private func executeScheduledReportGeneration(

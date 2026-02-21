@@ -40,10 +40,15 @@
 "settings.section.filter" = "Filter";
 "settings.footer.filter" = "Text shorter than this length will not be stored.";
 "settings.section.excluded_apps" = "OCR Excluded Apps";
-"settings.footer.excluded_apps" = "When these apps are in the foreground, only the app name is recorded without OCR.";
+"settings.footer.excluded_apps" = "If the foreground app name partially matches a keyword, OCR is skipped and only the app name is recorded.";
 "settings.placeholder.excluded_app_name" = "Enter app name";
 "settings.button.add_excluded_app" = "Add";
 "settings.button.delete_excluded_app" = "Delete";
+"settings.section.excluded_window_titles" = "OCR Excluded Window Titles";
+"settings.footer.excluded_window_titles" = "If the window title partially matches a keyword, OCR is skipped and only the app name is recorded.";
+"settings.placeholder.excluded_window_title" = "Enter window title";
+"settings.button.add_excluded_window_title" = "Add";
+"settings.button.delete_excluded_window_title" = "Delete";
 "settings.section.storage" = "Storage";
 "settings.toggle.save_images" = "Save images";
 "settings.footer.storage" = "Changes apply immediately (during recording, from the next capture).";
@@ -95,6 +100,9 @@
 "notification.report.title.manual" = "Report Generation Completed";
 "notification.report.title.scheduled" = "Scheduled Report Generation Completed";
 "notification.report.body" = "Saved %@ (%d records)";
+"notification.report.title.manual_failed" = "Report Generation Failed";
+"notification.report.title.scheduled_failed" = "Scheduled Report Generation Failed";
+"notification.report.body.failed" = "Report generation failed: %@";
 "notification.capture.title.manual" = "OCR Capture Completed";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "(No Title)";
@@ -111,6 +119,8 @@
 "message.scheduler.disabled" = "Scheduled auto generation: Disabled";
 "message.scheduler.enabled" = "Scheduled auto generation: Enabled";
 "message.scheduler.next" = "Next: %@";
+"message.scheduler.next_calculating" = "Next: Calculating...";
+"message.scheduler.no_enabled_slot" = "Next: No enabled slot";
 "message.scheduler.last_success" = "Last success: %@ (%d records)";
 "message.scheduler.last_skipped_no_records" = "Last skipped: No records for target day";
 "message.scheduler.last_failed" = "Last failed: %@";

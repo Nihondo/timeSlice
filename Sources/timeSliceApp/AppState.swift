@@ -15,13 +15,15 @@ final class AppState {
         let minimumTextLength: Int
         let shouldSaveImages: Bool
         let excludedApplications: [String]
+        let excludedWindowTitles: [String]
 
         var schedulerConfiguration: CaptureSchedulerConfiguration {
             CaptureSchedulerConfiguration(
                 captureIntervalSeconds: captureIntervalSeconds,
                 minimumTextLength: minimumTextLength,
                 shouldSaveImages: shouldSaveImages,
-                excludedApplications: excludedApplications
+                excludedApplications: excludedApplications,
+                excludedWindowTitles: excludedWindowTitles
             )
         }
     }
@@ -40,7 +42,7 @@ final class AppState {
     private var captureScheduler: CaptureScheduler?
     private var recordCountRefreshTask: Task<Void, Never>?
     private var reportSchedulerRefreshTask: Task<Void, Never>?
-    private var lastNotifiedScheduledReportFilePath: String?
+    private var lastProcessedScheduledResultSequence: UInt64 = 0
     private var userDefaultsDidChangeObserver: NSObjectProtocol?
     private var appliedCaptureSettings: CaptureRuntimeSettings?
 
@@ -249,7 +251,12 @@ final class AppState {
                 generationSource: .manual
             )
         } catch {
-            lastReportResultMessage = L10n.format("message.report.failed", error.localizedDescription)
+            let errorDescription = error.localizedDescription
+            lastReportResultMessage = L10n.format("message.report.failed", errorDescription)
+            await reportNotificationManager.postReportFailedNotification(
+                errorDescription: errorDescription,
+                generationSource: .manual
+            )
         }
     }
 
@@ -290,7 +297,12 @@ final class AppState {
                 generationSource: .manual
             )
         } catch {
-            lastReportResultMessage = L10n.format("message.report.failed", error.localizedDescription)
+            let errorDescription = error.localizedDescription
+            lastReportResultMessage = L10n.format("message.report.failed", errorDescription)
+            await reportNotificationManager.postReportFailedNotification(
+                errorDescription: errorDescription,
+                generationSource: .manual
+            )
         }
     }
 
@@ -319,7 +331,8 @@ final class AppState {
             captureIntervalSeconds: AppSettingsResolver.resolveCaptureIntervalSeconds(userDefaults: userDefaults),
             minimumTextLength: AppSettingsResolver.resolveMinimumTextLength(userDefaults: userDefaults),
             shouldSaveImages: AppSettingsResolver.resolveShouldSaveImages(userDefaults: userDefaults),
-            excludedApplications: AppSettingsResolver.resolveExcludedApplications(userDefaults: userDefaults)
+            excludedApplications: AppSettingsResolver.resolveExcludedApplications(userDefaults: userDefaults),
+            excludedWindowTitles: AppSettingsResolver.resolveExcludedWindowTitles(userDefaults: userDefaults)
         )
     }
 
@@ -360,25 +373,33 @@ final class AppState {
     private func refreshReportSchedulerStatus() async {
         let schedulerState = await reportScheduler.snapshot()
         lastScheduledReportMessage = makeSchedulerStatusMessage(from: schedulerState)
-        await notifyIfNeededForScheduledReport(schedulerState.lastResult)
+        await notifyIfNeededForScheduledReport(schedulerState)
     }
 
-    private func notifyIfNeededForScheduledReport(_ schedulerResult: ReportSchedulerResult?) async {
-        guard case let .succeeded(generatedReport)? = schedulerResult else {
+    private func notifyIfNeededForScheduledReport(_ schedulerState: ReportSchedulerState) async {
+        guard schedulerState.lastResultSequence > lastProcessedScheduledResultSequence else {
             return
         }
+        lastProcessedScheduledResultSequence = schedulerState.lastResultSequence
 
-        let reportFilePath = generatedReport.reportFileURL.path
-        guard reportFilePath != lastNotifiedScheduledReportFilePath else {
+        guard let schedulerResult = schedulerState.lastResult else {
             return
         }
-        lastNotifiedScheduledReportFilePath = reportFilePath
-
-        await reportNotificationManager.postReportGeneratedNotification(
-            reportFileURL: generatedReport.reportFileURL,
-            sourceRecordCount: generatedReport.sourceRecordCount,
-            generationSource: .scheduled
-        )
+        switch schedulerResult {
+        case let .succeeded(generatedReport):
+            await reportNotificationManager.postReportGeneratedNotification(
+                reportFileURL: generatedReport.reportFileURL,
+                sourceRecordCount: generatedReport.sourceRecordCount,
+                generationSource: .scheduled
+            )
+        case .skippedNoRecords:
+            return
+        case let .failed(errorDescription):
+            await reportNotificationManager.postReportFailedNotification(
+                errorDescription: errorDescription,
+                generationSource: .scheduled
+            )
+        }
     }
 
     private func makeOutcomeMessage(from cycleOutcome: CaptureCycleOutcome) -> String {
@@ -429,7 +450,15 @@ final class AppState {
             messageParts.append(makeLastSchedulerResultMessage(from: lastResult))
         }
 
-        return messageParts.isEmpty ? L10n.string("message.scheduler.enabled") : messageParts.joined(separator: " / ")
+        guard messageParts.isEmpty else {
+            return messageParts.joined(separator: " / ")
+        }
+
+        let hasEnabledTimeSlot = schedulerState.timeSlots.contains(where: \.isEnabled)
+        if hasEnabledTimeSlot {
+            return L10n.string("message.scheduler.next_calculating")
+        }
+        return L10n.string("message.scheduler.no_enabled_slot")
     }
 
     private func makeLastSchedulerResultMessage(from schedulerResult: ReportSchedulerResult) -> String {
@@ -762,7 +791,7 @@ private final class ReportNotificationManager {
         }
 
         let notificationContent = UNMutableNotificationContent()
-        notificationContent.title = resolveNotificationTitle(for: generationSource)
+        notificationContent.title = resolveGeneratedNotificationTitle(for: generationSource)
         notificationContent.body = L10n.format(
             "notification.report.body",
             reportFileURL.lastPathComponent,
@@ -773,6 +802,35 @@ private final class ReportNotificationManager {
 
         let notificationRequest = UNNotificationRequest(
             identifier: "report-generated-\(UUID().uuidString)",
+            content: notificationContent,
+            trigger: nil
+        )
+        do {
+            try await notificationCenter.add(notificationRequest)
+        } catch {
+            // Ignore notification submission failures to avoid blocking report generation.
+        }
+    }
+
+    func postReportFailedNotification(
+        errorDescription: String,
+        generationSource: ReportGenerationSource
+    ) async {
+        await refreshAuthorizationState()
+        guard isNotificationAuthorized else {
+            return
+        }
+
+        let notificationContent = UNMutableNotificationContent()
+        notificationContent.title = resolveFailedNotificationTitle(for: generationSource)
+        notificationContent.body = L10n.format(
+            "notification.report.body.failed",
+            errorDescription
+        )
+        notificationContent.sound = .default
+
+        let notificationRequest = UNNotificationRequest(
+            identifier: "report-failed-\(UUID().uuidString)",
             content: notificationContent,
             trigger: nil
         )
@@ -814,12 +872,21 @@ private final class ReportNotificationManager {
         }
     }
 
-    private func resolveNotificationTitle(for generationSource: ReportGenerationSource) -> String {
+    private func resolveGeneratedNotificationTitle(for generationSource: ReportGenerationSource) -> String {
         switch generationSource {
         case .manual:
             return L10n.string("notification.report.title.manual")
         case .scheduled:
             return L10n.string("notification.report.title.scheduled")
+        }
+    }
+
+    private func resolveFailedNotificationTitle(for generationSource: ReportGenerationSource) -> String {
+        switch generationSource {
+        case .manual:
+            return L10n.string("notification.report.title.manual_failed")
+        case .scheduled:
+            return L10n.string("notification.report.title.scheduled_failed")
         }
     }
 

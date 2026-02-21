@@ -5,17 +5,22 @@ public struct CaptureSchedulerConfiguration: Sendable {
     public let minimumTextLength: Int
     public let shouldSaveImages: Bool
     public let excludedApplications: [String]
+    public let excludedWindowTitles: [String]
 
     public init(
         captureIntervalSeconds: TimeInterval = 60,
         minimumTextLength: Int = 10,
         shouldSaveImages: Bool = true,
-        excludedApplications: [String] = []
+        excludedApplications: [String] = [],
+        excludedWindowTitles: [String] = []
     ) {
         self.captureIntervalSeconds = captureIntervalSeconds
         self.minimumTextLength = minimumTextLength
         self.shouldSaveImages = shouldSaveImages
         self.excludedApplications = excludedApplications
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.isEmpty == false }
+        self.excludedWindowTitles = excludedWindowTitles
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.isEmpty == false }
     }
@@ -91,10 +96,15 @@ public actor CaptureScheduler {
                 return .skipped(.noWindow)
             }
 
-            let isExcludedApplication = configuration.excludedApplications.contains {
-                capturedWindow.applicationName.localizedCaseInsensitiveCompare($0) == .orderedSame
-            }
-            if isExcludedApplication {
+            let isExcludedApplication = matchesExcludedKeyword(
+                capturedWindow.applicationName,
+                excludedKeywords: configuration.excludedApplications
+            )
+            let isExcludedWindowTitle = matchesExcludedKeyword(
+                capturedWindow.windowTitle,
+                excludedKeywords: configuration.excludedWindowTitles
+            )
+            if isExcludedApplication || isExcludedWindowTitle {
                 let captureRecord = CaptureRecord(
                     applicationName: capturedWindow.applicationName,
                     windowTitle: capturedWindow.windowTitle,
@@ -173,5 +183,17 @@ public actor CaptureScheduler {
 
         captureLoopTask = nil
         isRunning = false
+    }
+
+    private func matchesExcludedKeyword(_ text: String?, excludedKeywords: [String]) -> Bool {
+        guard let text else {
+            return false
+        }
+        guard text.isEmpty == false else {
+            return false
+        }
+        return excludedKeywords.contains { excludedKeyword in
+            text.range(of: excludedKeyword, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
     }
 }

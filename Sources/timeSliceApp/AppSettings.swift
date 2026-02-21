@@ -11,6 +11,7 @@ enum AppSettingsKey {
     static let captureMinimumTextLength = "capture.minimumTextLength"
     static let captureShouldSaveImages = "capture.shouldSaveImages"
     static let captureExcludedApplications = "capture.excludedApplications"
+    static let captureExcludedWindowTitles = "capture.excludedWindowTitles"
     static let reportCLICommand = "report.cliCommand"
     static let reportCLIArguments = "report.cliArguments"
     static let reportCLITimeoutSeconds = "report.cliTimeoutSeconds"
@@ -156,24 +157,12 @@ enum AppSettingsResolver {
 
     static func resolveExcludedApplications(userDefaults: UserDefaults = .standard) -> [String] {
         let storedApplications = userDefaults.stringArray(forKey: AppSettingsKey.captureExcludedApplications) ?? []
-        var resolvedApplications: [String] = []
-        var normalizedApplicationNames = Set<String>()
+        return normalizeExcludedKeywords(storedApplications)
+    }
 
-        for applicationName in storedApplications {
-            let trimmedApplicationName = applicationName.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmedApplicationName.isEmpty == false else {
-                continue
-            }
-
-            let normalizedApplicationName = trimmedApplicationName.lowercased()
-            let isInserted = normalizedApplicationNames.insert(normalizedApplicationName).inserted
-            guard isInserted else {
-                continue
-            }
-            resolvedApplications.append(trimmedApplicationName)
-        }
-
-        return resolvedApplications
+    static func resolveExcludedWindowTitles(userDefaults: UserDefaults = .standard) -> [String] {
+        let storedWindowTitles = userDefaults.stringArray(forKey: AppSettingsKey.captureExcludedWindowTitles) ?? []
+        return normalizeExcludedKeywords(storedWindowTitles)
     }
 
     static func resolveReportCommand(userDefaults: UserDefaults = .standard) -> String {
@@ -238,6 +227,26 @@ enum AppSettingsResolver {
         argumentsText
             .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
+    }
+
+    private static func normalizeExcludedKeywords(_ keywords: [String]) -> [String] {
+        var normalizedKeywords = Set<String>()
+        var resolvedKeywords: [String] = []
+
+        for keyword in keywords {
+            let trimmedKeyword = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedKeyword.isEmpty == false else {
+                continue
+            }
+            let normalizedKeyword = trimmedKeyword.lowercased()
+            let isInserted = normalizedKeywords.insert(normalizedKeyword).inserted
+            guard isInserted else {
+                continue
+            }
+            resolvedKeywords.append(trimmedKeyword)
+        }
+
+        return resolvedKeywords
     }
 
     static func resolveReportOutputDirectoryPath(userDefaults: UserDefaults = .standard) -> String? {

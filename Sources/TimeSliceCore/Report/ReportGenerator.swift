@@ -157,45 +157,77 @@ public struct ReportGenerator: @unchecked Sendable {
         relativeJSONGlobPaths: [String],
         timeRangeLabel: String?
     ) async throws -> GeneratedReport {
-        guard records.isEmpty == false else {
-            throw ReportGenerationError.noRecords(reportDate)
+        let runTimestamp = Date()
+        var promptText: String?
+        var outputText: String?
+
+        do {
+            guard records.isEmpty == false else {
+                throw ReportGenerationError.noRecords(reportDate)
+            }
+
+            let dataRootDirectoryURL = pathResolver.rootDirectoryURL
+                .appendingPathComponent("data", isDirectory: true)
+
+            let preparedPromptText = promptBuilder.buildDailyReportPrompt(
+                date: reportDate,
+                relativeJSONGlobPaths: relativeJSONGlobPaths,
+                sourceRecordCount: records.count,
+                customTemplate: configuration.promptTemplate,
+                timeRangeLabel: timeRangeLabel
+            )
+            promptText = preparedPromptText
+
+            let markdownText = try await cliExecutor.execute(
+                command: configuration.command,
+                arguments: configuration.arguments,
+                input: preparedPromptText,
+                timeoutSeconds: configuration.timeoutSeconds,
+                currentDirectoryURL: dataRootDirectoryURL
+            )
+            outputText = markdownText
+
+            let normalizedMarkdownText = markdownText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard normalizedMarkdownText.isEmpty == false else {
+                throw ReportGenerationError.emptyReportContent
+            }
+
+            let reportFileURL = try saveReportMarkdown(
+                normalizedMarkdownText,
+                date: reportDate,
+                outputDirectoryURL: configuration.outputDirectoryURL,
+                outputFileName: configuration.outputFileName
+            )
+            saveLastRunLogIfPossible(
+                runTimestamp: runTimestamp,
+                reportDate: reportDate,
+                configuration: configuration,
+                timeRangeLabel: timeRangeLabel,
+                promptText: preparedPromptText,
+                outputText: normalizedMarkdownText,
+                isSuccessful: true,
+                errorDescription: nil
+            )
+            return GeneratedReport(
+                reportDate: reportDate,
+                reportFileURL: reportFileURL,
+                markdownText: normalizedMarkdownText,
+                sourceRecordCount: records.count,
+                timeSlotLabel: timeRangeLabel
+            )
+        } catch {
+            saveLastRunLogIfPossible(
+                runTimestamp: runTimestamp,
+                reportDate: reportDate,
+                configuration: configuration,
+                timeRangeLabel: timeRangeLabel,
+                promptText: promptText,
+                outputText: resolveLoggedOutputText(from: error, fallbackOutput: outputText),
+                isSuccessful: false,
+                errorDescription: error.localizedDescription
+            )
+            throw error
         }
-
-        let dataRootDirectoryURL = pathResolver.rootDirectoryURL
-            .appendingPathComponent("data", isDirectory: true)
-
-        let promptText = promptBuilder.buildDailyReportPrompt(
-            date: reportDate,
-            relativeJSONGlobPaths: relativeJSONGlobPaths,
-            sourceRecordCount: records.count,
-            customTemplate: configuration.promptTemplate,
-            timeRangeLabel: timeRangeLabel
-        )
-        let markdownText = try await cliExecutor.execute(
-            command: configuration.command,
-            arguments: configuration.arguments,
-            input: promptText,
-            timeoutSeconds: configuration.timeoutSeconds,
-            currentDirectoryURL: dataRootDirectoryURL
-        )
-        let normalizedMarkdownText = markdownText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard normalizedMarkdownText.isEmpty == false else {
-            throw ReportGenerationError.emptyReportContent
-        }
-
-        let reportFileURL = try saveReportMarkdown(
-            normalizedMarkdownText,
-            date: reportDate,
-            outputDirectoryURL: configuration.outputDirectoryURL,
-            outputFileName: configuration.outputFileName
-        )
-        return GeneratedReport(
-            reportDate: reportDate,
-            reportFileURL: reportFileURL,
-            markdownText: normalizedMarkdownText,
-            sourceRecordCount: records.count,
-            timeSlotLabel: timeRangeLabel
-        )
     }
 
     private func saveReportMarkdown(
@@ -318,4 +350,70 @@ public struct ReportGenerator: @unchecked Sendable {
             suffix += 1
         }
     }
+
+    private func saveLastRunLogIfPossible(
+        runTimestamp: Date,
+        reportDate: Date,
+        configuration: ReportGenerationConfiguration,
+        timeRangeLabel: String?,
+        promptText: String?,
+        outputText: String?,
+        isSuccessful: Bool,
+        errorDescription: String?
+    ) {
+        let reportLastRunLog = ReportLastRunLog(
+            executedAt: runTimestamp,
+            reportDate: reportDate,
+            command: configuration.command,
+            arguments: configuration.arguments,
+            timeoutSeconds: configuration.timeoutSeconds,
+            timeRangeLabel: timeRangeLabel,
+            promptText: promptText ?? "",
+            outputText: outputText ?? "",
+            isSuccessful: isSuccessful,
+            errorDescription: errorDescription
+        )
+
+        do {
+            let logsDirectoryURL = pathResolver.rootDirectoryURL.appendingPathComponent("logs", isDirectory: true)
+            if fileManager.fileExists(atPath: logsDirectoryURL.path) == false {
+                try fileManager.createDirectory(at: logsDirectoryURL, withIntermediateDirectories: true)
+            }
+            let logFileURL = logsDirectoryURL.appendingPathComponent("report-last-run.json")
+            let logData = try buildLastRunLogData(reportLastRunLog)
+            try logData.write(to: logFileURL, options: .atomic)
+        } catch {
+            // Ignore log-writing failures to avoid blocking report generation.
+        }
+    }
+
+    private func buildLastRunLogData(_ reportLastRunLog: ReportLastRunLog) throws -> Data {
+        let logEncoder = JSONEncoder()
+        logEncoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        logEncoder.dateEncodingStrategy = .iso8601
+        return try logEncoder.encode(reportLastRunLog)
+    }
+
+    private func resolveLoggedOutputText(from error: Error, fallbackOutput: String?) -> String? {
+        guard let cliExecutorError = error as? CLIExecutorError else {
+            return fallbackOutput
+        }
+        guard case let .executionFailed(_, _, commandOutput) = cliExecutorError else {
+            return fallbackOutput
+        }
+        return commandOutput.isEmpty ? fallbackOutput : commandOutput
+    }
+}
+
+private struct ReportLastRunLog: Codable {
+    let executedAt: Date
+    let reportDate: Date
+    let command: String
+    let arguments: [String]
+    let timeoutSeconds: TimeInterval
+    let timeRangeLabel: String?
+    let promptText: String
+    let outputText: String
+    let isSuccessful: Bool
+    let errorDescription: String?
 }

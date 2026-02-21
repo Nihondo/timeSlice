@@ -47,6 +47,7 @@ CaptureScheduler (actor, periodic loop)
 - `CaptureScheduler.performCaptureCycle(captureTrigger:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
 - `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
 - `CaptureRecord` includes: `windowTitle: String?` and `captureTrigger: CaptureTrigger`
+- Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, OCR/image save is skipped and metadata-only record is stored
 
 ### Report Pipeline
 
@@ -68,6 +69,7 @@ ReportGenerator (struct, orchestrator)
   - `{{JSON_FILE_LIST}}`: newline-separated glob paths
   - cross-midnight slots include both target-day and next-day globs
 - **Backup on re-generation**: existing report is backed up as `report-YYYY-MM-DD-HHmmss.md` before overwriting
+- **Last-run diagnostics log**: each report execution (success/failure) overwrites `logs/report-last-run.json` with command, arguments, prompt, output, status, and error message
 
 ### Report Scheduling
 
@@ -86,11 +88,11 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - `ReportTimeRange`: lightweight filter struct with `contains(_:Date)` for record filtering
 - Default slots: Full day 08:00-25:00 (enabled), Morning 08:00-12:00, Afternoon 12:00-18:00, Evening 18:00-25:00 (all disabled)
 - Output naming: `report.md` when only one slot is enabled, `report-HHMM-HHMM.md` when multiple slots are enabled
-- `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotRangeLabel`) for UI status display
+- `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotRangeLabel`, `lastResultSequence`) for UI status display
 - Next execution time is calculated from each slot's `executionHour:executionMinute` on the current day, then shifted to next day only when already past
 - Target date auto-calculated per slot: `executionIsNextDay` → previous day, otherwise current day
 - `DataStore.loadRecordsForSlot()` handles cross-midnight loading by merging records from two calendar days
-- Notification on completion — clicking opens the generated report file
+- Scheduled result notifications are deduplicated via `lastResultSequence` and emitted once per execution
 - Migration from legacy settings (`reportTargetDayOffset`, `reportTimeSlotsEnabled`, `reportAutoGenerationHour/Minute`) via `AppSettingsResolver.migrateReportSettingsIfNeeded()`
 
 ### Global Keyboard Shortcuts
@@ -104,7 +106,8 @@ ReportScheduler (actor, time-slot-based auto-generation)
 ### Notifications
 
 - **Capture completion**: manual captures post notification with app name + window title (or fallback text)
-- **Report generation**: both manual and scheduled, showing report file name + record count
+- **Report generation success**: both manual and scheduled, showing report file name + record count
+- **Report generation failure**: both manual and scheduled, showing localized error message
 - **`ReportNotificationManager`** (nested in AppState): manages `UNUserNotificationCenter` authorization and posting
 - **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click → opens report file via `/usr/bin/open`
 
@@ -121,6 +124,7 @@ App Sandbox is **disabled** (Hardened Runtime is enabled). All data goes to `~/L
 Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
 - `images/YYYY/MM/DD/HHMMSS_xxxx.png` — screenshots (3-day retention)
+- `logs/report-last-run.json` — latest report execution details (command/prompt/output/status/error)
 - `reports/YYYY/MM/DD/report.md` — full-day report (custom output directory supported)
 - `reports/YYYY/MM/DD/report-HHMM-HHMM.md` — time-slot report (e.g. `report-0800-1200.md`)
 
@@ -130,10 +134,12 @@ Stored structure:
 
 - **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
+  - Capture settings: `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
+- Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, quit)
 

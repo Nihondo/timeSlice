@@ -31,6 +31,9 @@ struct SettingsView: View {
     @State private var excludedApplications: [String] = []
     @State private var excludedApplicationNameInput = ""
     @State private var hasInitializedExcludedApplications = false
+    @State private var excludedWindowTitles: [String] = []
+    @State private var excludedWindowTitleInput = ""
+    @State private var hasInitializedExcludedWindowTitles = false
     @State private var timeSlots: [ReportTimeSlot] = []
     @State private var hasInitializedTimeSlots = false
     @State private var manualReportTargetDate = Date()
@@ -78,6 +81,7 @@ struct SettingsView: View {
         .onAppear {
             initializePromptTemplateEditorIfNeeded()
             initializeExcludedApplicationsIfNeeded()
+            initializeExcludedWindowTitlesIfNeeded()
             initializeTimeSlotsIfNeeded()
         }
         .onChange(of: promptTemplateEditorText) { _, newValue in
@@ -195,17 +199,19 @@ struct SettingsView: View {
 
             Section {
                 HStack {
-                    TextField("settings.placeholder.excluded_app_name", text: $excludedApplicationNameInput)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit {
-                            addExcludedApplication()
-                        }
+                    LeftAlignedTextField(
+                        placeholder: L10n.string("settings.placeholder.excluded_app_name"),
+                        text: $excludedApplicationNameInput,
+                        onSubmitAction: addExcludedApplication
+                    )
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     Button("settings.button.add_excluded_app") {
                         addExcludedApplication()
                     }
                     .disabled(canAddExcludedApplication == false)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 if excludedApplications.isEmpty == false {
                     List {
@@ -230,6 +236,44 @@ struct SettingsView: View {
             }
 
             Section {
+                HStack {
+                    LeftAlignedTextField(
+                        placeholder: L10n.string("settings.placeholder.excluded_window_title"),
+                        text: $excludedWindowTitleInput,
+                        onSubmitAction: addExcludedWindowTitle
+                    )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button("settings.button.add_excluded_window_title") {
+                        addExcludedWindowTitle()
+                    }
+                    .disabled(canAddExcludedWindowTitle == false)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if excludedWindowTitles.isEmpty == false {
+                    List {
+                        ForEach(excludedWindowTitles, id: \.self) { excludedWindowTitle in
+                            HStack {
+                                Text(excludedWindowTitle)
+                                Spacer()
+                                Button("settings.button.delete_excluded_window_title") {
+                                    removeExcludedWindowTitle(containing: excludedWindowTitle)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        .onDelete(perform: deleteExcludedWindowTitles)
+                    }
+                    .frame(minHeight: 120, maxHeight: 180)
+                }
+            } header: {
+                Text("settings.section.excluded_window_titles")
+            } footer: {
+                Text("settings.footer.excluded_window_titles")
+            }
+
+            Section {
                 Toggle("settings.toggle.save_images", isOn: $shouldSaveImages)
             } header: {
                 Text("settings.section.storage")
@@ -243,23 +287,35 @@ struct SettingsView: View {
     private var cliSettingsView: some View {
         Form {
             Section("settings.section.ai_cli") {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("settings.label.cli_command")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("settings.label.cli_command")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    TextField("settings.placeholder.cli_command", text: $reportCLICommand)
-                        .textFieldStyle(.roundedBorder)
+                        LeftAlignedTextField(
+                            placeholder: L10n.string("settings.placeholder.cli_command"),
+                            text: $reportCLICommand
+                        )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("settings.label.additional_arguments")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("settings.label.additional_arguments")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    TextField("settings.placeholder.additional_arguments", text: $reportCLIArguments)
-                        .textFieldStyle(.roundedBorder)
+                        LeftAlignedTextField(
+                            placeholder: L10n.string("settings.placeholder.additional_arguments"),
+                            text: $reportCLIArguments
+                        )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -386,27 +442,23 @@ struct SettingsView: View {
                             saveTimeSlots()
                         }
 
-                    timeSlotHourControl(
+                    timeSlotTenMinuteControl(
                         hour: $slot.startHour,
-                        minute: slot.startMinute,
-                        range: 0...23
+                        minute: $slot.startMinute,
+                        minimumTotalMinutes: 0,
+                        maximumTotalMinutes: 23 * 60 + 50
                     )
-                    .onChange(of: slot.startHour) { _, _ in
-                        saveTimeSlots()
-                    }
 
                     Text("-")
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
 
-                    timeSlotHourControl(
+                    timeSlotTenMinuteControl(
                         hour: $slot.endHour,
-                        minute: slot.endMinute,
-                        range: 1...30
+                        minute: $slot.endMinute,
+                        minimumTotalMinutes: 60,
+                        maximumTotalMinutes: 30 * 60 + 50
                     )
-                    .onChange(of: slot.endHour) { _, _ in
-                        saveTimeSlots()
-                    }
 
                     Text(slot.executionIsNextDay ? L10n.string("settings.label.next_day") : "")
                         .font(.caption2)
@@ -446,17 +498,41 @@ struct SettingsView: View {
         .controlSize(.small)
     }
 
-    private func timeSlotHourControl(
+    private func timeSlotTenMinuteControl(
         hour: Binding<Int>,
-        minute: Int,
-        range: ClosedRange<Int>
+        minute: Binding<Int>,
+        minimumTotalMinutes: Int,
+        maximumTotalMinutes: Int
     ) -> some View {
-        HStack(spacing: 6) {
-            Text(String(format: "%02d:%02d", hour.wrappedValue, minute))
+        let totalMinutesBinding = Binding<Int>(
+            get: {
+                hour.wrappedValue * 60 + minute.wrappedValue
+            },
+            set: { updatedTotalMinutes in
+                let clampedTotalMinutes = min(max(updatedTotalMinutes, minimumTotalMinutes), maximumTotalMinutes)
+                let normalizedTotalMinutes = (clampedTotalMinutes / 10) * 10
+                let nextHour = normalizedTotalMinutes / 60
+                let nextMinute = normalizedTotalMinutes % 60
+                guard hour.wrappedValue != nextHour || minute.wrappedValue != nextMinute else {
+                    return
+                }
+                hour.wrappedValue = nextHour
+                minute.wrappedValue = nextMinute
+                saveTimeSlots()
+            }
+        )
+
+        return HStack(spacing: 6) {
+            Text(String(format: "%02d:%02d", hour.wrappedValue, minute.wrappedValue))
                 .font(.system(.body, design: .monospaced))
                 .frame(width: 58, alignment: .leading)
 
-            Stepper("", value: hour, in: range)
+            Stepper(
+                "",
+                value: totalMinutesBinding,
+                in: minimumTotalMinutes...maximumTotalMinutes,
+                step: 10
+            )
                 .labelsHidden()
                 .fixedSize()
         }
@@ -505,12 +581,28 @@ struct SettingsView: View {
         return containsExcludedApplication(named: trimmedApplicationName) == false
     }
 
+    private var canAddExcludedWindowTitle: Bool {
+        let trimmedWindowTitle = excludedWindowTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedWindowTitle.isEmpty == false else {
+            return false
+        }
+        return containsExcludedWindowTitle(containing: trimmedWindowTitle) == false
+    }
+
     private func initializeExcludedApplicationsIfNeeded() {
         guard hasInitializedExcludedApplications == false else {
             return
         }
         excludedApplications = AppSettingsResolver.resolveExcludedApplications()
         hasInitializedExcludedApplications = true
+    }
+
+    private func initializeExcludedWindowTitlesIfNeeded() {
+        guard hasInitializedExcludedWindowTitles == false else {
+            return
+        }
+        excludedWindowTitles = AppSettingsResolver.resolveExcludedWindowTitles()
+        hasInitializedExcludedWindowTitles = true
     }
 
     private func addExcludedApplication() {
@@ -546,30 +638,68 @@ struct SettingsView: View {
     }
 
     private func saveExcludedApplications() {
-        let normalizedApplications = normalizeExcludedApplications(excludedApplications)
+        let normalizedApplications = normalizeExcludedKeywords(excludedApplications)
         excludedApplications = normalizedApplications
         UserDefaults.standard.set(normalizedApplications, forKey: AppSettingsKey.captureExcludedApplications)
     }
 
-    private func normalizeExcludedApplications(_ applicationNames: [String]) -> [String] {
-        var normalizedApplicationNames = Set<String>()
-        var normalizedApplications: [String] = []
+    private func addExcludedWindowTitle() {
+        let trimmedWindowTitle = excludedWindowTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedWindowTitle.isEmpty == false else {
+            return
+        }
+        guard containsExcludedWindowTitle(containing: trimmedWindowTitle) == false else {
+            return
+        }
 
-        for applicationName in applicationNames {
-            let trimmedApplicationName = applicationName.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmedApplicationName.isEmpty == false else {
+        excludedWindowTitles.append(trimmedWindowTitle)
+        saveExcludedWindowTitles()
+        excludedWindowTitleInput = ""
+    }
+
+    private func deleteExcludedWindowTitles(at offsets: IndexSet) {
+        excludedWindowTitles.remove(atOffsets: offsets)
+        saveExcludedWindowTitles()
+    }
+
+    private func removeExcludedWindowTitle(containing windowTitle: String) {
+        excludedWindowTitles.removeAll { existingWindowTitle in
+            existingWindowTitle.caseInsensitiveCompare(windowTitle) == .orderedSame
+        }
+        saveExcludedWindowTitles()
+    }
+
+    private func containsExcludedWindowTitle(containing windowTitle: String) -> Bool {
+        excludedWindowTitles.contains { existingWindowTitle in
+            existingWindowTitle.caseInsensitiveCompare(windowTitle) == .orderedSame
+        }
+    }
+
+    private func saveExcludedWindowTitles() {
+        let normalizedWindowTitles = normalizeExcludedKeywords(excludedWindowTitles)
+        excludedWindowTitles = normalizedWindowTitles
+        UserDefaults.standard.set(normalizedWindowTitles, forKey: AppSettingsKey.captureExcludedWindowTitles)
+    }
+
+    private func normalizeExcludedKeywords(_ keywords: [String]) -> [String] {
+        var normalizedKeywords = Set<String>()
+        var resolvedKeywords: [String] = []
+
+        for keyword in keywords {
+            let trimmedKeyword = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedKeyword.isEmpty == false else {
                 continue
             }
 
-            let normalizedApplicationName = trimmedApplicationName.lowercased()
-            let isInserted = normalizedApplicationNames.insert(normalizedApplicationName).inserted
+            let normalizedKeyword = trimmedKeyword.lowercased()
+            let isInserted = normalizedKeywords.insert(normalizedKeyword).inserted
             guard isInserted else {
                 continue
             }
-            normalizedApplications.append(trimmedApplicationName)
+            resolvedKeywords.append(trimmedKeyword)
         }
 
-        return normalizedApplications
+        return resolvedKeywords
     }
 
     private func resolveStoredPromptTemplateText() -> String {
@@ -616,6 +746,69 @@ struct SettingsView: View {
             return
         }
         reportPromptTemplate = editorText
+    }
+}
+
+private struct LeftAlignedTextField: NSViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    var onSubmitAction: (() -> Void)?
+
+    init(
+        placeholder: String,
+        text: Binding<String>,
+        onSubmitAction: (() -> Void)? = nil
+    ) {
+        self.placeholder = placeholder
+        _text = text
+        self.onSubmitAction = onSubmitAction
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.isBezeled = true
+        textField.bezelStyle = .roundedBezel
+        textField.alignment = .left
+        textField.placeholderString = placeholder
+        textField.stringValue = text
+        textField.target = context.coordinator
+        textField.action = #selector(Coordinator.handleSubmit)
+        textField.delegate = context.coordinator
+        return textField
+    }
+
+    func updateNSView(_ textField: NSTextField, context: Context) {
+        if textField.stringValue != text {
+            textField.stringValue = text
+        }
+        textField.alignment = .left
+        if textField.placeholderString != placeholder {
+            textField.placeholderString = placeholder
+        }
+        context.coordinator.parent = self
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: LeftAlignedTextField
+
+        init(_ parent: LeftAlignedTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let textField = notification.object as? NSTextField else {
+                return
+            }
+            parent.text = textField.stringValue
+        }
+
+        @objc func handleSubmit() {
+            parent.onSubmitAction?()
+        }
     }
 }
 

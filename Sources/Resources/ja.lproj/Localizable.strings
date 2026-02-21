@@ -40,10 +40,15 @@
 "settings.section.filter" = "フィルタ";
 "settings.footer.filter" = "この文字数以下の短文はOCR結果に記録されません。";
 "settings.section.excluded_apps" = "OCR除外アプリ";
-"settings.footer.excluded_apps" = "指定されたアプリがフロントの場合、OCRを実行せずにアプリ名のみ記録します。";
+"settings.footer.excluded_apps" = "フロントアプリ名に指定キーワードが部分一致した場合、OCRを実行せずにアプリ名のみ記録します。";
 "settings.placeholder.excluded_app_name" = "アプリ名を入力";
 "settings.button.add_excluded_app" = "追加";
 "settings.button.delete_excluded_app" = "削除";
+"settings.section.excluded_window_titles" = "OCR除外ウィンドウタイトル";
+"settings.footer.excluded_window_titles" = "ウィンドウタイトルに指定キーワードが部分一致した場合、OCRを実行せずにアプリ名のみ記録します。";
+"settings.placeholder.excluded_window_title" = "ウィンドウタイトルを入力";
+"settings.button.add_excluded_window_title" = "追加";
+"settings.button.delete_excluded_window_title" = "削除";
 "settings.section.storage" = "保存";
 "settings.toggle.save_images" = "画像も保存する";
 "settings.footer.storage" = "設定変更は即時反映されます（記録中は次回キャプチャから反映）。";
@@ -95,6 +100,9 @@
 "notification.report.title.manual" = "日報生成が完了しました";
 "notification.report.title.scheduled" = "定時日報生成が完了しました";
 "notification.report.body" = "%@ を保存しました（%d件）";
+"notification.report.title.manual_failed" = "日報生成に失敗しました";
+"notification.report.title.scheduled_failed" = "定時日報生成に失敗しました";
+"notification.report.body.failed" = "日報生成失敗: %@";
 "notification.capture.title.manual" = "OCR記録が完了しました";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "（タイトルなし）";
@@ -111,6 +119,8 @@
 "message.scheduler.disabled" = "定時自動生成: 無効";
 "message.scheduler.enabled" = "定時自動生成: 有効";
 "message.scheduler.next" = "次回: %@";
+"message.scheduler.next_calculating" = "次回: 計算中...";
+"message.scheduler.no_enabled_slot" = "次回: 有効なスロットがありません";
 "message.scheduler.last_success" = "前回成功: %@ (%d件)";
 "message.scheduler.last_skipped_no_records" = "前回スキップ: 対象日の記録なし";
 "message.scheduler.last_failed" = "前回失敗: %@";
