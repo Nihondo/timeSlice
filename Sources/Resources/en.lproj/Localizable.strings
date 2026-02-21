@@ -13,6 +13,7 @@
 "manual_capture.comment.hint.cancel" = "Cancel";
 "menu.report.generate" = "Generate Report";
 "menu.report.generating" = "Generating Report...";
+"menu.about" = "About timeSlice...";
 "menu.quit" = "Quit";
 
 "settings.tab.general" = "General";

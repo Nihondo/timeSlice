@@ -112,8 +112,7 @@ private struct MenuBarMenuContentView: View {
         Divider()
 
         Button {
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.orderFrontStandardAboutPanel(nil)
+            showAboutPanel()
         } label: {
             Label("menu.about", systemImage: "info.circle")
         }
@@ -159,5 +158,37 @@ private struct MenuBarMenuContentView: View {
             storedKeyCode: captureNowShortcutKeyCode,
             hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.captureNowShortcutKeyCode) != nil
         )
+    }
+
+    private func showAboutPanel() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(
+            options: [
+                .credits: aboutPanelCredits
+            ]
+        )
+    }
+
+    private var aboutPanelCredits: NSAttributedString {
+        let githubURLString = "https://github.com/Nihondo/timeSlice"
+        let creditsText = """
+        Copyright © 2026 Nihondo
+        GitHub: \(githubURLString)
+        """
+        let attributedCredits = NSMutableAttributedString(string: creditsText)
+        let githubURLRange = (creditsText as NSString).range(of: githubURLString)
+        if
+            githubURLRange.location != NSNotFound,
+            let githubURL = URL(string: githubURLString)
+        {
+            attributedCredits.addAttributes(
+                [
+                    .link: githubURL,
+                    .foregroundColor: NSColor.linkColor
+                ],
+                range: githubURLRange
+            )
+        }
+        return attributedCredits
     }
 }
