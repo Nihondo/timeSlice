@@ -52,31 +52,37 @@ CaptureScheduler (actor, periodic loop)
 
 ```
 ReportGenerator (struct, orchestrator)
-  → DataStore.loadRecords(on:) — loads daily CaptureRecords
-  → PromptBuilder.buildDailyReportPrompt(customTemplate:) — template with {{DATE}}, {{JSON_GLOB_PATH}}, {{RECORD_COUNT}}
+  → DataStore.loadRecords(on:timeRange:) — loads daily CaptureRecords (optionally filtered by time range)
+  → PromptBuilder.buildDailyReportPrompt(...) — template with {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}
   → CLIExecutor (runs external AI CLI, e.g. gemini -p "...")
-  → saves markdown → GeneratedReport { reportDate, reportFileURL, markdownText, sourceRecordCount }
+  → saves markdown → GeneratedReport { reportDate, reportFileURL, markdownText, sourceRecordCount, timeSlotLabel? }
 ```
 
-- **ReportGenerationConfiguration**: runtime params (command, arguments, timeout, outputFileName, outputDirectoryURL, promptTemplate)
+- **ReportGenerationConfiguration**: runtime params (command, arguments, timeout, outputFileName, outputDirectoryURL, promptTemplate). `withOutputFileName()` returns a copy with different file name
 - **CLIExecutor** runs with cwd set to `data/` directory so the AI CLI can read `./YYYY/MM/DD/*.json` directly
 - Handles SIGPIPE, PATH injection for GUI context, `-p`/`--prompt` trailing-flag auto-fill, and configurable timeout
 - **PromptBuilder** uses file-reference strategy with customizable template (localized default via `NSLocalizedString`)
-- **Backup on re-generation**: existing `report.md` is backed up as `report-YYYY-MM-DD-HHmmss.md` before overwriting
+- **Time slot mode**: always uses glob path (both `{{JSON_GLOB_PATH}}` and `{{JSON_FILE_LIST}}` resolve to same glob). Time filtering is delegated to the AI CLI via `{{TIME_RANGE}}` label (e.g. "08:00-12:00") in the prompt
+- **Backup on re-generation**: existing report is backed up as `report-YYYY-MM-DD-HHmmss.md` before overwriting
 
 ### Report Scheduling
 
 ```
-ReportScheduler (actor, daily auto-generation)
-  → checks enabled + configured hour/minute
-  → ReportGenerator.generate()
+ReportScheduler (actor, auto-generation with time slot support)
+  → checks enabled + configured schedule (single time or multiple time slots)
+  → ReportGenerator.generate(on:configuration:timeRange:)
   → ReportSchedulerResult (.succeeded / .skippedNoRecords / .failed)
   → ReportNotificationManager (UNUserNotificationCenter)
 ```
 
-- Configurable schedule (hour 0-23, minute 0-59), enable/disable toggle
-- `snapshot()` returns `ReportSchedulerState` for UI status display
-- Notification on completion — clicking opens the generated `report.md`
+- **Single-time mode**: traditional single daily execution at configured hour/minute
+- **Time slot mode**: multiple executions per day, each slot triggers at its `endHour:endMinute`
+- `ReportTimeSlot` (Codable, Identifiable): configurable time window with label, start/end times, enable/disable
+- `ReportTimeRange`: lightweight filter struct with `contains(_:Date)` for record filtering
+- Default slots: Morning (8-12), Afternoon (12-18), Evening (18-24)
+- Output naming: `report-0800-1200.md` per slot, `report.md` for full-day
+- `snapshot()` returns `ReportSchedulerState` (includes `timeSlots`, `nextTimeSlotLabel`) for UI status display
+- Notification on completion — clicking opens the generated report file
 
 ### Global Keyboard Shortcuts
 
@@ -106,7 +112,8 @@ App Sandbox is **disabled** (Hardened Runtime is enabled). All data goes to `~/L
 Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
 - `images/YYYY/MM/DD/HHMMSS_xxxx.png` — screenshots (3-day retention)
-- `reports/YYYY/MM/DD/report.md` — generated reports (custom output directory supported)
+- `reports/YYYY/MM/DD/report.md` — full-day report (custom output directory supported)
+- `reports/YYYY/MM/DD/report-HHMM-HHMM.md` — time-slot report (e.g. `report-0800-1200.md`)
 
 `StoragePathResolver` builds all paths. `DataStore` and `ImageStore` handle persistence and expiry cleanup.
 
@@ -114,7 +121,7 @@ Stored structure:
 
 - **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
-  - Report settings: `reportTargetDayOffset`, `reportAutoGenerationEnabled`, `reportAutoGenerationHour/Minute`, `reportOutputDirectoryPath`, `reportPromptTemplate`
+  - Report settings: `reportTargetDayOffset`, `reportAutoGenerationEnabled`, `reportAutoGenerationHour/Minute`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsEnabled`, `reportTimeSlotsJSON`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - **`SettingsView`**: `Form` + `grouped` style with 4 tabs (General / Capture / CLI / Report). Uses `Window` scene with `defaultSize(width: 700, height: 640)`

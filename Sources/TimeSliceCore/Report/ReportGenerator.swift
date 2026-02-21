@@ -24,6 +24,18 @@ public struct ReportGenerationConfiguration: Sendable {
         self.outputDirectoryURL = outputDirectoryURL
         self.promptTemplate = promptTemplate
     }
+
+    /// Returns a copy with a different output file name.
+    public func withOutputFileName(_ newOutputFileName: String) -> ReportGenerationConfiguration {
+        ReportGenerationConfiguration(
+            command: command,
+            arguments: arguments,
+            timeoutSeconds: timeoutSeconds,
+            outputFileName: newOutputFileName,
+            outputDirectoryURL: outputDirectoryURL,
+            promptTemplate: promptTemplate
+        )
+    }
 }
 
 /// Generated report payload and saved file location.
@@ -32,12 +44,20 @@ public struct GeneratedReport: Sendable {
     public let reportFileURL: URL
     public let markdownText: String
     public let sourceRecordCount: Int
+    public let timeSlotLabel: String?
 
-    public init(reportDate: Date, reportFileURL: URL, markdownText: String, sourceRecordCount: Int) {
+    public init(
+        reportDate: Date,
+        reportFileURL: URL,
+        markdownText: String,
+        sourceRecordCount: Int,
+        timeSlotLabel: String? = nil
+    ) {
         self.reportDate = reportDate
         self.reportFileURL = reportFileURL
         self.markdownText = markdownText
         self.sourceRecordCount = sourceRecordCount
+        self.timeSlotLabel = timeSlotLabel
     }
 }
 
@@ -88,9 +108,10 @@ public struct ReportGenerator: @unchecked Sendable {
     /// Loads one-day records, calls CLI, and saves markdown under reports directory.
     public func generateReport(
         on reportDate: Date,
-        configuration: ReportGenerationConfiguration
+        configuration: ReportGenerationConfiguration,
+        timeRange: ReportTimeRange? = nil
     ) async throws -> GeneratedReport {
-        let dailyRecords = try dataStore.loadRecords(on: reportDate)
+        let dailyRecords = try dataStore.loadRecords(on: reportDate, timeRange: timeRange)
         guard dailyRecords.isEmpty == false else {
             throw ReportGenerationError.noRecords(reportDate)
         }
@@ -98,11 +119,13 @@ public struct ReportGenerator: @unchecked Sendable {
         let dataRootDirectoryURL = pathResolver.rootDirectoryURL
             .appendingPathComponent("data", isDirectory: true)
         let relativeJSONGlobPath = buildRelativeJSONGlobPath(for: reportDate)
+
         let promptText = promptBuilder.buildDailyReportPrompt(
             date: reportDate,
             relativeJSONGlobPath: relativeJSONGlobPath,
             sourceRecordCount: dailyRecords.count,
-            customTemplate: configuration.promptTemplate
+            customTemplate: configuration.promptTemplate,
+            timeRangeLabel: timeRange?.label
         )
         let markdownText = try await cliExecutor.execute(
             command: configuration.command,
@@ -126,7 +149,8 @@ public struct ReportGenerator: @unchecked Sendable {
             reportDate: reportDate,
             reportFileURL: reportFileURL,
             markdownText: normalizedMarkdownText,
-            sourceRecordCount: dailyRecords.count
+            sourceRecordCount: dailyRecords.count,
+            timeSlotLabel: timeRange?.label
         )
     }
 

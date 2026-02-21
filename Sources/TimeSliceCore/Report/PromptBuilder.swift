@@ -13,16 +13,21 @@ public struct PromptBuilder: Sendable {
         date: Date,
         relativeJSONGlobPath: String,
         sourceRecordCount: Int,
-        customTemplate: String? = nil
+        customTemplate: String? = nil,
+        timeRangeLabel: String? = nil
     ) -> String {
         let dateLabel = makeDateLabel(from: date)
         let resolvedTemplate = resolveTemplate(customTemplate: customTemplate)
+        let resolvedTimeRangeLabel = timeRangeLabel ?? NSLocalizedString(
+            "report.prompt.all_day", value: "全日", comment: ""
+        )
 
         return replacePlaceholders(
             in: resolvedTemplate,
             dateLabel: dateLabel,
             relativeJSONGlobPath: relativeJSONGlobPath,
-            sourceRecordCount: sourceRecordCount
+            sourceRecordCount: sourceRecordCount,
+            timeRangeLabel: resolvedTimeRangeLabel
         )
     }
 
@@ -41,12 +46,15 @@ public struct PromptBuilder: Sendable {
         in template: String,
         dateLabel: String,
         relativeJSONGlobPath: String,
-        sourceRecordCount: Int
+        sourceRecordCount: Int,
+        timeRangeLabel: String
     ) -> String {
         template
             .replacingOccurrences(of: "{{DATE}}", with: dateLabel)
             .replacingOccurrences(of: "{{JSON_GLOB_PATH}}", with: relativeJSONGlobPath)
             .replacingOccurrences(of: "{{RECORD_COUNT}}", with: String(sourceRecordCount))
+            .replacingOccurrences(of: "{{TIME_RANGE}}", with: timeRangeLabel)
+            .replacingOccurrences(of: "{{JSON_FILE_LIST}}", with: relativeJSONGlobPath)
     }
 
     static var defaultTemplate: String {
@@ -58,10 +66,10 @@ public struct PromptBuilder: Sendable {
     }
 
     private static let defaultTemplateFallback = """
-    以下は{{DATE}}の作業記録データです。
+    以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。
     いまの作業ディレクトリは `timeSlice/data` です。
-    次の相対パスに一致する JSON ファイルを読み込んで、内容を要約して日報を作成してください:
-    {{JSON_GLOB_PATH}}
+    次のファイルを読み込んで、内容を要約して日報を作成してください:
+    {{JSON_FILE_LIST}}
 
     期待レコード件数の目安: {{RECORD_COUNT}} 件
 
@@ -74,6 +82,7 @@ public struct PromptBuilder: Sendable {
     - `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）
 
     重要:
+    - 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。
     - `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。
     - 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。
 

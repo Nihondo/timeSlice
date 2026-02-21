@@ -43,8 +43,8 @@ public struct DataStore: @unchecked Sendable {
         return fileURL
     }
 
-    /// Loads all records for one day sorted by capture timestamp.
-    public func loadRecords(on date: Date) throws -> [CaptureRecord] {
+    /// Loads records for one day, optionally filtered by time range, sorted by capture timestamp.
+    public func loadRecords(on date: Date, timeRange: ReportTimeRange? = nil) throws -> [CaptureRecord] {
         let directoryURL = pathResolver.dataDirectoryURL(for: date)
         let isDirectoryPresent = fileManager.fileExists(atPath: directoryURL.path)
         guard isDirectoryPresent else {
@@ -67,7 +67,11 @@ public struct DataStore: @unchecked Sendable {
             loadedRecords.append(captureRecord)
         }
 
-        return loadedRecords.sorted { $0.capturedAt < $1.capturedAt }
+        let sortedRecords = loadedRecords.sorted { $0.capturedAt < $1.capturedAt }
+        guard let timeRange else {
+            return sortedRecords
+        }
+        return sortedRecords.filter { timeRange.contains($0.capturedAt, calendar: calendar) }
     }
 
     /// Deletes data directories older than retention period and returns removed directories.

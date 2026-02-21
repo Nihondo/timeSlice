@@ -13,7 +13,9 @@ public struct ReportSchedulerState: Sendable {
     public let isEnabled: Bool
     public let hour: Int
     public let minute: Int
+    public let timeSlots: [ReportTimeSlot]
     public let nextExecutionDate: Date?
+    public let nextTimeSlotLabel: String?
     public let lastResult: ReportSchedulerResult?
 
     public init(
@@ -21,27 +23,33 @@ public struct ReportSchedulerState: Sendable {
         isEnabled: Bool,
         hour: Int,
         minute: Int,
+        timeSlots: [ReportTimeSlot] = [],
         nextExecutionDate: Date?,
+        nextTimeSlotLabel: String? = nil,
         lastResult: ReportSchedulerResult?
     ) {
         self.isRunning = isRunning
         self.isEnabled = isEnabled
         self.hour = hour
         self.minute = minute
+        self.timeSlots = timeSlots
         self.nextExecutionDate = nextExecutionDate
+        self.nextTimeSlotLabel = nextTimeSlotLabel
         self.lastResult = lastResult
     }
 }
 
-/// Runs daily report generation at a fixed local time.
+/// Runs report generation at fixed local times, supporting multiple time slots per day.
 public actor ReportScheduler {
     public private(set) var isRunning = false
     public private(set) var lastResult: ReportSchedulerResult?
     public private(set) var nextExecutionDate: Date?
+    public private(set) var nextTimeSlot: ReportTimeSlot?
 
     private let reportGenerator: ReportGenerator
-    private let generationConfigurationProvider: () -> ReportGenerationConfiguration
+    private let generationConfigurationProvider: (ReportTimeSlot?) -> ReportGenerationConfiguration
     private let reportTargetDateProvider: () -> Date
+    private let timeSlotsProvider: () -> [ReportTimeSlot]
     private let dateProvider: any DateProviding
     private let calendar: Calendar
 
@@ -49,25 +57,30 @@ public actor ReportScheduler {
     private var isEnabled: Bool
     private var hour: Int
     private var minute: Int
+    private var timeSlots: [ReportTimeSlot]
 
     public init(
         reportGenerator: ReportGenerator,
-        generationConfigurationProvider: @escaping () -> ReportGenerationConfiguration,
+        generationConfigurationProvider: @escaping (ReportTimeSlot?) -> ReportGenerationConfiguration,
         reportTargetDateProvider: @escaping () -> Date = { Date() },
+        timeSlotsProvider: @escaping () -> [ReportTimeSlot] = { [] },
         dateProvider: any DateProviding = SystemDateProvider(),
         calendar: Calendar = .current,
         isEnabled: Bool = false,
         hour: Int = 18,
-        minute: Int = 0
+        minute: Int = 0,
+        timeSlots: [ReportTimeSlot] = []
     ) {
         self.reportGenerator = reportGenerator
         self.generationConfigurationProvider = generationConfigurationProvider
         self.reportTargetDateProvider = reportTargetDateProvider
+        self.timeSlotsProvider = timeSlotsProvider
         self.dateProvider = dateProvider
         self.calendar = calendar
         self.isEnabled = isEnabled
         self.hour = Self.clampHour(hour)
         self.minute = Self.clampMinute(minute)
+        self.timeSlots = timeSlots
     }
 
     /// Starts scheduling loop if auto generation is enabled.
@@ -78,6 +91,7 @@ public actor ReportScheduler {
         guard isEnabled else {
             isRunning = false
             nextExecutionDate = nil
+            nextTimeSlot = nil
             return
         }
 
@@ -93,13 +107,20 @@ public actor ReportScheduler {
         schedulerLoopTask = nil
         isRunning = false
         nextExecutionDate = nil
+        nextTimeSlot = nil
     }
 
     /// Updates auto-generation schedule and restarts loop when necessary.
-    public func updateSchedule(isEnabled: Bool, hour: Int, minute: Int) {
+    public func updateSchedule(
+        isEnabled: Bool,
+        hour: Int,
+        minute: Int,
+        timeSlots: [ReportTimeSlot] = []
+    ) {
         self.isEnabled = isEnabled
         self.hour = Self.clampHour(hour)
         self.minute = Self.clampMinute(minute)
+        self.timeSlots = timeSlots
 
         restartSchedulerLoop()
     }
@@ -111,7 +132,9 @@ public actor ReportScheduler {
             isEnabled: isEnabled,
             hour: hour,
             minute: minute,
+            timeSlots: timeSlots,
             nextExecutionDate: nextExecutionDate,
+            nextTimeSlotLabel: nextTimeSlot?.label,
             lastResult: lastResult
         )
     }
@@ -127,8 +150,24 @@ public actor ReportScheduler {
     private func runSchedulerLoop() async {
         while Task.isCancelled == false, isEnabled {
             let referenceDate = dateProvider.now
-            let scheduledDate = calculateNextExecutionDate(from: referenceDate)
+            let enabledSlots = timeSlotsProvider().filter(\.isEnabled)
+
+            let (scheduledDate, matchedSlot): (Date, ReportTimeSlot?)
+            if enabledSlots.isEmpty {
+                scheduledDate = calculateNextExecutionDate(from: referenceDate)
+                matchedSlot = nil
+            } else {
+                guard let result = calculateNextSlotExecution(from: referenceDate, slots: enabledSlots) else {
+                    scheduledDate = calculateNextExecutionDate(from: referenceDate)
+                    matchedSlot = nil
+                    break
+                }
+                scheduledDate = result.date
+                matchedSlot = result.slot
+            }
+
             nextExecutionDate = scheduledDate
+            nextTimeSlot = matchedSlot
 
             do {
                 try await waitUntilExecutionDate(scheduledDate, referenceDate: referenceDate)
@@ -139,12 +178,13 @@ public actor ReportScheduler {
                 break
             }
 
-            lastResult = await executeScheduledReportGeneration()
+            lastResult = await executeScheduledReportGeneration(timeSlot: matchedSlot)
         }
 
         schedulerLoopTask = nil
         isRunning = false
         nextExecutionDate = nil
+        nextTimeSlot = nil
     }
 
     private func calculateNextExecutionDate(from referenceDate: Date) -> Date {
@@ -162,6 +202,47 @@ public actor ReportScheduler {
         return tomorrowCandidate ?? todayCandidate.addingTimeInterval(60 * 60 * 24)
     }
 
+    private struct SlotExecution {
+        let date: Date
+        let slot: ReportTimeSlot
+    }
+
+    private func calculateNextSlotExecution(
+        from referenceDate: Date,
+        slots: [ReportTimeSlot]
+    ) -> SlotExecution? {
+        var bestExecution: SlotExecution?
+
+        for slot in slots {
+            let executionHour = slot.endHour == 24 ? 0 : slot.endHour
+            let executionMinute = slot.endHour == 24 ? 0 : slot.endMinute
+
+            var dayComponents = calendar.dateComponents([.year, .month, .day], from: referenceDate)
+            dayComponents.hour = executionHour
+            dayComponents.minute = executionMinute
+            dayComponents.second = 0
+
+            var candidateDate = calendar.date(from: dayComponents) ?? referenceDate
+
+            // If end is 24:00, the execution is at 00:00 next day
+            if slot.endHour == 24 {
+                candidateDate = calendar.date(byAdding: .day, value: 1, to: candidateDate) ?? candidateDate
+            }
+
+            // If already past, schedule for tomorrow
+            if candidateDate <= referenceDate {
+                candidateDate = calendar.date(byAdding: .day, value: 1, to: candidateDate)
+                    ?? candidateDate.addingTimeInterval(60 * 60 * 24)
+            }
+
+            if bestExecution == nil || candidateDate < bestExecution!.date {
+                bestExecution = SlotExecution(date: candidateDate, slot: slot)
+            }
+        }
+
+        return bestExecution
+    }
+
     private func waitUntilExecutionDate(_ executionDate: Date, referenceDate: Date) async throws {
         let waitSeconds = executionDate.timeIntervalSince(referenceDate)
         guard waitSeconds > 0 else {
@@ -170,13 +251,15 @@ public actor ReportScheduler {
         try await Task.sleep(for: .seconds(waitSeconds))
     }
 
-    private func executeScheduledReportGeneration() async -> ReportSchedulerResult {
+    private func executeScheduledReportGeneration(timeSlot: ReportTimeSlot?) async -> ReportSchedulerResult {
         do {
             let targetDate = reportTargetDateProvider()
-            let generationConfiguration = generationConfigurationProvider()
+            let generationConfiguration = generationConfigurationProvider(timeSlot)
+            let timeRange = timeSlot?.toTimeRange()
             let generatedReport = try await reportGenerator.generateReport(
                 on: targetDate,
-                configuration: generationConfiguration
+                configuration: generationConfiguration,
+                timeRange: timeRange
             )
             return .succeeded(generatedReport)
         } catch let reportError as ReportGenerationError {

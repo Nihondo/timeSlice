@@ -20,6 +20,8 @@ enum AppSettingsKey {
     static let reportAutoGenerationMinute = "report.autoGenerationMinute"
     static let reportOutputDirectoryPath = "report.outputDirectoryPath"
     static let reportPromptTemplate = "report.promptTemplate"
+    static let reportTimeSlotsEnabled = "report.timeSlotsEnabled"
+    static let reportTimeSlotsJSON = "report.timeSlotsJSON"
     static let captureNowShortcutKey = "shortcut.captureNowKey"
     static let captureNowShortcutModifiers = "shortcut.captureNowModifiers"
     static let captureNowShortcutKeyCode = "shortcut.captureNowKeyCode"
@@ -265,6 +267,34 @@ enum AppSettingsResolver {
             return nil
         }
         return URL(fileURLWithPath: outputDirectoryPath, isDirectory: true)
+    }
+
+    static func resolveReportTimeSlotsEnabled(userDefaults: UserDefaults = .standard) -> Bool {
+        let hasValue = userDefaults.object(forKey: AppSettingsKey.reportTimeSlotsEnabled) != nil
+        return hasValue ? userDefaults.bool(forKey: AppSettingsKey.reportTimeSlotsEnabled) : false
+    }
+
+    static func resolveReportTimeSlots(userDefaults: UserDefaults = .standard) -> [ReportTimeSlot] {
+        let isEnabled = resolveReportTimeSlotsEnabled(userDefaults: userDefaults)
+        guard isEnabled else {
+            return []
+        }
+        guard let jsonData = userDefaults.data(forKey: AppSettingsKey.reportTimeSlotsJSON) else {
+            return []
+        }
+        let decoder = JSONDecoder()
+        guard let timeSlots = try? decoder.decode([ReportTimeSlot].self, from: jsonData) else {
+            return []
+        }
+        return timeSlots
+    }
+
+    static func saveReportTimeSlots(_ timeSlots: [ReportTimeSlot], userDefaults: UserDefaults = .standard) {
+        let encoder = JSONEncoder()
+        guard let jsonData = try? encoder.encode(timeSlots) else {
+            return
+        }
+        userDefaults.set(jsonData, forKey: AppSettingsKey.reportTimeSlotsJSON)
     }
 
     static func resolveReportPromptTemplate(userDefaults: UserDefaults = .standard) -> String? {
