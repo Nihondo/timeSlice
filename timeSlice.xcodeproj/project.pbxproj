@@ -26,6 +26,7 @@
 		42A761062F434C1100FA9E46 /* CLIExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7610A2F434C1100FA9E46 /* CLIExecutor.swift */; };
 		42A761072F434C1100FA9E46 /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7610B2F434C1100FA9E46 /* PromptBuilder.swift */; };
 		42A761082F434C1100FA9E46 /* ReportGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7610C2F434C1100FA9E46 /* ReportGenerator.swift */; };
+		42A761082F4A156900FA9E46 /* timeSliceIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 42A761072F4A156900FA9E46 /* timeSliceIcon.icon */; };
 		42A761102F447A2200FA9E46 /* ReportScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7610F2F447A2200FA9E46 /* ReportScheduler.swift */; };
 		42A761122F449A3C00FA9E46 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A761112F449A3C00FA9E46 /* Localization.swift */; };
 		42A761132F449A3C00FA9E46 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 42A761152F449A3C00FA9E46 /* Localizable.strings */; };
@@ -50,6 +51,7 @@
 		42A760E02F433BDF00FA9E46 /* StoragePathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoragePathResolver.swift; sourceTree = "<group>"; };
 		42A760E22F433BDF00FA9E46 /* DateProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateProvider.swift; sourceTree = "<group>"; };
 		42A760E32F433BDF00FA9E46 /* PNGImageEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PNGImageEncoder.swift; sourceTree = "<group>"; };
+		42A761072F4A156900FA9E46 /* timeSliceIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = timeSliceIcon.icon; sourceTree = "<group>"; };
 		42A761092F434C1100FA9E46 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		42A7610A2F434C1100FA9E46 /* CLIExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIExecutor.swift; sourceTree = "<group>"; };
 		42A7610B2F434C1100FA9E46 /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
@@ -189,6 +191,7 @@
 		42A761142F449A3C00FA9E46 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				42A761072F4A156900FA9E46 /* timeSliceIcon.icon */,
 				42A761152F449A3C00FA9E46 /* Localizable.strings */,
 			);
 			path = Resources;
@@ -264,6 +267,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				42A761082F4A156900FA9E46 /* timeSliceIcon.icon in Resources */,
 				42A761132F449A3C00FA9E46 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -444,8 +448,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = timeSliceIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
@@ -481,8 +485,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = timeSliceIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_STYLE = Automatic;
