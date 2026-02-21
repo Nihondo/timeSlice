@@ -44,10 +44,11 @@ CaptureScheduler (actor, periodic loop)
   → DataStore (JSON) + ImageStore (PNG)
 ```
 
-- `CaptureScheduler.performCaptureCycle(captureTrigger:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
+- `CaptureScheduler.performCaptureCycle(captureTrigger:manualComment:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
 - `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
-- `CaptureRecord` includes: `windowTitle: String?` and `captureTrigger: CaptureTrigger`
+- `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`
 - Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, OCR/image save is skipped and metadata-only record is stored
+- Manual capture (`captureTrigger: .manual`) is persisted even when OCR text is short/duplicate, and blank Enter input is stored as `comments: ""`
 
 ### Report Pipeline
 
@@ -101,7 +102,8 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
-- Triggers manual capture + shows completion notification
+- Triggers Spotlight-like comment popup (`NSPanel`) first, then executes manual capture + OCR + save
+- While the comment popup is visible, pressing the same global shortcut again dismisses the popup (cancel, no save)
 
 ### Notifications
 

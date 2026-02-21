@@ -125,9 +125,7 @@ private struct MenuBarMenuContentView: View {
             let shortcutCharacter = captureNowShortcutConfiguration.key.first
         {
             Button {
-                Task {
-                    await appState.performSingleCaptureCycle(captureTrigger: .manual)
-                }
+                appState.startManualCaptureFlow()
             } label: {
                 Label("menu.capture.now", systemImage: "camera.viewfinder")
             }
@@ -137,9 +135,7 @@ private struct MenuBarMenuContentView: View {
             )
         } else {
             Button {
-                Task {
-                    await appState.performSingleCaptureCycle(captureTrigger: .manual)
-                }
+                appState.startManualCaptureFlow()
             } label: {
                 Label("menu.capture.now", systemImage: "camera.viewfinder")
             }

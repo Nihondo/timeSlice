@@ -87,10 +87,12 @@ public struct PromptBuilder: Sendable {
     - `ocrText`: OCR結果テキスト
     - `hasImage`: 画像保存フラグ
     - `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）
+    - `comments`: 手動記録コメント（空文字の場合あり）
 
     重要:
     - 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。
     - `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。
+    - `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。
     - 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。
 
     日報を Markdown で作成してください。次の構成を厳守してください:

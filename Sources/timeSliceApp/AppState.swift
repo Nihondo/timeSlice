@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import ServiceManagement
@@ -38,6 +39,7 @@ final class AppState {
     private let screenCaptureManager: ScreenCaptureManager
     private let ocrManager: OCRManager
     private let globalHotKeyManager: GlobalHotKeyManager
+    private let manualCaptureCommentPanelPresenter: ManualCaptureCommentPanelPresenter
 
     private var captureScheduler: CaptureScheduler?
     private var recordCountRefreshTask: Task<Void, Never>?
@@ -45,6 +47,7 @@ final class AppState {
     private var lastProcessedScheduledResultSequence: UInt64 = 0
     private var userDefaultsDidChangeObserver: NSObjectProtocol?
     private var appliedCaptureSettings: CaptureRuntimeSettings?
+    private var manualCaptureReturnApplication: NSRunningApplication?
 
     var isCapturing = false
     var hasScreenCapturePermission = false
@@ -91,6 +94,7 @@ final class AppState {
         self.screenCaptureManager = ScreenCaptureManager()
         self.ocrManager = OCRManager()
         self.globalHotKeyManager = GlobalHotKeyManager()
+        self.manualCaptureCommentPanelPresenter = ManualCaptureCommentPanelPresenter()
         reportNotificationManager.configureIfNeeded()
         refreshPermissionStatus()
         Task {
@@ -154,9 +158,57 @@ final class AppState {
         statusMessage = L10n.string("state.stopped")
     }
 
-    func performSingleCaptureCycle(captureTrigger: CaptureTrigger = .scheduled) async {
+    func startManualCaptureFlow() {
+        Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+            if self.manualCaptureCommentPanelPresenter.isPresenting {
+                self.manualCaptureCommentPanelPresenter.dismissActivePanelIfNeeded()
+                return
+            }
+            self.manualCaptureReturnApplication = NSWorkspace.shared.frontmostApplication
+            self.manualCaptureCommentPanelPresenter.present(
+                onSubmitComment: { [weak self] manualComment in
+                    guard let self else {
+                        return
+                    }
+                    Task { @MainActor in
+                        self.restoreManualCaptureReturnApplicationIfNeeded()
+                        await self.performSingleCaptureCycle(
+                            captureTrigger: .manual,
+                            manualComment: manualComment
+                        )
+                    }
+                },
+                onCancel: { [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    Task { @MainActor in
+                        self.restoreManualCaptureReturnApplicationIfNeeded()
+                    }
+                }
+            )
+        }
+    }
+
+    func performSingleCaptureCycle(
+        captureTrigger: CaptureTrigger = .scheduled,
+        manualComment: String? = nil
+    ) async {
         let scheduler = buildCaptureSchedulerIfNeeded()
-        let cycleOutcome = await scheduler.performCaptureCycle(captureTrigger: captureTrigger)
+        let cycleOutcome = await scheduler.performCaptureCycle(
+            captureTrigger: captureTrigger,
+            manualComment: manualComment
+        )
+        await applyCaptureCycleOutcome(cycleOutcome, captureTrigger: captureTrigger)
+    }
+
+    private func applyCaptureCycleOutcome(
+        _ cycleOutcome: CaptureCycleOutcome,
+        captureTrigger: CaptureTrigger
+    ) async {
         let cycleOutcomeMessage = makeOutcomeMessage(from: cycleOutcome)
         let cycleOutcomeNotificationMessage = makeNotificationMessage(from: cycleOutcome)
         let cycleOutcomeWindowTitle = resolveCaptureWindowTitle(from: cycleOutcome)
@@ -168,6 +220,23 @@ final class AppState {
                 windowTitle: cycleOutcomeWindowTitle
             )
         }
+    }
+
+    private func restoreManualCaptureReturnApplicationIfNeeded() {
+        defer {
+            manualCaptureReturnApplication = nil
+        }
+        guard let manualCaptureReturnApplication else {
+            return
+        }
+        let currentProcessIdentifier = ProcessInfo.processInfo.processIdentifier
+        guard manualCaptureReturnApplication.processIdentifier != currentProcessIdentifier else {
+            return
+        }
+        guard manualCaptureReturnApplication.isTerminated == false else {
+            return
+        }
+        _ = manualCaptureReturnApplication.activate(options: [])
     }
 
     func refreshTodayRecordCount() async {
@@ -506,7 +575,7 @@ final class AppState {
                 return
             }
             Task { @MainActor in
-                await self.performSingleCaptureCycle(captureTrigger: .manual)
+                self.startManualCaptureFlow()
             }
         }
         refreshCaptureNowGlobalHotKeyRegistration()

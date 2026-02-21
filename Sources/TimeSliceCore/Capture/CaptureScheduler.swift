@@ -39,6 +39,34 @@ public enum CaptureCycleOutcome: Sendable {
     case failed(String)
 }
 
+public struct ManualCaptureDraft: Sendable {
+    public let applicationName: String
+    public let windowTitle: String?
+    public let capturedAt: Date
+    public let ocrText: String
+    public let imageData: Data?
+
+    public init(
+        applicationName: String,
+        windowTitle: String?,
+        capturedAt: Date,
+        ocrText: String,
+        imageData: Data?
+    ) {
+        self.applicationName = applicationName
+        self.windowTitle = windowTitle
+        self.capturedAt = capturedAt
+        self.ocrText = ocrText
+        self.imageData = imageData
+    }
+}
+
+public enum ManualCapturePreparationOutcome: Sendable {
+    case prepared(ManualCaptureDraft)
+    case skipped(CaptureSkipReason)
+    case failed(String)
+}
+
 /// Runs capture pipeline periodically: capture -> OCR -> dedupe -> persist.
 public actor CaptureScheduler {
     public private(set) var isRunning = false
@@ -90,7 +118,27 @@ public actor CaptureScheduler {
     }
 
     @discardableResult
-    public func performCaptureCycle(captureTrigger: CaptureTrigger = .scheduled) async -> CaptureCycleOutcome {
+    public func performCaptureCycle(
+        captureTrigger: CaptureTrigger = .scheduled,
+        manualComment: String? = nil
+    ) async -> CaptureCycleOutcome {
+        do {
+            guard let capturedWindow = try await screenCapturer.captureFrontWindow() else {
+                return .skipped(.noWindow)
+            }
+            return try await processCapturedWindow(
+                capturedWindow,
+                captureTrigger: captureTrigger,
+                manualComment: manualComment
+            )
+        } catch {
+            let errorDescription = String(describing: error)
+            lastErrorDescription = errorDescription
+            return .failed(errorDescription)
+        }
+    }
+
+    public func prepareManualCaptureDraft() async -> ManualCapturePreparationOutcome {
         do {
             guard let capturedWindow = try await screenCapturer.captureFrontWindow() else {
                 return .skipped(.noWindow)
@@ -105,63 +153,76 @@ public actor CaptureScheduler {
                 excludedKeywords: configuration.excludedWindowTitles
             )
             if isExcludedApplication || isExcludedWindowTitle {
-                let captureRecord = CaptureRecord(
+                let manualCaptureDraft = ManualCaptureDraft(
                     applicationName: capturedWindow.applicationName,
                     windowTitle: capturedWindow.windowTitle,
                     capturedAt: capturedWindow.capturedAt,
                     ocrText: "",
-                    hasImage: false,
-                    captureTrigger: captureTrigger
+                    imageData: nil
                 )
-                try dataStore.saveRecord(captureRecord)
-                try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
-                try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
                 lastErrorDescription = nil
-                return .saved(captureRecord)
+                return .prepared(manualCaptureDraft)
             }
 
-            let recognizedText = try await textRecognizer.recognizeText(from: capturedWindow.image)
+            let recognizedText: String
+            do {
+                recognizedText = try await textRecognizer.recognizeText(from: capturedWindow.image)
+            } catch {
+                recognizedText = ""
+            }
             let normalizedText = recognizedText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard normalizedText.count >= configuration.minimumTextLength else {
-                return .skipped(.shortText)
-            }
-
-            let shouldStoreRecord = await duplicateDetector.shouldStoreText(normalizedText)
-            guard shouldStoreRecord else {
-                return .skipped(.duplicateText)
-            }
-
-            let imageData: Data?
+            let encodedImageData: Data?
             if configuration.shouldSaveImages {
-                guard let encodedImageData = PNGImageEncoder.encodeImage(capturedWindow.image) else {
-                    return .skipped(.pngEncodingFailed)
-                }
-                imageData = encodedImageData
+                encodedImageData = PNGImageEncoder.encodeImage(capturedWindow.image)
             } else {
-                imageData = nil
+                encodedImageData = nil
             }
-
-            let captureRecord = CaptureRecord(
+            let manualCaptureDraft = ManualCaptureDraft(
                 applicationName: capturedWindow.applicationName,
                 windowTitle: capturedWindow.windowTitle,
                 capturedAt: capturedWindow.capturedAt,
                 ocrText: normalizedText,
-                hasImage: imageData != nil,
-                captureTrigger: captureTrigger
+                imageData: encodedImageData
+            )
+            lastErrorDescription = nil
+            return .prepared(manualCaptureDraft)
+        } catch {
+            let errorDescription = String(describing: error)
+            lastErrorDescription = errorDescription
+            return .failed(errorDescription)
+        }
+    }
+
+    @discardableResult
+    public func saveManualCaptureDraft(
+        _ manualCaptureDraft: ManualCaptureDraft,
+        manualComment: String? = nil
+    ) async -> CaptureCycleOutcome {
+        do {
+            let normalizedManualComment = normalizeManualComment(
+                captureTrigger: .manual,
+                manualComment: manualComment
+            )
+            _ = await duplicateDetector.shouldStoreText(manualCaptureDraft.ocrText)
+            let captureRecord = CaptureRecord(
+                applicationName: manualCaptureDraft.applicationName,
+                windowTitle: manualCaptureDraft.windowTitle,
+                capturedAt: manualCaptureDraft.capturedAt,
+                ocrText: manualCaptureDraft.ocrText,
+                hasImage: manualCaptureDraft.imageData != nil,
+                captureTrigger: .manual,
+                comments: normalizedManualComment
             )
             try dataStore.saveRecord(captureRecord)
-
-            if let imageData {
+            if let imageData = manualCaptureDraft.imageData {
                 try imageStore.saveImageData(
                     imageData,
-                    capturedAt: capturedWindow.capturedAt,
+                    capturedAt: manualCaptureDraft.capturedAt,
                     recordID: captureRecord.id
                 )
             }
-
             try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
             try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
-
             lastErrorDescription = nil
             return .saved(captureRecord)
         } catch {
@@ -185,6 +246,104 @@ public actor CaptureScheduler {
         isRunning = false
     }
 
+    private func processCapturedWindow(
+        _ capturedWindow: CapturedWindow,
+        captureTrigger: CaptureTrigger,
+        manualComment: String?
+    ) async throws -> CaptureCycleOutcome {
+        let isManualCapture = captureTrigger == .manual
+        let normalizedManualComment = normalizeManualComment(
+            captureTrigger: captureTrigger,
+            manualComment: manualComment
+        )
+
+        let isExcludedApplication = matchesExcludedKeyword(
+            capturedWindow.applicationName,
+            excludedKeywords: configuration.excludedApplications
+        )
+        let isExcludedWindowTitle = matchesExcludedKeyword(
+            capturedWindow.windowTitle,
+            excludedKeywords: configuration.excludedWindowTitles
+        )
+        if isExcludedApplication || isExcludedWindowTitle {
+            let captureRecord = CaptureRecord(
+                applicationName: capturedWindow.applicationName,
+                windowTitle: capturedWindow.windowTitle,
+                capturedAt: capturedWindow.capturedAt,
+                ocrText: "",
+                hasImage: false,
+                captureTrigger: captureTrigger,
+                comments: normalizedManualComment
+            )
+            try dataStore.saveRecord(captureRecord)
+            try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
+            try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
+            lastErrorDescription = nil
+            return .saved(captureRecord)
+        }
+
+        let recognizedText: String
+        do {
+            recognizedText = try await textRecognizer.recognizeText(from: capturedWindow.image)
+        } catch {
+            guard isManualCapture else {
+                throw error
+            }
+            recognizedText = ""
+        }
+        let normalizedText = recognizedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalizedText.count >= configuration.minimumTextLength || isManualCapture else {
+            return .skipped(.shortText)
+        }
+
+        if isManualCapture {
+            _ = await duplicateDetector.shouldStoreText(normalizedText)
+        } else {
+            let shouldStoreRecord = await duplicateDetector.shouldStoreText(normalizedText)
+            guard shouldStoreRecord else {
+                return .skipped(.duplicateText)
+            }
+        }
+
+        let imageData: Data?
+        if configuration.shouldSaveImages {
+            if let encodedImageData = PNGImageEncoder.encodeImage(capturedWindow.image) {
+                imageData = encodedImageData
+            } else if isManualCapture {
+                imageData = nil
+            } else {
+                return .skipped(.pngEncodingFailed)
+            }
+        } else {
+            imageData = nil
+        }
+
+        let captureRecord = CaptureRecord(
+            applicationName: capturedWindow.applicationName,
+            windowTitle: capturedWindow.windowTitle,
+            capturedAt: capturedWindow.capturedAt,
+            ocrText: normalizedText,
+            hasImage: imageData != nil,
+            captureTrigger: captureTrigger,
+            comments: normalizedManualComment
+        )
+        try dataStore.saveRecord(captureRecord)
+
+        if let imageData {
+            try imageStore.saveImageData(
+                imageData,
+                capturedAt: capturedWindow.capturedAt,
+                recordID: captureRecord.id
+            )
+        }
+
+        try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
+        try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
+
+        lastErrorDescription = nil
+        return .saved(captureRecord)
+    }
+
     private func matchesExcludedKeyword(_ text: String?, excludedKeywords: [String]) -> Bool {
         guard let text else {
             return false
@@ -195,5 +354,12 @@ public actor CaptureScheduler {
         return excludedKeywords.contains { excludedKeyword in
             text.range(of: excludedKeyword, options: [.caseInsensitive, .diacriticInsensitive]) != nil
         }
+    }
+
+    private func normalizeManualComment(captureTrigger: CaptureTrigger, manualComment: String?) -> String? {
+        guard captureTrigger == .manual else {
+            return nil
+        }
+        return manualComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 }

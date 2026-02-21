@@ -6,6 +6,11 @@
 "menu.capture.start" = "Start Capture";
 "menu.capture.stop" = "Stop Capture";
 "menu.capture.now" = "Capture Now";
+"manual_capture.comment.title" = "timeSlice : ";
+"manual_capture.comment.placeholder" = "Add a comment and record (optional)";
+"manual_capture.comment.hint" = "Enter: Capture / Esc: Cancel";
+"manual_capture.comment.hint.submit" = "Capture";
+"manual_capture.comment.hint.cancel" = "Cancel";
 "menu.report.generate" = "Generate Report";
 "menu.report.generating" = "Generating Report...";
 "menu.quit" = "Quit";
@@ -130,4 +135,4 @@
 
 "report.prompt.all_day" = "All day";
 
-"report.prompt.default_template" = "Below are work log records for {{DATE}} ({{TIME_RANGE}}).\nThe current working directory is `timeSlice/data`.\nRead the following files and summarize them into a work report:\n{{JSON_FILE_LIST}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `windowTitle`: window title (may be null)\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: OCR result text\n- `hasImage`: image-saved flag\n- `captureTrigger`: capture trigger (`manual` = Capture Now, `scheduled` = periodic capture)\n\nImportant:\n- Target time range is {{TIME_RANGE}}. Only consider records whose `capturedAt` falls within this range.\n- Treat records with `captureTrigger = manual` as intentionally captured high-priority logs.\n- Always reflect manual records in Summary, Work timeline, and Deliverables/progress.\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";
+"report.prompt.default_template" = "Below are work log records for {{DATE}} ({{TIME_RANGE}}).\nThe current working directory is `timeSlice/data`.\nRead the following files and summarize them into a work report:\n{{JSON_FILE_LIST}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `windowTitle`: window title (may be null)\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: OCR result text\n- `hasImage`: image-saved flag\n- `captureTrigger`: capture trigger (`manual` = Capture Now, `scheduled` = periodic capture)\n- `comments`: manual capture comment (may be an empty string)\n\nImportant:\n- Target time range is {{TIME_RANGE}}. Only consider records whose `capturedAt` falls within this range.\n- Treat records with `captureTrigger = manual` as intentionally captured high-priority logs.\n- Give top priority to records where `comments` is non-empty, and reflect those comments clearly in the summary.\n- Always reflect manual records in Summary, Work timeline, and Deliverables/progress.\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";

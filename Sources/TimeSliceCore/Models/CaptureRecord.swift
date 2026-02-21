@@ -14,6 +14,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
     public let ocrText: String
     public let hasImage: Bool
     public let captureTrigger: CaptureTrigger
+    public let comments: String?
 
     public init(
         id: UUID = UUID(),
@@ -22,7 +23,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         capturedAt: Date,
         ocrText: String,
         hasImage: Bool,
-        captureTrigger: CaptureTrigger = .scheduled
+        captureTrigger: CaptureTrigger = .scheduled,
+        comments: String? = nil
     ) {
         self.id = id
         self.applicationName = applicationName
@@ -31,6 +33,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         self.ocrText = ocrText
         self.hasImage = hasImage
         self.captureTrigger = captureTrigger
+        self.comments = comments
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -41,6 +44,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         case ocrText
         case hasImage
         case captureTrigger
+        case comments
     }
 
     public init(from decoder: Decoder) throws {
@@ -52,5 +56,6 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         ocrText = try container.decode(String.self, forKey: .ocrText)
         hasImage = try container.decode(Bool.self, forKey: .hasImage)
         captureTrigger = try container.decodeIfPresent(CaptureTrigger.self, forKey: .captureTrigger) ?? .scheduled
+        comments = try container.decodeIfPresent(String.self, forKey: .comments)
     }
 }

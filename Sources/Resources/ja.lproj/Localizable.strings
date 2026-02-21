@@ -6,6 +6,11 @@
 "menu.capture.start" = "記録開始";
 "menu.capture.stop" = "記録終了";
 "menu.capture.now" = "今すぐ記録";
+"manual_capture.comment.title" = "timeSlice";
+"manual_capture.comment.placeholder" = "コメントを追加して記録（省略可）";
+"manual_capture.comment.hint" = "Enter: 記録 / Esc: キャンセル";
+"manual_capture.comment.hint.submit" = "記録";
+"manual_capture.comment.hint.cancel" = "キャンセル";
 "menu.report.generate" = "日報を生成";
 "menu.report.generating" = "日報生成中...";
 "menu.quit" = "終了";
@@ -130,4 +135,4 @@
 
 "report.prompt.all_day" = "全日";
 
-"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
+"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n- `comments`: 手動記録コメント（空文字の場合あり）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
