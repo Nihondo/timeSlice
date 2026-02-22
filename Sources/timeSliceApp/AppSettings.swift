@@ -19,6 +19,7 @@ enum AppSettingsKey {
     static let reportOutputDirectoryPath = "report.outputDirectoryPath"
     static let reportPromptTemplate = "report.promptTemplate"
     static let reportTimeSlotsJSON = "report.timeSlotsJSON"
+    static let captureViewerTimeSortOrder = "viewer.timeSortOrder"
     static let captureNowShortcutKey = "shortcut.captureNowKey"
     static let captureNowShortcutModifiers = "shortcut.captureNowModifiers"
     static let captureNowShortcutKeyCode = "shortcut.captureNowKeyCode"

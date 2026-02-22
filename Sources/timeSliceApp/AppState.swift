@@ -62,6 +62,9 @@ final class AppState {
     var isLaunchAtLoginEnabled = false
     var launchAtLoginStatusMessage = ""
     var isStartCaptureOnAppLaunchEnabled = false
+    var captureViewerArtifacts: [CaptureRecordArtifact] = []
+    var isLoadingCaptureViewerArtifacts = false
+    var captureViewerStatusMessage = ""
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -263,6 +266,36 @@ final class AppState {
 
     func refreshPermissionStatus() {
         hasScreenCapturePermission = screenCaptureManager.hasScreenCapturePermission()
+    }
+
+    func loadCaptureViewerArtifacts(on targetDate: Date) async {
+        isLoadingCaptureViewerArtifacts = true
+        captureViewerStatusMessage = ""
+        defer {
+            isLoadingCaptureViewerArtifacts = false
+        }
+
+        do {
+            let localDataStore = dataStore
+            let artifacts = try await Task.detached(priority: .userInitiated) {
+                try localDataStore.loadRecordArtifacts(on: targetDate)
+            }.value
+            captureViewerArtifacts = artifacts
+            if artifacts.isEmpty {
+                captureViewerStatusMessage = L10n.string("viewer.message.empty")
+            }
+        } catch {
+            captureViewerArtifacts = []
+            captureViewerStatusMessage = L10n.format("viewer.message.load_failed", error.localizedDescription)
+        }
+    }
+
+    func openCaptureViewerFile(_ fileURL: URL) {
+        NSWorkspace.shared.open(fileURL)
+    }
+
+    func revealCaptureViewerFile(_ fileURL: URL) {
+        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {

@@ -1,8 +1,10 @@
 "app.menu_title.idle" = "timeSlice";
 "app.menu_title.capturing" = "timeSlice ●";
 "window.settings.title" = "timeSlice Settings";
+"window.viewer.title" = "Capture Viewer";
 
 "menu.settings" = "timeSlice Settings...";
+"menu.viewer.open" = "Open Viewer";
 "menu.capture.start" = "Start Capture";
 "menu.capture.stop" = "Stop Capture";
 "menu.capture.now" = "Capture Now";
@@ -45,13 +47,13 @@
 "settings.stepper.minimum_text_length" = "Minimum text length: %d chars";
 "settings.section.filter" = "Filter";
 "settings.footer.filter" = "Text shorter than this length will not be stored.";
-"settings.section.excluded_apps" = "OCR Excluded Apps";
-"settings.footer.excluded_apps" = "If the foreground app name partially matches a keyword, OCR is skipped and only the app name is recorded.";
+"settings.section.excluded_apps" = "Text Recognition Excluded Apps";
+"settings.footer.excluded_apps" = "If the foreground app name partially matches a keyword, text recognition is skipped and only the app name is recorded.";
 "settings.placeholder.excluded_app_name" = "Enter app name";
 "settings.button.add_excluded_app" = "Add";
 "settings.button.delete_excluded_app" = "Delete";
-"settings.section.excluded_window_titles" = "OCR Excluded Window Titles";
-"settings.footer.excluded_window_titles" = "If the window title partially matches a keyword, OCR is skipped and only the app name is recorded.";
+"settings.section.excluded_window_titles" = "Text Recognition Excluded Window Titles";
+"settings.footer.excluded_window_titles" = "If the window title partially matches a keyword, text recognition is skipped and only the app name is recorded.";
 "settings.placeholder.excluded_window_title" = "Enter window title";
 "settings.button.add_excluded_window_title" = "Add";
 "settings.button.delete_excluded_window_title" = "Delete";
@@ -91,6 +93,46 @@
 "settings.button.generate_report_now" = "Generate Report Now";
 "settings.button.generating_report" = "Generating Report...";
 
+"viewer.label.target_date" = "Target date";
+"viewer.label.sort_order" = "Sort";
+"viewer.label.application_filter" = "Application";
+"viewer.label.capture_trigger_filter" = "Trigger";
+"viewer.button.reload" = "Reload";
+"viewer.placeholder.search_text" = "Search window title / recognized text / comment";
+"viewer.label.record_count" = "Records: %d";
+"viewer.placeholder.select_record" = "Select a record from the list on the left.";
+"viewer.field.application_name" = "Application";
+"viewer.field.window_title" = "Window title";
+"viewer.field.capture_trigger" = "Capture trigger";
+"viewer.field.image_state" = "Image status";
+"viewer.section.image" = "Image";
+"viewer.section.comments" = "Comment";
+"viewer.section.ocr" = "Recognized Text";
+"viewer.section.files" = "Files";
+"viewer.button.open_json" = "Open JSON";
+"viewer.button.reveal_json" = "Reveal JSON in Finder";
+"viewer.button.open_image" = "Open image";
+"viewer.button.reveal_image" = "Reveal image in Finder";
+"viewer.message.empty" = "No records exist for the selected date.";
+"viewer.message.load_failed" = "Failed to load viewer data: %@";
+"viewer.message.image_not_captured" = "No image was saved for this record.";
+"viewer.message.image_missing_or_expired" = "Image file is missing (expired or deleted).";
+"viewer.message.image_load_failed" = "Failed to load the image.";
+"viewer.value.no_window_title" = "(No Title)";
+"viewer.value.empty_text" = "(Empty)";
+"viewer.value.sort_ascending" = "Time Ascending";
+"viewer.value.sort_descending" = "Time Descending";
+"viewer.value.filter_all_applications" = "All Applications";
+"viewer.value.filter_all_triggers" = "All Records";
+"viewer.value.filter_manual_only" = "Manual Only";
+"viewer.value.trigger_scheduled" = "Scheduled";
+"viewer.value.trigger_manual" = "Manual";
+"viewer.value.image_available" = "Available";
+"viewer.value.image_not_captured" = "Not saved";
+"viewer.value.image_missing_or_expired" = "Missing/Expired";
+"viewer.value.no_comment" = "(No comment)";
+"viewer.value.empty_comment" = "(Empty comment)";
+
 "state.stopped" = "Stopped";
 "state.capturing" = "Capturing";
 "state.permission_missing" = "Permission not granted";
@@ -109,7 +151,7 @@
 "notification.report.title.manual_failed" = "Report Generation Failed";
 "notification.report.title.scheduled_failed" = "Scheduled Report Generation Failed";
 "notification.report.body.failed" = "Report generation failed: %@";
-"notification.capture.title.manual" = "OCR Capture Completed";
+"notification.capture.title.manual" = "Text Recognition Capture Completed";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "(No Title)";
 
@@ -136,4 +178,4 @@
 
 "report.prompt.all_day" = "All day";
 
-"report.prompt.default_template" = "Below are work log records for {{DATE}} ({{TIME_RANGE}}).\nThe current working directory is `timeSlice/data`.\nRead the following files and summarize them into a work report:\n{{JSON_FILE_LIST}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `windowTitle`: window title (may be null)\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: OCR result text\n- `hasImage`: image-saved flag\n- `captureTrigger`: capture trigger (`manual` = Capture Now, `scheduled` = periodic capture)\n- `comments`: manual capture comment (may be an empty string)\n\nImportant:\n- Target time range is {{TIME_RANGE}}. Only consider records whose `capturedAt` falls within this range.\n- Treat records with `captureTrigger = manual` as intentionally captured high-priority logs.\n- Give top priority to records where `comments` is non-empty, and reflect those comments clearly in the summary.\n- Always reflect manual records in Summary, Work timeline, and Deliverables/progress.\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";
+"report.prompt.default_template" = "Below are work log records for {{DATE}} ({{TIME_RANGE}}).\nThe current working directory is `timeSlice/data`.\nRead the following files and summarize them into a work report:\n{{JSON_FILE_LIST}}\n\nExpected record count: about {{RECORD_COUNT}} items\n\nEach JSON contains:\n- `applicationName`: frontmost app name\n- `windowTitle`: window title (may be null)\n- `capturedAt`: recorded time in ISO 8601\n- `ocrText`: recognized text\n- `hasImage`: image-saved flag\n- `captureTrigger`: capture trigger (`manual` = Capture Now, `scheduled` = periodic capture)\n- `comments`: manual capture comment (may be an empty string)\n\nImportant:\n- Target time range is {{TIME_RANGE}}. Only consider records whose `capturedAt` falls within this range.\n- Treat records with `captureTrigger = manual` as intentionally captured high-priority logs.\n- Give top priority to records where `comments` is non-empty, and reflect those comments clearly in the summary.\n- Always reflect manual records in Summary, Work timeline, and Deliverables/progress.\n\nGenerate a Markdown work report with this structure:\n1. Summary (2-3 sentences)\n2. Work timeline (by time range)\n3. Application usage list and usage time\n4. Deliverables / progress\n5. Notes (optional)";

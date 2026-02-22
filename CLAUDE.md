@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-timeSlice is a macOS menu bar app that periodically captures the frontmost window, runs OCR, and stores results locally for automated work report generation. Privacy-first design: all data stays local. Menu bar only (no Dock icon via `LSUIElement = YES`).
+timeSlice is a macOS menu bar app that periodically captures the frontmost window, runs text recognition, and stores results locally for automated work report generation. Privacy-first design: all data stays local. Menu bar only (no Dock icon via `LSUIElement = YES`).
 
 ## Build & Run Commands
 
@@ -39,7 +39,7 @@ xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -
 CaptureScheduler (actor, periodic loop)
   → ScreenCapturing protocol → ScreenCaptureManager (ScreenCaptureKit)
     → CapturedWindow { image, windowTitle? }
-  → TextRecognizing protocol → OCRManager (Vision Framework)
+  → TextRecognizing protocol → Vision-based recognizer implementation
   → DuplicateDetector (actor, hash-based consecutive dedup)
   → DataStore (JSON) + ImageStore (PNG)
 ```
@@ -47,8 +47,8 @@ CaptureScheduler (actor, periodic loop)
 - `CaptureScheduler.performCaptureCycle(captureTrigger:manualComment:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
 - `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
 - `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`
-- Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, OCR/image save is skipped and metadata-only record is stored
-- Manual capture (`captureTrigger: .manual`) is persisted even when OCR text is short/duplicate, and blank Enter input is stored as `comments: ""`
+- Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, text-recognition/image save is skipped and metadata-only record is stored
+- Manual capture (`captureTrigger: .manual`) is persisted even when recognized text is short/duplicate, and blank Enter input is stored as `comments: ""`
 
 ### Report Pipeline
 
@@ -102,7 +102,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
-- Triggers Spotlight-like comment popup (`NSPanel`) first, then executes manual capture + OCR + save
+- Triggers Spotlight-like comment popup (`NSPanel`) first, then executes manual capture + text recognition + save
 - On popup open, tries to prefill the comment field with currently selected text from the frontmost app (AX permission required; first attempt prompts for permission when missing; falls back to empty when unavailable)
 - While the comment popup is visible, pressing the same global shortcut again dismisses the popup (cancel, no save)
 
@@ -139,12 +139,14 @@ Stored structure:
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
   - Capture settings: `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
+  - Viewer settings: `captureViewerTimeSortOrder`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
-- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, about, quit)
+- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all/manual), and text search over `windowTitle`/`ocrText`/`comments` (applies on Enter). Search matches are highlighted, and manual records show an indicator next to timestamps in both panes.
+- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
 
 ### Key Design Patterns
 

@@ -59,3 +59,34 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         comments = try container.decodeIfPresent(String.self, forKey: .comments)
     }
 }
+
+/// Represents image linkage status for one capture record.
+public enum CaptureImageLinkState: String, Equatable, Sendable {
+    case available
+    case notCaptured
+    case missingOrExpired
+}
+
+/// One viewer-friendly capture item that links JSON and image files.
+public struct CaptureRecordArtifact: Identifiable, Equatable, Sendable {
+    public let record: CaptureRecord
+    public let jsonFileURL: URL
+    public let imageFileURL: URL?
+    public let imageLinkState: CaptureImageLinkState
+
+    public var id: UUID {
+        record.id
+    }
+
+    public init(
+        record: CaptureRecord,
+        jsonFileURL: URL,
+        imageFileURL: URL?,
+        imageLinkState: CaptureImageLinkState
+    ) {
+        self.record = record
+        self.jsonFileURL = jsonFileURL
+        self.imageFileURL = imageFileURL
+        self.imageLinkState = imageLinkState
+    }
+}

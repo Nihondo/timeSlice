@@ -45,33 +45,27 @@ public struct DataStore: @unchecked Sendable {
 
     /// Loads records for one day, optionally filtered by time range, sorted by capture timestamp.
     public func loadRecords(on date: Date, timeRange: ReportTimeRange? = nil) throws -> [CaptureRecord] {
-        let directoryURL = pathResolver.dataDirectoryURL(for: date)
-        let isDirectoryPresent = fileManager.fileExists(atPath: directoryURL.path)
-        guard isDirectoryPresent else {
-            return []
-        }
-
-        let fileURLs = try fileManager.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: nil
-        )
-        let jsonURLs = fileURLs
-            .filter { $0.pathExtension.lowercased() == "json" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-
-        var loadedRecords: [CaptureRecord] = []
-        loadedRecords.reserveCapacity(jsonURLs.count)
-        for jsonURL in jsonURLs {
-            let jsonData = try Data(contentsOf: jsonURL)
-            let captureRecord = try jsonDecoder.decode(CaptureRecord.self, from: jsonData)
-            loadedRecords.append(captureRecord)
-        }
-
-        let sortedRecords = loadedRecords.sorted { $0.capturedAt < $1.capturedAt }
+        let sortedRecords = try loadRecordEntries(on: date)
+            .map(\.record)
+            .sorted { $0.capturedAt < $1.capturedAt }
         guard let timeRange else {
             return sortedRecords
         }
         return sortedRecords.filter { timeRange.contains($0.capturedAt, calendar: calendar) }
+    }
+
+    /// Loads one-day viewer artifacts that include JSON path and linked image status.
+    public func loadRecordArtifacts(on date: Date) throws -> [CaptureRecordArtifact] {
+        let recordEntries = try loadRecordEntries(on: date)
+        var artifacts: [CaptureRecordArtifact] = []
+        artifacts.reserveCapacity(recordEntries.count)
+
+        for entry in recordEntries {
+            let artifact = buildRecordArtifact(record: entry.record, jsonFileURL: entry.jsonURL)
+            artifacts.append(artifact)
+        }
+
+        return artifacts.sorted { $0.record.capturedAt < $1.record.capturedAt }
     }
 
     /// Loads records for a time slot that may span across midnight.
@@ -131,6 +125,55 @@ public struct DataStore: @unchecked Sendable {
             return
         }
         try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    }
+
+    private func loadRecordEntries(on date: Date) throws -> [(jsonURL: URL, record: CaptureRecord)] {
+        let directoryURL = pathResolver.dataDirectoryURL(for: date)
+        let isDirectoryPresent = fileManager.fileExists(atPath: directoryURL.path)
+        guard isDirectoryPresent else {
+            return []
+        }
+
+        let fileURLs = try fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil
+        )
+        let jsonURLs = fileURLs
+            .filter { $0.pathExtension.lowercased() == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+        var recordEntries: [(jsonURL: URL, record: CaptureRecord)] = []
+        recordEntries.reserveCapacity(jsonURLs.count)
+        for jsonURL in jsonURLs {
+            let jsonData = try Data(contentsOf: jsonURL)
+            let captureRecord = try jsonDecoder.decode(CaptureRecord.self, from: jsonData)
+            recordEntries.append((jsonURL: jsonURL, record: captureRecord))
+        }
+        return recordEntries
+    }
+
+    private func buildRecordArtifact(record: CaptureRecord, jsonFileURL: URL) -> CaptureRecordArtifact {
+        guard record.hasImage else {
+            return CaptureRecordArtifact(
+                record: record,
+                jsonFileURL: jsonFileURL,
+                imageFileURL: nil,
+                imageLinkState: .notCaptured
+            )
+        }
+
+        let imageFileURL = pathResolver.imageDirectoryURL(for: record.capturedAt)
+            .appendingPathComponent(
+                pathResolver.buildImageFileName(capturedAt: record.capturedAt, recordID: record.id)
+            )
+        let isImagePresent = fileManager.fileExists(atPath: imageFileURL.path)
+        let imageLinkState: CaptureImageLinkState = isImagePresent ? .available : .missingOrExpired
+        return CaptureRecordArtifact(
+            record: record,
+            jsonFileURL: jsonFileURL,
+            imageFileURL: imageFileURL,
+            imageLinkState: imageLinkState
+        )
     }
 
     private func collectDayDirectoryURLs(baseDirectoryURL: URL) throws -> [URL] {

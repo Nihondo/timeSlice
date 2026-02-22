@@ -25,6 +25,12 @@ struct TimeSliceApp: App {
         }
         .defaultSize(width: 700, height: 640)
         .windowResizability(.contentSize)
+
+        Window(L10n.string("window.viewer.title"), id: SettingsWindowIdentifier.viewer) {
+            CaptureViewerView(appState: appState)
+        }
+        .defaultSize(width: 1100, height: 700)
+        .windowResizability(.contentSize)
     }
 }
 
@@ -59,6 +65,7 @@ final class TimeSliceAppDelegate: NSObject, NSApplicationDelegate, UNUserNotific
 
 private enum SettingsWindowIdentifier {
     static let main = "settings-window"
+    static let viewer = "capture-viewer-window"
 }
 
 private struct MenuBarMenuContentView: View {
@@ -70,7 +77,7 @@ private struct MenuBarMenuContentView: View {
 
     var body: some View {
         Button {
-            openWindow(id: SettingsWindowIdentifier.main)
+            openWindowBringingAppToFront(id: SettingsWindowIdentifier.main)
         } label: {
             Label("menu.settings", systemImage: "gearshape")
         }
@@ -108,6 +115,12 @@ private struct MenuBarMenuContentView: View {
             )
         }
         .disabled(appState.isGeneratingReport)
+
+        Button {
+            openWindowBringingAppToFront(id: SettingsWindowIdentifier.viewer)
+        } label: {
+            Label("menu.viewer.open", systemImage: "photo.on.rectangle")
+        }
 
         Divider()
 
@@ -167,6 +180,11 @@ private struct MenuBarMenuContentView: View {
                 .credits: aboutPanelCredits
             ]
         )
+    }
+
+    private func openWindowBringingAppToFront(id windowIdentifier: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        openWindow(id: windowIdentifier)
     }
 
     private var aboutPanelCredits: NSAttributedString {

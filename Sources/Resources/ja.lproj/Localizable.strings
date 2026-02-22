@@ -1,8 +1,10 @@
 "app.menu_title.idle" = "timeSlice";
 "app.menu_title.capturing" = "timeSlice ●";
 "window.settings.title" = "timeSlice 設定";
+"window.viewer.title" = "キャプチャビューア";
 
 "menu.settings" = "timeSlice 設定...";
+"menu.viewer.open" = "ビューアを開く";
 "menu.capture.start" = "記録開始";
 "menu.capture.stop" = "記録終了";
 "menu.capture.now" = "今すぐ記録";
@@ -44,14 +46,14 @@
 "settings.value.seconds" = "%d 秒";
 "settings.stepper.minimum_text_length" = "最小テキスト長: %d 文字";
 "settings.section.filter" = "フィルタ";
-"settings.footer.filter" = "この文字数以下の短文はOCR結果に記録されません。";
-"settings.section.excluded_apps" = "OCR除外アプリ";
-"settings.footer.excluded_apps" = "フロントアプリ名に指定キーワードが部分一致した場合、OCRを実行せずにアプリ名のみ記録します。";
+"settings.footer.filter" = "この文字数以下の短文はテキスト認識結果に記録されません。";
+"settings.section.excluded_apps" = "テキスト認識除外アプリ";
+"settings.footer.excluded_apps" = "フロントアプリ名に指定キーワードが部分一致した場合、テキスト認識を実行せずにアプリ名のみ記録します。";
 "settings.placeholder.excluded_app_name" = "アプリ名を入力";
 "settings.button.add_excluded_app" = "追加";
 "settings.button.delete_excluded_app" = "削除";
-"settings.section.excluded_window_titles" = "OCR除外ウィンドウタイトル";
-"settings.footer.excluded_window_titles" = "ウィンドウタイトルに指定キーワードが部分一致した場合、OCRを実行せずにアプリ名のみ記録します。";
+"settings.section.excluded_window_titles" = "テキスト認識除外ウィンドウタイトル";
+"settings.footer.excluded_window_titles" = "ウィンドウタイトルに指定キーワードが部分一致した場合、テキスト認識を実行せずにアプリ名のみ記録します。";
 "settings.placeholder.excluded_window_title" = "ウィンドウタイトルを入力";
 "settings.button.add_excluded_window_title" = "追加";
 "settings.button.delete_excluded_window_title" = "削除";
@@ -91,6 +93,46 @@
 "settings.button.generate_report_now" = "今すぐ日報生成";
 "settings.button.generating_report" = "日報生成中...";
 
+"viewer.label.target_date" = "対象日";
+"viewer.label.sort_order" = "並び順";
+"viewer.label.application_filter" = "アプリ";
+"viewer.label.capture_trigger_filter" = "記録種別";
+"viewer.button.reload" = "再読み込み";
+"viewer.placeholder.search_text" = "ウィンドウタイトル / 認識テキスト / コメントを検索";
+"viewer.label.record_count" = "レコード: %d件";
+"viewer.placeholder.select_record" = "左の一覧からレコードを選択してください。";
+"viewer.field.application_name" = "アプリ名";
+"viewer.field.window_title" = "ウィンドウタイトル";
+"viewer.field.capture_trigger" = "記録トリガー";
+"viewer.field.image_state" = "画像状態";
+"viewer.section.image" = "画像";
+"viewer.section.comments" = "コメント";
+"viewer.section.ocr" = "認識したテキスト";
+"viewer.section.files" = "ファイル";
+"viewer.button.open_json" = "JSONを開く";
+"viewer.button.reveal_json" = "JSONをFinderで表示";
+"viewer.button.open_image" = "画像を開く";
+"viewer.button.reveal_image" = "画像をFinderで表示";
+"viewer.message.empty" = "対象日のレコードがありません。";
+"viewer.message.load_failed" = "ビューアの読み込みに失敗: %@";
+"viewer.message.image_not_captured" = "このレコードでは画像を保存していません。";
+"viewer.message.image_missing_or_expired" = "画像ファイルが見つかりません（保持期限切れまたは削除）。";
+"viewer.message.image_load_failed" = "画像を読み込めませんでした。";
+"viewer.value.no_window_title" = "（タイトルなし）";
+"viewer.value.empty_text" = "（空）";
+"viewer.value.sort_ascending" = "時刻 昇順";
+"viewer.value.sort_descending" = "時刻 降順";
+"viewer.value.filter_all_applications" = "すべてのアプリ";
+"viewer.value.filter_all_triggers" = "すべての記録";
+"viewer.value.filter_manual_only" = "手動のみ";
+"viewer.value.trigger_scheduled" = "定期";
+"viewer.value.trigger_manual" = "手動";
+"viewer.value.image_available" = "あり";
+"viewer.value.image_not_captured" = "未保存";
+"viewer.value.image_missing_or_expired" = "欠損/期限切れ";
+"viewer.value.no_comment" = "（コメントなし）";
+"viewer.value.empty_comment" = "（空コメント）";
+
 "state.stopped" = "停止中";
 "state.capturing" = "キャプチャ中";
 "state.permission_missing" = "権限未付与";
@@ -109,7 +151,7 @@
 "notification.report.title.manual_failed" = "日報生成に失敗しました";
 "notification.report.title.scheduled_failed" = "定時日報生成に失敗しました";
 "notification.report.body.failed" = "日報生成失敗: %@";
-"notification.capture.title.manual" = "OCR記録が完了しました";
+"notification.capture.title.manual" = "テキスト認識の記録が完了しました";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "（タイトルなし）";
 
@@ -136,4 +178,4 @@
 
 "report.prompt.all_day" = "全日";
 
-"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: OCR結果テキスト\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n- `comments`: 手動記録コメント（空文字の場合あり）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
+"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: テキスト認識結果\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n- `comments`: 手動記録コメント（空文字の場合あり）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
