@@ -50,6 +50,7 @@ public actor ReportScheduler {
     private let calendar: Calendar
 
     private var schedulerLoopTask: Task<Void, Never>?
+    private var schedulerLoopGeneration: UInt64 = 0
     private var isEnabled: Bool
     private var timeSlots: [ReportTimeSlot]
 
@@ -85,17 +86,12 @@ public actor ReportScheduler {
             return
         }
 
-        updateNextExecutionPreview(referenceDate: dateProvider.now)
-        isRunning = true
-        schedulerLoopTask = Task {
-            await runSchedulerLoop()
-        }
+        startSchedulerLoop()
     }
 
     /// Stops scheduling loop.
     public func stop() {
-        schedulerLoopTask?.cancel()
-        schedulerLoopTask = nil
+        invalidateSchedulerLoop()
         isRunning = false
         nextExecutionDate = nil
         nextTimeSlot = nil
@@ -126,8 +122,7 @@ public actor ReportScheduler {
     }
 
     private func restartSchedulerLoop() {
-        schedulerLoopTask?.cancel()
-        schedulerLoopTask = nil
+        invalidateSchedulerLoop()
 
         guard isEnabled else {
             isRunning = false
@@ -136,15 +131,31 @@ public actor ReportScheduler {
             return
         }
 
+        startSchedulerLoop()
+    }
+
+    private func startSchedulerLoop() {
+        schedulerLoopGeneration &+= 1
+        let loopGeneration = schedulerLoopGeneration
         updateNextExecutionPreview(referenceDate: dateProvider.now)
         isRunning = true
         schedulerLoopTask = Task {
-            await runSchedulerLoop()
+            await runSchedulerLoop(loopGeneration: loopGeneration)
         }
     }
 
-    private func runSchedulerLoop() async {
+    private func invalidateSchedulerLoop() {
+        schedulerLoopGeneration &+= 1
+        schedulerLoopTask?.cancel()
+        schedulerLoopTask = nil
+    }
+
+    private func runSchedulerLoop(loopGeneration: UInt64) async {
         while Task.isCancelled == false, isEnabled {
+            guard loopGeneration == schedulerLoopGeneration else {
+                break
+            }
+
             let referenceDate = dateProvider.now
             let enabledSlots = timeSlots.filter(\.isEnabled)
 
@@ -174,6 +185,9 @@ public actor ReportScheduler {
             lastResultSequence &+= 1
         }
 
+        guard loopGeneration == schedulerLoopGeneration else {
+            return
+        }
         schedulerLoopTask = nil
         isRunning = false
         nextExecutionDate = nil
