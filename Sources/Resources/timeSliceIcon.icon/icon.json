@@ -1,6 +1,9 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.38039,0.33333,0.96078,1.00000",
+    "linear-gradient" : [
+      "extended-gray:0.25000,1.00000",
+      "extended-gray:0.50000,1.00000"
+    ],
     "orientation" : {
       "start" : {
         "x" : 0.5,
@@ -17,13 +20,13 @@
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "Image.png",
-          "name" : "Image",
+          "image-name" : "image.png",
+          "name" : "image",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
               0,
-              24
+              40.578125
             ]
           }
         }
