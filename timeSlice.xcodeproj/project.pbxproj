@@ -32,6 +32,9 @@
 		42A761132F449A3C00FA9E46 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 42A761152F449A3C00FA9E46 /* Localizable.strings */; };
 		42A7611A2F5E000000FA9E46 /* ReportTimeSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7611B2F5E000000FA9E46 /* ReportTimeSlot.swift */; };
 		42C1A7BA2FF1E00100AA1122 /* ManualCaptureCommentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */; };
+		42D800042FF4000000AA1122 /* AppStateSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800012FF4000000AA1122 /* AppStateSupport.swift */; };
+		42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800022FF4000000AA1122 /* CaptureViewerView.swift */; };
+		42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800032FF4000000AA1122 /* SettingsComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +66,9 @@
 		42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		42A7611B2F5E000000FA9E46 /* ReportTimeSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportTimeSlot.swift; sourceTree = "<group>"; };
 		42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCaptureCommentPanel.swift; sourceTree = "<group>"; };
+		42D800012FF4000000AA1122 /* AppStateSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSupport.swift; sourceTree = "<group>"; };
+		42D800022FF4000000AA1122 /* CaptureViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewerView.swift; sourceTree = "<group>"; };
+		42D800032FF4000000AA1122 /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,9 +104,12 @@
 			children = (
 				42A761092F434C1100FA9E46 /* AppSettings.swift */,
 				42A760CF2F433BDF00FA9E46 /* AppState.swift */,
+				42D800012FF4000000AA1122 /* AppStateSupport.swift */,
+				42D800022FF4000000AA1122 /* CaptureViewerView.swift */,
 				42A761112F449A3C00FA9E46 /* Localization.swift */,
 				42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */,
 				42A760D12F433BDF00FA9E46 /* SettingsView.swift */,
+				42D800032FF4000000AA1122 /* SettingsComponents.swift */,
 				42A760D22F433BDF00FA9E46 /* timeSliceApp.swift */,
 			);
 			path = timeSliceApp;
@@ -302,6 +311,9 @@
 				42A761122F449A3C00FA9E46 /* Localization.swift in Sources */,
 				42A7611A2F5E000000FA9E46 /* ReportTimeSlot.swift in Sources */,
 				42C1A7BA2FF1E00100AA1122 /* ManualCaptureCommentPanel.swift in Sources */,
+				42D800042FF4000000AA1122 /* AppStateSupport.swift in Sources */,
+				42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */,
+				42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -56,3 +56,103 @@ public struct StoragePathResolver: @unchecked Sendable {
         return String(format: "%02d%02d%02d", hour, minute, second)
     }
 }
+
+enum StorageMaintenance {
+    static func ensureDirectoryExists(at directoryURL: URL, fileManager: FileManager) throws {
+        let hasDirectory = fileManager.fileExists(atPath: directoryURL.path)
+        guard hasDirectory == false else {
+            return
+        }
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    }
+
+    static func cleanupExpiredDayDirectories(
+        in baseDirectoryURL: URL,
+        retentionDays: Int,
+        referenceDate: Date,
+        fileManager: FileManager,
+        calendar: Calendar
+    ) throws -> [URL] {
+        let hasBaseDirectory = fileManager.fileExists(atPath: baseDirectoryURL.path)
+        guard hasBaseDirectory else {
+            return []
+        }
+
+        guard let cutoffDate = calendar.date(byAdding: .day, value: -retentionDays, to: referenceDate) else {
+            return []
+        }
+
+        let dayCutoffDate = calendar.startOfDay(for: cutoffDate)
+        let dayDirectoryURLs = try collectDayDirectoryURLs(
+            in: baseDirectoryURL,
+            fileManager: fileManager,
+            calendar: calendar
+        )
+        var removedDirectoryURLs: [URL] = []
+
+        for dayDirectoryURL in dayDirectoryURLs {
+            guard let dayDate = parseDayDate(from: dayDirectoryURL, calendar: calendar) else {
+                continue
+            }
+            guard dayDate < dayCutoffDate else {
+                continue
+            }
+
+            try fileManager.removeItem(at: dayDirectoryURL)
+            removedDirectoryURLs.append(dayDirectoryURL)
+        }
+
+        return removedDirectoryURLs
+    }
+
+    private static func collectDayDirectoryURLs(
+        in baseDirectoryURL: URL,
+        fileManager: FileManager,
+        calendar: Calendar
+    ) throws -> [URL] {
+        guard let enumerator = fileManager.enumerator(
+            at: baseDirectoryURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var dayDirectoryURLs: [URL] = []
+        for case let candidateURL as URL in enumerator {
+            let resourceValues = try candidateURL.resourceValues(forKeys: [.isDirectoryKey])
+            let isDirectory = resourceValues.isDirectory ?? false
+            guard isDirectory else {
+                continue
+            }
+
+            let hasDayDate = parseDayDate(from: candidateURL, calendar: calendar) != nil
+            if hasDayDate {
+                dayDirectoryURLs.append(candidateURL)
+            }
+        }
+
+        return dayDirectoryURLs
+    }
+
+    private static func parseDayDate(from dayDirectoryURL: URL, calendar: Calendar) -> Date? {
+        let pathComponents = Array(dayDirectoryURL.pathComponents.suffix(3))
+        guard pathComponents.count == 3 else {
+            return nil
+        }
+
+        guard
+            let year = Int(pathComponents[0]),
+            let month = Int(pathComponents[1]),
+            let day = Int(pathComponents[2])
+        else {
+            return nil
+        }
+
+        var dayDateComponents = DateComponents()
+        dayDateComponents.year = year
+        dayDateComponents.month = month
+        dayDateComponents.day = day
+        return calendar.date(from: dayDateComponents)
+    }
+}

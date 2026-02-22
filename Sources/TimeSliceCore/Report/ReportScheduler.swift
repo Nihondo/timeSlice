@@ -46,7 +46,6 @@ public actor ReportScheduler {
 
     private let reportGenerator: ReportGenerator
     private let generationConfigurationProvider: (ReportTimeSlot, Bool) -> ReportGenerationConfiguration
-    private let timeSlotsProvider: () -> [ReportTimeSlot]
     private let dateProvider: any DateProviding
     private let calendar: Calendar
 
@@ -61,7 +60,6 @@ public actor ReportScheduler {
     public init(
         reportGenerator: ReportGenerator,
         generationConfigurationProvider: @escaping (ReportTimeSlot, Bool) -> ReportGenerationConfiguration,
-        timeSlotsProvider: @escaping () -> [ReportTimeSlot] = { [] },
         dateProvider: any DateProviding = SystemDateProvider(),
         calendar: Calendar = .current,
         isEnabled: Bool = false,
@@ -69,7 +67,6 @@ public actor ReportScheduler {
     ) {
         self.reportGenerator = reportGenerator
         self.generationConfigurationProvider = generationConfigurationProvider
-        self.timeSlotsProvider = timeSlotsProvider
         self.dateProvider = dateProvider
         self.calendar = calendar
         self.isEnabled = isEnabled
@@ -149,7 +146,7 @@ public actor ReportScheduler {
     private func runSchedulerLoop() async {
         while Task.isCancelled == false, isEnabled {
             let referenceDate = dateProvider.now
-            let enabledSlots = timeSlotsProvider().filter(\.isEnabled)
+            let enabledSlots = timeSlots.filter(\.isEnabled)
 
             guard let result = calculateNextSlotExecution(from: referenceDate, slots: enabledSlots) else {
                 break
@@ -167,7 +164,7 @@ public actor ReportScheduler {
                 break
             }
 
-            let currentEnabledSlots = timeSlotsProvider().filter(\.isEnabled)
+            let currentEnabledSlots = timeSlots.filter(\.isEnabled)
             let isSoleEnabledSlot = currentEnabledSlots.count == 1
             let executionResult = await executeScheduledReportGeneration(
                 timeSlot: result.slot,
@@ -228,7 +225,7 @@ public actor ReportScheduler {
     }
 
     private func updateNextExecutionPreview(referenceDate: Date) {
-        let enabledSlots = timeSlotsProvider().filter(\.isEnabled)
+        let enabledSlots = timeSlots.filter(\.isEnabled)
         guard let nextExecution = calculateNextSlotExecution(from: referenceDate, slots: enabledSlots) else {
             nextExecutionDate = nil
             nextTimeSlot = nil

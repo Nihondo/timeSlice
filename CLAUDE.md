@@ -17,21 +17,18 @@ xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -
 # Run the built .app
 open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 
-# Run tests (via Xcode)
-xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived test
-
-# Run a single test class or method
-xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived test -only-testing:TimeSliceCoreTests/TestClassName/testMethodName
+# Run tests (currently unavailable: scheme has no test action configured)
+# xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived test
+# xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived test -only-testing:TimeSliceCoreTests/TestClassName/testMethodName
 ```
 
 **Note:** `swift build` / `swift test` / `swift run` do NOT work.
 
 ## Architecture
 
-**Xcode project (swift-tools-version: 6.2, macOS 14+)** with two targets:
+**Xcode project (swift-tools-version: 6.2, macOS 14+)** with a single app target:
 
-- `TimeSliceCore` — library containing all business logic, fully testable
-- `timeSliceApp` — thin executable with SwiftUI MenuBarExtra UI (`.menu` style), depends on TimeSliceCore
+- `timeSlice` — menu bar app target containing both app-layer code (`Sources/timeSliceApp`) and core/business logic modules (`Sources/TimeSliceCore`)
 
 ### Capture Pipeline
 
@@ -98,7 +95,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 
 ### Global Keyboard Shortcuts
 
-- **`GlobalHotKeyManager`** (in AppState.swift): registers system-wide hotkey using Carbon `RegisterEventHotKey` API
+- **`GlobalHotKeyManager`** (in AppStateSupport.swift): registers system-wide hotkey using Carbon `RegisterEventHotKey` API
 - User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
@@ -111,7 +108,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - **Capture completion**: manual captures post notification with app name + window title (or fallback text)
 - **Report generation success**: both manual and scheduled, showing report file name + record count
 - **Report generation failure**: both manual and scheduled, showing localized error message
-- **`ReportNotificationManager`** (nested in AppState): manages `UNUserNotificationCenter` authorization and posting
+- **`ReportNotificationManager`** (in AppStateSupport.swift): manages `UNUserNotificationCenter` authorization and posting
 - **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click → opens report file via `/usr/bin/open`
 
 ### Localization
@@ -145,6 +142,7 @@ Stored structure:
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
+- General tab permission section tracks both screen recording and accessibility (selected text access) permissions with per-permission request buttons
 - **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all/manual), and text search over `windowTitle`/`ocrText`/`comments` (applies on Enter). Search matches are highlighted, and manual records show an indicator next to timestamps in both panes.
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
 
@@ -157,7 +155,7 @@ Stored structure:
 ### Concurrency Notes
 
 - Swift 6 strict concurrency mode is active
-- The Xcode project has `SWIFT_DEFAULT_ACTOR_ISOLATION` removed from the Core target — only the app target uses `@MainActor` explicitly on UI types
+- UI/application-layer types use explicit `@MainActor` isolation where needed (for example `AppState`)
 - Code signing is enabled for both Debug and Release builds
 
 ### Screen Capture Permission

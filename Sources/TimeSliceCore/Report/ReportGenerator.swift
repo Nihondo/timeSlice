@@ -240,7 +240,7 @@ public struct ReportGenerator: @unchecked Sendable {
             date: date,
             outputDirectoryURL: outputDirectoryURL
         )
-        try createDirectoryIfNeeded(at: reportDirectoryURL)
+        try StorageMaintenance.ensureDirectoryExists(at: reportDirectoryURL, fileManager: fileManager)
 
         let reportFileURL = reportDirectoryURL.appendingPathComponent(outputFileName)
         try saveExistingReportAsBackupIfNeeded(reportFileURL: reportFileURL, fallbackDate: date)
@@ -249,14 +249,6 @@ public struct ReportGenerator: @unchecked Sendable {
         }
         try markdownData.write(to: reportFileURL, options: .atomic)
         return reportFileURL
-    }
-
-    private func createDirectoryIfNeeded(at directoryURL: URL) throws {
-        let hasDirectory = fileManager.fileExists(atPath: directoryURL.path)
-        guard hasDirectory == false else {
-            return
-        }
-        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
     }
 
     private func buildRelativeJSONGlobPath(for date: Date) -> String {

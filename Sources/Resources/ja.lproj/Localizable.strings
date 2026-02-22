@@ -24,10 +24,14 @@
 "settings.tab.report" = "日報";
 "settings.tab.prompt" = "プロンプト";
 
+"settings.section.permissions" = "権限";
 "settings.section.screen_capture" = "画面収録";
 "settings.label.permission" = "権限";
+"settings.label.permission.screen_recording" = "画面収録";
+"settings.label.permission.text_selection" = "選択テキストアクセス";
 "settings.permission.granted" = "許可済み";
 "settings.permission.denied" = "未許可";
+"settings.button.request_permission" = "要求";
 "settings.button.refresh_permission" = "権限状態を更新";
 
 "settings.section.keyboard_shortcut" = "キーボードショートカット";

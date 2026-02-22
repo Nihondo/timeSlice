@@ -24,10 +24,14 @@
 "settings.tab.report" = "Report";
 "settings.tab.prompt" = "Prompt";
 
+"settings.section.permissions" = "Permissions";
 "settings.section.screen_capture" = "Screen Recording";
 "settings.label.permission" = "Permission";
+"settings.label.permission.screen_recording" = "Screen Recording";
+"settings.label.permission.text_selection" = "Selected Text Access";
 "settings.permission.granted" = "Granted";
 "settings.permission.denied" = "Not Granted";
+"settings.button.request_permission" = "Request";
 "settings.button.refresh_permission" = "Refresh Permission Status";
 
 "settings.section.keyboard_shortcut" = "Keyboard Shortcut";

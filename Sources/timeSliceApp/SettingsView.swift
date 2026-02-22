@@ -94,10 +94,25 @@ struct SettingsView: View {
 
     private var generalSettingsView: some View {
         Form {
-            Section("settings.section.screen_capture") {
-                LabeledContent("settings.label.permission") {
+            Section("settings.section.permissions") {
+                HStack {
+                    Text("settings.label.permission.screen_recording")
+                    Spacer()
                     Text(appState.hasScreenCapturePermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
                         .foregroundStyle(appState.hasScreenCapturePermission ? .green : .orange)
+                    Button("settings.button.request_permission") {
+                        _ = appState.requestScreenCapturePermission()
+                    }
+                }
+
+                HStack {
+                    Text("settings.label.permission.text_selection")
+                    Spacer()
+                    Text(appState.hasAccessibilityPermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
+                        .foregroundStyle(appState.hasAccessibilityPermission ? .green : .orange)
+                    Button("settings.button.request_permission") {
+                        _ = appState.requestAccessibilityPermission()
+                    }
                 }
 
                 Button("settings.button.refresh_permission") {
@@ -574,19 +589,11 @@ struct SettingsView: View {
     }
 
     private var canAddExcludedApplication: Bool {
-        let trimmedApplicationName = excludedApplicationNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedApplicationName.isEmpty == false else {
-            return false
-        }
-        return containsExcludedApplication(named: trimmedApplicationName) == false
+        canAddExcludedKeyword(excludedApplicationNameInput, in: excludedApplications)
     }
 
     private var canAddExcludedWindowTitle: Bool {
-        let trimmedWindowTitle = excludedWindowTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedWindowTitle.isEmpty == false else {
-            return false
-        }
-        return containsExcludedWindowTitle(containing: trimmedWindowTitle) == false
+        canAddExcludedKeyword(excludedWindowTitleInput, in: excludedWindowTitles)
     }
 
     private func initializeExcludedApplicationsIfNeeded() {
@@ -606,100 +613,129 @@ struct SettingsView: View {
     }
 
     private func addExcludedApplication() {
-        let trimmedApplicationName = excludedApplicationNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedApplicationName.isEmpty == false else {
+        guard let updatedKeywords = buildAddedExcludedKeywords(
+            from: excludedApplicationNameInput,
+            currentKeywords: excludedApplications
+        ) else {
             return
         }
-        guard containsExcludedApplication(named: trimmedApplicationName) == false else {
-            return
-        }
-
-        excludedApplications.append(trimmedApplicationName)
-        saveExcludedApplications()
+        excludedApplications = persistExcludedKeywords(
+            updatedKeywords,
+            storageKey: AppSettingsKey.captureExcludedApplications
+        )
         excludedApplicationNameInput = ""
     }
 
     private func deleteExcludedApplications(at offsets: IndexSet) {
-        excludedApplications.remove(atOffsets: offsets)
-        saveExcludedApplications()
+        excludedApplications = deleteExcludedKeywords(
+            at: offsets,
+            from: excludedApplications,
+            storageKey: AppSettingsKey.captureExcludedApplications
+        )
     }
 
     private func removeExcludedApplication(named applicationName: String) {
-        excludedApplications.removeAll { existingApplicationName in
-            existingApplicationName.caseInsensitiveCompare(applicationName) == .orderedSame
-        }
-        saveExcludedApplications()
+        excludedApplications = removeExcludedKeyword(
+            applicationName,
+            from: excludedApplications,
+            storageKey: AppSettingsKey.captureExcludedApplications
+        )
     }
 
     private func containsExcludedApplication(named applicationName: String) -> Bool {
-        excludedApplications.contains { existingApplicationName in
-            existingApplicationName.caseInsensitiveCompare(applicationName) == .orderedSame
-        }
-    }
-
-    private func saveExcludedApplications() {
-        let normalizedApplications = normalizeExcludedKeywords(excludedApplications)
-        excludedApplications = normalizedApplications
-        UserDefaults.standard.set(normalizedApplications, forKey: AppSettingsKey.captureExcludedApplications)
+        containsExcludedKeyword(applicationName, in: excludedApplications)
     }
 
     private func addExcludedWindowTitle() {
-        let trimmedWindowTitle = excludedWindowTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedWindowTitle.isEmpty == false else {
+        guard let updatedKeywords = buildAddedExcludedKeywords(
+            from: excludedWindowTitleInput,
+            currentKeywords: excludedWindowTitles
+        ) else {
             return
         }
-        guard containsExcludedWindowTitle(containing: trimmedWindowTitle) == false else {
-            return
-        }
-
-        excludedWindowTitles.append(trimmedWindowTitle)
-        saveExcludedWindowTitles()
+        excludedWindowTitles = persistExcludedKeywords(
+            updatedKeywords,
+            storageKey: AppSettingsKey.captureExcludedWindowTitles
+        )
         excludedWindowTitleInput = ""
     }
 
     private func deleteExcludedWindowTitles(at offsets: IndexSet) {
-        excludedWindowTitles.remove(atOffsets: offsets)
-        saveExcludedWindowTitles()
+        excludedWindowTitles = deleteExcludedKeywords(
+            at: offsets,
+            from: excludedWindowTitles,
+            storageKey: AppSettingsKey.captureExcludedWindowTitles
+        )
     }
 
     private func removeExcludedWindowTitle(containing windowTitle: String) {
-        excludedWindowTitles.removeAll { existingWindowTitle in
-            existingWindowTitle.caseInsensitiveCompare(windowTitle) == .orderedSame
-        }
-        saveExcludedWindowTitles()
+        excludedWindowTitles = removeExcludedKeyword(
+            windowTitle,
+            from: excludedWindowTitles,
+            storageKey: AppSettingsKey.captureExcludedWindowTitles
+        )
     }
 
     private func containsExcludedWindowTitle(containing windowTitle: String) -> Bool {
-        excludedWindowTitles.contains { existingWindowTitle in
-            existingWindowTitle.caseInsensitiveCompare(windowTitle) == .orderedSame
+        containsExcludedKeyword(windowTitle, in: excludedWindowTitles)
+    }
+
+    private func canAddExcludedKeyword(_ rawKeyword: String, in keywords: [String]) -> Bool {
+        guard let resolvedKeyword = resolveNonEmptyKeyword(from: rawKeyword) else {
+            return false
+        }
+        return containsExcludedKeyword(resolvedKeyword, in: keywords) == false
+    }
+
+    private func buildAddedExcludedKeywords(from rawKeyword: String, currentKeywords: [String]) -> [String]? {
+        guard let resolvedKeyword = resolveNonEmptyKeyword(from: rawKeyword) else {
+            return nil
+        }
+        guard containsExcludedKeyword(resolvedKeyword, in: currentKeywords) == false else {
+            return nil
+        }
+        return currentKeywords + [resolvedKeyword]
+    }
+
+    private func deleteExcludedKeywords(
+        at offsets: IndexSet,
+        from keywords: [String],
+        storageKey: String
+    ) -> [String] {
+        var updatedKeywords = keywords
+        updatedKeywords.remove(atOffsets: offsets)
+        return persistExcludedKeywords(updatedKeywords, storageKey: storageKey)
+    }
+
+    private func removeExcludedKeyword(
+        _ keyword: String,
+        from keywords: [String],
+        storageKey: String
+    ) -> [String] {
+        let updatedKeywords = keywords.filter { existingKeyword in
+            existingKeyword.caseInsensitiveCompare(keyword) != .orderedSame
+        }
+        return persistExcludedKeywords(updatedKeywords, storageKey: storageKey)
+    }
+
+    private func persistExcludedKeywords(_ keywords: [String], storageKey: String) -> [String] {
+        let normalizedKeywords = ExcludedKeywordNormalizer.normalizeKeywords(keywords)
+        UserDefaults.standard.set(normalizedKeywords, forKey: storageKey)
+        return normalizedKeywords
+    }
+
+    private func containsExcludedKeyword(_ keyword: String, in keywords: [String]) -> Bool {
+        keywords.contains { existingKeyword in
+            existingKeyword.caseInsensitiveCompare(keyword) == .orderedSame
         }
     }
 
-    private func saveExcludedWindowTitles() {
-        let normalizedWindowTitles = normalizeExcludedKeywords(excludedWindowTitles)
-        excludedWindowTitles = normalizedWindowTitles
-        UserDefaults.standard.set(normalizedWindowTitles, forKey: AppSettingsKey.captureExcludedWindowTitles)
-    }
-
-    private func normalizeExcludedKeywords(_ keywords: [String]) -> [String] {
-        var normalizedKeywords = Set<String>()
-        var resolvedKeywords: [String] = []
-
-        for keyword in keywords {
-            let trimmedKeyword = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmedKeyword.isEmpty == false else {
-                continue
-            }
-
-            let normalizedKeyword = trimmedKeyword.lowercased()
-            let isInserted = normalizedKeywords.insert(normalizedKeyword).inserted
-            guard isInserted else {
-                continue
-            }
-            resolvedKeywords.append(trimmedKeyword)
+    private func resolveNonEmptyKeyword(from rawKeyword: String) -> String? {
+        let trimmedKeyword = rawKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedKeyword.isEmpty == false else {
+            return nil
         }
-
-        return resolvedKeywords
+        return trimmedKeyword
     }
 
     private func resolveStoredPromptTemplateText() -> String {
@@ -746,747 +782,5 @@ struct SettingsView: View {
             return
         }
         reportPromptTemplate = editorText
-    }
-}
-
-private enum CaptureViewerTimeSortOrder: String, CaseIterable, Identifiable {
-    case ascending
-    case descending
-
-    var id: String {
-        rawValue
-    }
-}
-
-private enum CaptureViewerApplicationFilter: Hashable {
-    case all
-    case application(String)
-}
-
-private enum CaptureViewerCaptureTriggerFilter: String, CaseIterable, Identifiable {
-    case all
-    case manualOnly
-
-    var id: String {
-        rawValue
-    }
-}
-
-struct CaptureViewerView: View {
-    @Bindable var appState: AppState
-
-    @AppStorage(AppSettingsKey.captureViewerTimeSortOrder)
-    private var selectedTimeSortOrderRawValue = CaptureViewerTimeSortOrder.ascending.rawValue
-    @State private var captureViewerDate = Date()
-    @State private var selectedCaptureArtifactID: UUID?
-    @State private var selectedApplicationFilter: CaptureViewerApplicationFilter = .all
-    @State private var selectedCaptureTriggerFilter: CaptureViewerCaptureTriggerFilter = .all
-    @State private var searchInputText = ""
-    @State private var confirmedSearchQueryText = ""
-
-    private var normalizedSearchQueryText: String {
-        confirmedSearchQueryText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var selectedTimeSortOrder: CaptureViewerTimeSortOrder {
-        get {
-            CaptureViewerTimeSortOrder(rawValue: selectedTimeSortOrderRawValue) ?? .ascending
-        }
-        nonmutating set {
-            selectedTimeSortOrderRawValue = newValue.rawValue
-        }
-    }
-
-    private var selectedTimeSortOrderBinding: Binding<CaptureViewerTimeSortOrder> {
-        Binding(
-            get: {
-                selectedTimeSortOrder
-            },
-            set: { updatedSortOrder in
-                selectedTimeSortOrder = updatedSortOrder
-            }
-        )
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                DatePicker(
-                    L10n.string("viewer.label.target_date"),
-                    selection: $captureViewerDate,
-                    in: ...Date(),
-                    displayedComponents: .date
-                )
-                .onChange(of: captureViewerDate) { _, _ in
-                    loadCaptureViewerArtifacts()
-                }
-
-                Picker("viewer.label.sort_order", selection: selectedTimeSortOrderBinding) {
-                    Text("viewer.value.sort_ascending")
-                        .tag(CaptureViewerTimeSortOrder.ascending)
-                    Text("viewer.value.sort_descending")
-                        .tag(CaptureViewerTimeSortOrder.descending)
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedTimeSortOrderRawValue) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
-                }
-
-                Picker("viewer.label.application_filter", selection: $selectedApplicationFilter) {
-                    Text("viewer.value.filter_all_applications")
-                        .tag(CaptureViewerApplicationFilter.all)
-                    ForEach(availableApplicationNames, id: \.self) { applicationName in
-                        Text(applicationName)
-                            .tag(CaptureViewerApplicationFilter.application(applicationName))
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedApplicationFilter) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
-                }
-
-                Picker("viewer.label.capture_trigger_filter", selection: $selectedCaptureTriggerFilter) {
-                    Text("viewer.value.filter_all_triggers")
-                        .tag(CaptureViewerCaptureTriggerFilter.all)
-                    Text("viewer.value.filter_manual_only")
-                        .tag(CaptureViewerCaptureTriggerFilter.manualOnly)
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedCaptureTriggerFilter) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
-                }
-
-                TextField("viewer.placeholder.search_text", text: $searchInputText)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 220, idealWidth: 300, maxWidth: 360)
-                    .onSubmit {
-                        applyCaptureViewerSearchQuery()
-                    }
-
-                Button("viewer.button.reload") {
-                    loadCaptureViewerArtifacts()
-                }
-                .disabled(appState.isLoadingCaptureViewerArtifacts)
-
-                if appState.isLoadingCaptureViewerArtifacts {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-
-                Spacer()
-
-                Text(L10n.format("viewer.label.record_count", displayedArtifacts.count))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if appState.captureViewerStatusMessage.isEmpty == false {
-                Text(appState.captureViewerStatusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            HSplitView {
-                List(selection: $selectedCaptureArtifactID) {
-                    ForEach(displayedArtifacts) { artifact in
-                        captureViewerRowView(artifact: artifact)
-                            .tag(artifact.id)
-                    }
-                }
-                .listStyle(.inset)
-                .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
-
-                Group {
-                    if let selectedCaptureArtifact {
-                        captureViewerDetailView(artifact: selectedCaptureArtifact)
-                    } else {
-                        Text("viewer.placeholder.select_record")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .padding(12)
-        .onAppear {
-            guard appState.captureViewerArtifacts.isEmpty else {
-                synchronizeApplicationFilterIfNeeded()
-                synchronizeSelectedCaptureArtifactIfNeeded()
-                return
-            }
-            loadCaptureViewerArtifacts()
-        }
-        .onChange(of: appState.captureViewerArtifacts) { _, _ in
-            synchronizeApplicationFilterIfNeeded()
-            synchronizeSelectedCaptureArtifactIfNeeded()
-        }
-    }
-
-    private var availableApplicationNames: [String] {
-        let uniqueApplicationNames = Set(appState.captureViewerArtifacts.map(\.record.applicationName))
-        return uniqueApplicationNames.sorted { leftName, rightName in
-            leftName.localizedCaseInsensitiveCompare(rightName) == .orderedAscending
-        }
-    }
-
-    private var displayedArtifacts: [CaptureRecordArtifact] {
-        let captureTriggerFilteredArtifacts = appState.captureViewerArtifacts.filter { artifact in
-            switch selectedCaptureTriggerFilter {
-            case .all:
-                return true
-            case .manualOnly:
-                return artifact.record.captureTrigger == .manual
-            }
-        }
-        let applicationFilteredArtifacts = captureTriggerFilteredArtifacts.filter { artifact in
-            switch selectedApplicationFilter {
-            case .all:
-                return true
-            case let .application(applicationName):
-                return artifact.record.applicationName == applicationName
-            }
-        }
-        let searchFilteredArtifacts = applicationFilteredArtifacts.filter(matchesSearchQuery)
-        return searchFilteredArtifacts.sorted(by: compareCaptureArtifactsByTime)
-    }
-
-    private var selectedCaptureArtifact: CaptureRecordArtifact? {
-        guard let selectedCaptureArtifactID else {
-            return nil
-        }
-        return displayedArtifacts.first { $0.id == selectedCaptureArtifactID }
-    }
-
-    private func compareCaptureArtifactsByTime(_ leftArtifact: CaptureRecordArtifact, _ rightArtifact: CaptureRecordArtifact) -> Bool {
-        if leftArtifact.record.capturedAt == rightArtifact.record.capturedAt {
-            switch selectedTimeSortOrder {
-            case .ascending:
-                return leftArtifact.record.id.uuidString < rightArtifact.record.id.uuidString
-            case .descending:
-                return leftArtifact.record.id.uuidString > rightArtifact.record.id.uuidString
-            }
-        }
-        switch selectedTimeSortOrder {
-        case .ascending:
-            return leftArtifact.record.capturedAt < rightArtifact.record.capturedAt
-        case .descending:
-            return leftArtifact.record.capturedAt > rightArtifact.record.capturedAt
-        }
-    }
-
-    private func matchesSearchQuery(_ artifact: CaptureRecordArtifact) -> Bool {
-        guard normalizedSearchQueryText.isEmpty == false else {
-            return true
-        }
-
-        let matchesWindowTitle = artifact.record.windowTitle?.range(
-            of: normalizedSearchQueryText,
-            options: [.caseInsensitive, .diacriticInsensitive]
-        ) != nil
-        let matchesOCRText = artifact.record.ocrText.range(
-            of: normalizedSearchQueryText,
-            options: [.caseInsensitive, .diacriticInsensitive]
-        ) != nil
-        let matchesComment = (artifact.record.comments ?? "").range(
-            of: normalizedSearchQueryText,
-            options: [.caseInsensitive, .diacriticInsensitive]
-        ) != nil
-        return matchesWindowTitle || matchesOCRText || matchesComment
-    }
-
-    private func resolveHighlightedText(_ text: String) -> AttributedString {
-        var highlightedText = AttributedString(text)
-        guard normalizedSearchQueryText.isEmpty == false else {
-            return highlightedText
-        }
-
-        var searchRange = text.startIndex..<text.endIndex
-        while
-            let matchedRange = text.range(
-                of: normalizedSearchQueryText,
-                options: [.caseInsensitive, .diacriticInsensitive],
-                range: searchRange
-            ),
-            let attributedMatchedRange = Range(matchedRange, in: highlightedText)
-        {
-            highlightedText[attributedMatchedRange].backgroundColor = Color.yellow.opacity(0.35)
-            highlightedText[attributedMatchedRange].foregroundColor = .primary
-            searchRange = matchedRange.upperBound..<text.endIndex
-        }
-
-        return highlightedText
-    }
-
-    private func loadCaptureViewerArtifacts() {
-        let targetDate = captureViewerDate
-        Task { @MainActor in
-            await appState.loadCaptureViewerArtifacts(on: targetDate)
-            synchronizeApplicationFilterIfNeeded()
-            synchronizeSelectedCaptureArtifactIfNeeded()
-        }
-    }
-
-    private func synchronizeApplicationFilterIfNeeded() {
-        switch selectedApplicationFilter {
-        case .all:
-            return
-        case let .application(applicationName):
-            let isApplicationPresent = availableApplicationNames.contains(applicationName)
-            if isApplicationPresent == false {
-                selectedApplicationFilter = .all
-            }
-        }
-    }
-
-    private func synchronizeSelectedCaptureArtifactIfNeeded() {
-        guard displayedArtifacts.isEmpty == false else {
-            selectedCaptureArtifactID = nil
-            return
-        }
-
-        let hasSelectedArtifact = displayedArtifacts.contains { artifact in
-            artifact.id == selectedCaptureArtifactID
-        }
-        if hasSelectedArtifact {
-            return
-        }
-        selectedCaptureArtifactID = displayedArtifacts.first?.id
-    }
-
-    @ViewBuilder
-    private func captureViewerRowView(artifact: CaptureRecordArtifact) -> some View {
-        let windowTitleText = artifact.record.windowTitle?.isEmpty == false
-            ? artifact.record.windowTitle ?? ""
-            : L10n.string("viewer.value.no_window_title")
-
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(Self.captureViewerTimeFormatter.string(from: artifact.record.capturedAt))
-                    .font(.system(.body, design: .monospaced))
-
-                captureViewerManualIndicatorView(for: artifact.record.captureTrigger)
-
-                Spacer()
-
-                Label(
-                    resolveCaptureImageLinkStateText(artifact.imageLinkState),
-                    systemImage: resolveCaptureImageLinkStateIconName(artifact.imageLinkState)
-                )
-                .labelStyle(.iconOnly)
-                .foregroundStyle(resolveCaptureImageLinkStateColor(artifact.imageLinkState))
-            }
-
-            Text(artifact.record.applicationName)
-                .lineLimit(1)
-
-            Text(resolveHighlightedText(windowTitleText))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .padding(.vertical, 2)
-    }
-
-    @ViewBuilder
-    private func captureViewerDetailView(artifact: CaptureRecordArtifact) -> some View {
-        let windowTitleText = artifact.record.windowTitle?.isEmpty == false
-            ? artifact.record.windowTitle ?? ""
-            : L10n.string("viewer.value.no_window_title")
-
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(Self.captureViewerDateTimeFormatter.string(from: artifact.record.capturedAt))
-                        .font(.headline)
-                    captureViewerManualIndicatorView(for: artifact.record.captureTrigger)
-                    Spacer(minLength: 0)
-                }
-
-                captureViewerSectionSeparator
-
-                Group {
-                    Text("\(L10n.string("viewer.field.application_name")): \(artifact.record.applicationName)")
-                    Text("\(L10n.string("viewer.field.window_title")): \(Text(resolveHighlightedText(windowTitleText)))")
-                }
-                .font(.subheadline)
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.image")
-                        .font(.headline)
-                    captureViewerImagePreview(artifact: artifact)
-                }
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.comments")
-                        .font(.headline)
-                    captureViewerCommentTextView(comment: artifact.record.comments)
-                        .font(.body)
-                        .textSelection(.enabled)
-                }
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.ocr")
-                        .font(.headline)
-                    if artifact.record.ocrText.isEmpty {
-                        Text("viewer.value.empty_text")
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Text(resolveHighlightedText(artifact.record.ocrText))
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.files")
-                        .font(.headline)
-
-                    Text(artifact.jsonFileURL.path)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-
-                    HStack {
-                        Button("viewer.button.open_json") {
-                            appState.openCaptureViewerFile(artifact.jsonFileURL)
-                        }
-                        Button("viewer.button.reveal_json") {
-                            appState.revealCaptureViewerFile(artifact.jsonFileURL)
-                        }
-                    }
-
-                    if let imageFileURL = artifact.imageFileURL {
-                        Text(imageFileURL.path)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-
-                        HStack {
-                            Button("viewer.button.open_image") {
-                                appState.openCaptureViewerFile(imageFileURL)
-                            }
-                            .disabled(artifact.imageLinkState != .available)
-
-                            Button("viewer.button.reveal_image") {
-                                appState.revealCaptureViewerFile(imageFileURL)
-                            }
-                            .disabled(artifact.imageLinkState != .available)
-                        }
-                    }
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var captureViewerSectionSeparator: some View {
-        Divider()
-            .frame(maxWidth: .infinity)
-    }
-
-    private func applyCaptureViewerSearchQuery() {
-        confirmedSearchQueryText = searchInputText
-        synchronizeSelectedCaptureArtifactIfNeeded()
-    }
-
-    @ViewBuilder
-    private func captureViewerCommentTextView(comment: String?) -> some View {
-        if let comment, comment.isEmpty == false {
-            Text(resolveHighlightedText(comment))
-        } else {
-            Text(resolveCaptureCommentText(comment))
-        }
-    }
-
-    @ViewBuilder
-    private func captureViewerManualIndicatorView(for captureTrigger: CaptureTrigger) -> some View {
-        if captureTrigger == .manual {
-            Text("viewer.value.trigger_manual")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.orange)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule()
-                        .fill(Color.orange.opacity(0.16))
-                )
-        }
-    }
-
-    @ViewBuilder
-    private func captureViewerImagePreview(artifact: CaptureRecordArtifact) -> some View {
-        if artifact.imageLinkState == .notCaptured {
-            Text("viewer.message.image_not_captured")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else if artifact.imageLinkState == .missingOrExpired {
-            Text("viewer.message.image_missing_or_expired")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else if
-            let imageFileURL = artifact.imageFileURL,
-            let image = NSImage(contentsOf: imageFileURL)
-        {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 360, alignment: .leading)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        } else {
-            Text("viewer.message.image_load_failed")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func resolveCaptureImageLinkStateText(_ imageLinkState: CaptureImageLinkState) -> String {
-        switch imageLinkState {
-        case .available:
-            L10n.string("viewer.value.image_available")
-        case .notCaptured:
-            L10n.string("viewer.value.image_not_captured")
-        case .missingOrExpired:
-            L10n.string("viewer.value.image_missing_or_expired")
-        }
-    }
-
-    private func resolveCaptureImageLinkStateIconName(_ imageLinkState: CaptureImageLinkState) -> String {
-        switch imageLinkState {
-        case .available:
-            "photo"
-        case .notCaptured:
-            "photo.slash"
-        case .missingOrExpired:
-            "exclamationmark.triangle"
-        }
-    }
-
-    private func resolveCaptureImageLinkStateColor(_ imageLinkState: CaptureImageLinkState) -> Color {
-        switch imageLinkState {
-        case .available:
-            .green
-        case .notCaptured:
-            .secondary
-        case .missingOrExpired:
-            .orange
-        }
-    }
-
-    private func resolveCaptureCommentText(_ comment: String?) -> String {
-        guard let comment else {
-            return L10n.string("viewer.value.no_comment")
-        }
-        if comment.isEmpty {
-            return L10n.string("viewer.value.empty_comment")
-        }
-        return comment
-    }
-
-    private static let captureViewerTimeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter
-    }()
-
-    private static let captureViewerDateTimeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .medium
-        return formatter
-    }()
-}
-
-private struct LeftAlignedTextField: NSViewRepresentable {
-    let placeholder: String
-    @Binding var text: String
-    var onSubmitAction: (() -> Void)?
-
-    init(
-        placeholder: String,
-        text: Binding<String>,
-        onSubmitAction: (() -> Void)? = nil
-    ) {
-        self.placeholder = placeholder
-        _text = text
-        self.onSubmitAction = onSubmitAction
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeNSView(context: Context) -> NSTextField {
-        let textField = NSTextField()
-        textField.isBezeled = true
-        textField.bezelStyle = .roundedBezel
-        textField.alignment = .left
-        textField.placeholderString = placeholder
-        textField.stringValue = text
-        textField.target = context.coordinator
-        textField.action = #selector(Coordinator.handleSubmit)
-        textField.delegate = context.coordinator
-        return textField
-    }
-
-    func updateNSView(_ textField: NSTextField, context: Context) {
-        if textField.stringValue != text {
-            textField.stringValue = text
-        }
-        textField.alignment = .left
-        if textField.placeholderString != placeholder {
-            textField.placeholderString = placeholder
-        }
-        context.coordinator.parent = self
-    }
-
-    final class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: LeftAlignedTextField
-
-        init(_ parent: LeftAlignedTextField) {
-            self.parent = parent
-        }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let textField = notification.object as? NSTextField else {
-                return
-            }
-            parent.text = textField.stringValue
-        }
-
-        @objc func handleSubmit() {
-            parent.onSubmitAction?()
-        }
-    }
-}
-
-private struct CaptureNowShortcutRecorderView: View {
-    let shortcutDisplayText: String
-    let hasShortcut: Bool
-    let onShortcutCaptured: (String, Int, EventModifiers) -> Void
-    let onShortcutCleared: () -> Void
-
-    @State private var isRecordingShortcut = false
-    @State private var keyEventMonitor: Any?
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Button(isRecordingShortcut ? L10n.string("settings.button.shortcut_recording") : shortcutDisplayText) {
-                beginShortcutRecording()
-            }
-            .buttonStyle(BorderedButtonStyle())
-
-            if hasShortcut {
-                Button("settings.button.clear_shortcut") {
-                    onShortcutCleared()
-                }
-                .buttonStyle(BorderedButtonStyle())
-                .disabled(isRecordingShortcut)
-            }
-        }
-        .onChange(of: isRecordingShortcut) { _, isRecordingShortcut in
-            if isRecordingShortcut {
-                startKeyEventMonitor()
-            } else {
-                stopKeyEventMonitor()
-            }
-        }
-        .onDisappear {
-            stopKeyEventMonitor()
-        }
-    }
-
-    private func beginShortcutRecording() {
-        isRecordingShortcut = true
-    }
-
-    private func startKeyEventMonitor() {
-        guard keyEventMonitor == nil else {
-            return
-        }
-
-        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard isRecordingShortcut else {
-                return event
-            }
-            return handleKeyDownEvent(event)
-        }
-    }
-
-    private func stopKeyEventMonitor() {
-        guard let keyEventMonitor else {
-            return
-        }
-        NSEvent.removeMonitor(keyEventMonitor)
-        self.keyEventMonitor = nil
-    }
-
-    private func handleKeyDownEvent(_ event: NSEvent) -> NSEvent? {
-        if event.keyCode == 53 {
-            isRecordingShortcut = false
-            return nil
-        }
-
-        if event.keyCode == 51 || event.keyCode == 117 {
-            onShortcutCleared()
-            isRecordingShortcut = false
-            return nil
-        }
-
-        guard let capturedKey = resolveCapturedKey(event: event) else {
-            NSSound.beep()
-            return nil
-        }
-
-        let capturedModifiers = resolveCapturedModifiers(eventModifierFlags: event.modifierFlags)
-        if capturedModifiers.isEmpty {
-            NSSound.beep()
-            return nil
-        }
-
-        onShortcutCaptured(capturedKey, Int(event.keyCode), capturedModifiers)
-        isRecordingShortcut = false
-        return nil
-    }
-
-    private func resolveCapturedModifiers(eventModifierFlags: NSEvent.ModifierFlags) -> EventModifiers {
-        var capturedModifiers: EventModifiers = []
-
-        if eventModifierFlags.contains(.command) {
-            capturedModifiers.insert(.command)
-        }
-        if eventModifierFlags.contains(.control) {
-            capturedModifiers.insert(.control)
-        }
-        if eventModifierFlags.contains(.option) {
-            capturedModifiers.insert(.option)
-        }
-        if eventModifierFlags.contains(.shift) {
-            capturedModifiers.insert(.shift)
-        }
-
-        return capturedModifiers
-    }
-
-    private func resolveCapturedKey(event: NSEvent) -> String? {
-        guard let inputCharacters = event.charactersIgnoringModifiers, let firstCharacter = inputCharacters.first else {
-            return nil
-        }
-        return CaptureNowShortcutResolver.normalizeStoredKey(String(firstCharacter))
     }
 }

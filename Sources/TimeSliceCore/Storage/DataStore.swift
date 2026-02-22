@@ -35,7 +35,7 @@ public struct DataStore: @unchecked Sendable {
     @discardableResult
     public func saveRecord(_ record: CaptureRecord) throws -> URL {
         let directoryURL = pathResolver.dataDirectoryURL(for: record.capturedAt)
-        try createDirectoryIfNeeded(at: directoryURL)
+        try StorageMaintenance.ensureDirectoryExists(at: directoryURL, fileManager: fileManager)
 
         let fileURL = directoryURL.appendingPathComponent(pathResolver.buildRecordFileName(for: record))
         let recordData = try jsonEncoder.encode(record)
@@ -89,42 +89,13 @@ public struct DataStore: @unchecked Sendable {
     public func cleanupExpiredData(referenceDate: Date) throws -> [URL] {
         let dataRootDirectoryURL = pathResolver.rootDirectoryURL
             .appendingPathComponent("data", isDirectory: true)
-        let isDataRootPresent = fileManager.fileExists(atPath: dataRootDirectoryURL.path)
-        guard isDataRootPresent else {
-            return []
-        }
-
-        guard let cutoffDate = calendar.date(byAdding: .day, value: -textRetentionDays, to: referenceDate)
-        else {
-            return []
-        }
-
-        let dayCutoffDate = calendar.startOfDay(for: cutoffDate)
-        let dayDirectoryURLs = try collectDayDirectoryURLs(baseDirectoryURL: dataRootDirectoryURL)
-        var removedDirectoryURLs: [URL] = []
-
-        for dayDirectoryURL in dayDirectoryURLs {
-            guard let dayDate = parseDayDate(from: dayDirectoryURL) else {
-                continue
-            }
-            let isExpiredDirectory = dayDate < dayCutoffDate
-            guard isExpiredDirectory else {
-                continue
-            }
-
-            try fileManager.removeItem(at: dayDirectoryURL)
-            removedDirectoryURLs.append(dayDirectoryURL)
-        }
-
-        return removedDirectoryURLs
-    }
-
-    private func createDirectoryIfNeeded(at directoryURL: URL) throws {
-        let isDirectoryPresent = fileManager.fileExists(atPath: directoryURL.path)
-        guard isDirectoryPresent == false else {
-            return
-        }
-        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        return try StorageMaintenance.cleanupExpiredDayDirectories(
+            in: dataRootDirectoryURL,
+            retentionDays: textRetentionDays,
+            referenceDate: referenceDate,
+            fileManager: fileManager,
+            calendar: calendar
+        )
     }
 
     private func loadRecordEntries(on date: Date) throws -> [(jsonURL: URL, record: CaptureRecord)] {
@@ -176,50 +147,4 @@ public struct DataStore: @unchecked Sendable {
         )
     }
 
-    private func collectDayDirectoryURLs(baseDirectoryURL: URL) throws -> [URL] {
-        guard let enumerator = fileManager.enumerator(
-            at: baseDirectoryURL,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
-        var dayDirectoryURLs: [URL] = []
-        for case let candidateURL as URL in enumerator {
-            let resourceValues = try candidateURL.resourceValues(forKeys: [.isDirectoryKey])
-            let isDirectory = resourceValues.isDirectory ?? false
-            guard isDirectory else {
-                continue
-            }
-
-            let isDayDirectory = parseDayDate(from: candidateURL) != nil
-            if isDayDirectory {
-                dayDirectoryURLs.append(candidateURL)
-            }
-        }
-
-        return dayDirectoryURLs
-    }
-
-    private func parseDayDate(from dayDirectoryURL: URL) -> Date? {
-        let pathComponents = Array(dayDirectoryURL.pathComponents.suffix(3))
-        guard pathComponents.count == 3 else {
-            return nil
-        }
-
-        guard
-            let year = Int(pathComponents[0]),
-            let month = Int(pathComponents[1]),
-            let day = Int(pathComponents[2])
-        else {
-            return nil
-        }
-
-        var dayDateComponents = DateComponents()
-        dayDateComponents.year = year
-        dayDateComponents.month = month
-        dayDateComponents.day = day
-        return calendar.date(from: dayDateComponents)
-    }
 }
