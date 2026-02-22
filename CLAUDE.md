@@ -91,6 +91,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - Target date auto-calculated per slot: `executionIsNextDay` → previous day, otherwise current day
 - `DataStore.loadRecordsForSlot()` handles cross-midnight loading by merging records from two calendar days
 - Scheduled result notifications are deduplicated via `lastResultSequence` and emitted once per execution
+- Scheduler loop lifecycle is guarded by a generation counter (`schedulerLoopGeneration`) so stale canceled loops cannot clear or replace the active loop state during `updateSchedule()` races; this prevents duplicate auto-generation for the same slot time.
 - Migration from legacy settings (`reportTargetDayOffset`, `reportTimeSlotsEnabled`, `reportAutoGenerationHour/Minute`) via `AppSettingsResolver.migrateReportSettingsIfNeeded()`
 
 ### Global Keyboard Shortcuts
