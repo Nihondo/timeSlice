@@ -36,6 +36,8 @@ struct CaptureViewerView: View {
     @State private var selectedCaptureTriggerFilter: CaptureViewerCaptureTriggerFilter = .all
     @State private var searchInputText = ""
     @State private var confirmedSearchQueryText = ""
+    @State private var lastAppliedExternalSearchRequestSequence: UInt64 = 0
+    @FocusState private var isSearchInputFocused: Bool
 
     private var normalizedSearchQueryText: String {
         confirmedSearchQueryText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,6 +114,7 @@ struct CaptureViewerView: View {
                 TextField("viewer.placeholder.search_text", text: $searchInputText)
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: 220, idealWidth: 300, maxWidth: 360)
+                    .focused($isSearchInputFocused)
                     .onSubmit {
                         applyCaptureViewerSearchQuery()
                     }
@@ -164,12 +167,16 @@ struct CaptureViewerView: View {
         }
         .padding(12)
         .onAppear {
+            applyExternalSearchRequestIfNeeded()
             guard appState.captureViewerArtifacts.isEmpty else {
                 synchronizeApplicationFilterIfNeeded()
                 synchronizeSelectedCaptureArtifactIfNeeded()
                 return
             }
             loadCaptureViewerArtifacts()
+        }
+        .onChange(of: appState.captureViewerSearchRequestSequence) { _, _ in
+            applyExternalSearchRequestIfNeeded()
         }
         .onChange(of: appState.captureViewerArtifacts) { _, _ in
             synchronizeApplicationFilterIfNeeded()
@@ -456,6 +463,17 @@ struct CaptureViewerView: View {
         synchronizeSelectedCaptureArtifactIfNeeded()
     }
 
+    private func applyExternalSearchRequestIfNeeded() {
+        let requestedSequence = appState.captureViewerSearchRequestSequence
+        guard requestedSequence != lastAppliedExternalSearchRequestSequence else {
+            return
+        }
+        lastAppliedExternalSearchRequestSequence = requestedSequence
+        searchInputText = appState.captureViewerSearchQuery
+        applyCaptureViewerSearchQuery()
+        isSearchInputFocused = true
+    }
+
     @ViewBuilder
     private func captureViewerCommentTextView(comment: String?) -> some View {
         if let comment, comment.isEmpty == false {
@@ -564,4 +582,3 @@ struct CaptureViewerView: View {
         return formatter
     }()
 }
-

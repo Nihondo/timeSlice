@@ -10,8 +10,9 @@
 "menu.capture.now" = "今すぐ記録";
 "manual_capture.comment.title" = "timeSlice";
 "manual_capture.comment.placeholder" = "コメントを追加して記録（省略可）";
-"manual_capture.comment.hint" = "Enter: 記録 / Esc: キャンセル";
+"manual_capture.comment.hint" = "Enter: 記録 / ⌘ + ENTER: 検索 / Esc: キャンセル";
 "manual_capture.comment.hint.submit" = "記録";
+"manual_capture.comment.hint.search" = "検索";
 "manual_capture.comment.hint.cancel" = "キャンセル";
 "manual_capture.comment.value.application_unavailable" = "（アプリ不明）";
 "menu.report.generate" = "日報を生成";

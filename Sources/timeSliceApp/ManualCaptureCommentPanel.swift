@@ -7,7 +7,9 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
     private var activePanel: ManualCaptureCommentPanel?
     private var keyDownEventMonitor: Any?
     private var onCancelAction: (() -> Void)?
-    private var isHandlingSubmit = false
+    private var onSearchInViewerAction: ((String) -> Void)?
+    private var currentCommentText = ""
+    private var isHandlingPanelAction = false
 
     var isPresenting: Bool {
         activePanel != nil
@@ -25,10 +27,13 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         windowTitle: String?,
         initialComment: String = "",
         onSubmitComment: @escaping (String) -> Void,
+        onSearchInViewer: @escaping (String) -> Void,
         onCancel: @escaping () -> Void
     ) {
         closePanelIfNeeded()
         onCancelAction = onCancel
+        onSearchInViewerAction = onSearchInViewer
+        currentCommentText = initialComment
 
         let panel = ManualCaptureCommentPanel(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 190),
@@ -56,14 +61,18 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
                     return
                 }
                 self.onCancelAction = nil
-                self.isHandlingSubmit = true
+                self.onSearchInViewerAction = nil
+                self.isHandlingPanelAction = true
                 self.closePanelIfNeeded(animated: true) { [weak self] in
                     guard let self else {
                         return
                     }
-                    self.isHandlingSubmit = false
+                    self.isHandlingPanelAction = false
                     onSubmitComment(commentText)
                 }
+            },
+            onCommentTextChange: { [weak self] updatedCommentText in
+                self?.currentCommentText = updatedCommentText
             },
             onCancel: { [weak self] in
                 self?.cancelAndClosePanel()
@@ -80,10 +89,12 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         activePanel = nil
+        onSearchInViewerAction = nil
+        currentCommentText = ""
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        guard isHandlingSubmit == false else {
+        guard isHandlingPanelAction == false else {
             return
         }
         cancelAndClosePanel()
@@ -121,6 +132,10 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
             guard let self, let activePanel = self.activePanel, activePanel.isKeyWindow else {
                 return keyEvent
             }
+            if self.isCommandEnterKeyEvent(keyEvent) {
+                self.searchInViewerAndClosePanel()
+                return nil
+            }
             guard keyEvent.keyCode == 53 else {
                 return keyEvent
             }
@@ -141,9 +156,35 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
     private func cancelAndClosePanel() {
         let onCancelAction = onCancelAction
         self.onCancelAction = nil
+        self.onSearchInViewerAction = nil
+        self.currentCommentText = ""
         closePanelIfNeeded(animated: true) {
             onCancelAction?()
         }
+    }
+
+    private func searchInViewerAndClosePanel() {
+        let onSearchInViewerAction = onSearchInViewerAction
+        let normalizedSearchQuery = currentCommentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.onCancelAction = nil
+        self.onSearchInViewerAction = nil
+        self.isHandlingPanelAction = true
+        closePanelIfNeeded(animated: true) { [weak self] in
+            guard let self else {
+                return
+            }
+            self.isHandlingPanelAction = false
+            self.currentCommentText = ""
+            onSearchInViewerAction?(normalizedSearchQuery)
+        }
+    }
+
+    private func isCommandEnterKeyEvent(_ keyEvent: NSEvent) -> Bool {
+        let modifierFlags = keyEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifierFlags.contains(.command) else {
+            return false
+        }
+        return keyEvent.keyCode == 36 || keyEvent.keyCode == 76
     }
 }
 
@@ -156,6 +197,7 @@ private struct ManualCaptureCommentView: View {
     let applicationName: String
     let windowTitle: String?
     let onSubmitComment: (String) -> Void
+    let onCommentTextChange: (String) -> Void
     let onCancel: () -> Void
 
     @State private var commentText: String
@@ -167,11 +209,13 @@ private struct ManualCaptureCommentView: View {
         windowTitle: String?,
         initialComment: String = "",
         onSubmitComment: @escaping (String) -> Void,
+        onCommentTextChange: @escaping (String) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.applicationName = applicationName
         self.windowTitle = windowTitle
         self.onSubmitComment = onSubmitComment
+        self.onCommentTextChange = onCommentTextChange
         self.onCancel = onCancel
         self._commentText = State(initialValue: initialComment)
     }
@@ -214,11 +258,18 @@ private struct ManualCaptureCommentView: View {
                 y: 0
             )
             .onSubmit(submitComment)
+            .onChange(of: commentText) { _, updatedCommentText in
+                onCommentTextChange(updatedCommentText)
+            }
 
             HStack(spacing: 14) {
                 ShortcutHintView(
                     keyLabel: "Enter",
                     actionLabel: L10n.string("manual_capture.comment.hint.submit")
+                )
+                ShortcutHintView(
+                    keyLabel: "⌘ + ENTER",
+                    actionLabel: L10n.string("manual_capture.comment.hint.search")
                 )
                 ShortcutHintView(
                     keyLabel: "Esc",

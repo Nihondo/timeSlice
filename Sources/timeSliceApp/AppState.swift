@@ -69,6 +69,8 @@ final class AppState {
     var captureViewerArtifacts: [CaptureRecordArtifact] = []
     var isLoadingCaptureViewerArtifacts = false
     var captureViewerStatusMessage = ""
+    var captureViewerSearchQuery = ""
+    var captureViewerSearchRequestSequence: UInt64 = 0
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -193,6 +195,15 @@ final class AppState {
                             captureTrigger: .manual,
                             manualComment: manualComment
                         )
+                    }
+                },
+                onSearchInViewer: { [weak self] searchQuery in
+                    guard let self else {
+                        return
+                    }
+                    Task { @MainActor in
+                        self.manualCaptureReturnApplication = nil
+                        self.requestCaptureViewerSearch(searchQuery)
                     }
                 },
                 onCancel: { [weak self] in
@@ -325,6 +336,11 @@ final class AppState {
 
     func revealCaptureViewerFile(_ fileURL: URL) {
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+    }
+
+    func requestCaptureViewerSearch(_ searchQuery: String) {
+        captureViewerSearchQuery = searchQuery
+        captureViewerSearchRequestSequence &+= 1
     }
 
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {

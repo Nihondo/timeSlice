@@ -99,7 +99,9 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
-- Triggers Spotlight-like comment popup (`NSPanel`) first, then executes manual capture + text recognition + save
+- Triggers Spotlight-like comment popup (`NSPanel`) first
+- In popup: `Enter` executes manual capture + text recognition + save (blank input persists as `comments: ""`)
+- In popup: `⌘ + ENTER` does not save; it opens Capture Viewer and applies current input as the search query
 - Popup header shows capture target context values in two lines (no labels): frontmost application name and window title (`(No Title)` fallback)
 - On popup open, tries to prefill the comment field with currently selected text from the frontmost app (AX permission required; first attempt prompts for permission when missing; falls back to empty when unavailable)
 - While the comment popup is visible, pressing the same global shortcut again dismisses the popup (cancel, no save)

@@ -10,8 +10,9 @@
 "menu.capture.now" = "Capture Now";
 "manual_capture.comment.title" = "timeSlice : ";
 "manual_capture.comment.placeholder" = "Add a comment and record (optional)";
-"manual_capture.comment.hint" = "Enter: Capture / Esc: Cancel";
+"manual_capture.comment.hint" = "Enter: Capture / ⌘ + ENTER: Search / Esc: Cancel";
 "manual_capture.comment.hint.submit" = "Capture";
+"manual_capture.comment.hint.search" = "Search";
 "manual_capture.comment.hint.cancel" = "Cancel";
 "manual_capture.comment.value.application_unavailable" = "(Unknown app)";
 "menu.report.generate" = "Generate Report";

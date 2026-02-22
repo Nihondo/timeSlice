@@ -12,11 +12,10 @@ struct TimeSliceApp: App {
     @State private var appState = AppState()
 
     var body: some Scene {
-        MenuBarExtra(
-            appState.isCapturing ? L10n.string("app.menu_title.capturing") : L10n.string("app.menu_title.idle"),
-            systemImage: appState.isCapturing ? "clock.badge.fill" : "clock"
-        ) {
+        MenuBarExtra {
             MenuBarMenuContentView(appState: appState)
+        } label: {
+            MenuBarStatusLabelView(appState: appState)
         }
         .menuBarExtraStyle(.menu)
 
@@ -66,6 +65,25 @@ final class TimeSliceAppDelegate: NSObject, NSApplicationDelegate, UNUserNotific
 private enum SettingsWindowIdentifier {
     static let main = "settings-window"
     static let viewer = "capture-viewer-window"
+}
+
+private struct MenuBarStatusLabelView: View {
+    @Bindable var appState: AppState
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Label(
+            appState.isCapturing ? L10n.string("app.menu_title.capturing") : L10n.string("app.menu_title.idle"),
+            systemImage: appState.isCapturing ? "clock.badge.fill" : "clock"
+        )
+        .onChange(of: appState.captureViewerSearchRequestSequence) { _, _ in
+            guard appState.captureViewerSearchRequestSequence > 0 else {
+                return
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: SettingsWindowIdentifier.viewer)
+        }
+    }
 }
 
 private struct MenuBarMenuContentView: View {
