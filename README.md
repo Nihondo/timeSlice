@@ -315,4 +315,4 @@ open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 
 画面収録権限はアプリバンドル（`.app`）に紐づいているため、ターミナルから直接バイナリを実行するのではなく、必ず `.app` として起動してください。
 
-Release アーカイブを作成する場合は、Signing &amp; Capabilities で Team と証明書を正しく設定し、Hardened Runtime を有効にしてビルドしてください。
+Release アーカイブを作成する場合は、Signing & Capabilities で Team と証明書を正しく設定し、Hardened Runtime を有効にしてビルドしてください。
