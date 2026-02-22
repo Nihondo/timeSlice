@@ -100,6 +100,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
 - Triggers Spotlight-like comment popup (`NSPanel`) first, then executes manual capture + text recognition + save
+- Popup header shows capture target context in two lines: frontmost application name and window title (`(No Title)` fallback)
 - On popup open, tries to prefill the comment field with currently selected text from the frontmost app (AX permission required; first attempt prompts for permission when missing; falls back to empty when unavailable)
 - While the comment popup is visible, pressing the same global shortcut again dismisses the popup (cancel, no save)
 

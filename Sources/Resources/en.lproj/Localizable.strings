@@ -13,6 +13,7 @@
 "manual_capture.comment.hint" = "Enter: Capture / Esc: Cancel";
 "manual_capture.comment.hint.submit" = "Capture";
 "manual_capture.comment.hint.cancel" = "Cancel";
+"manual_capture.comment.value.application_unavailable" = "(Unknown app)";
 "menu.report.generate" = "Generate Report";
 "menu.report.generating" = "Generating Report...";
 "menu.about" = "About timeSlice...";

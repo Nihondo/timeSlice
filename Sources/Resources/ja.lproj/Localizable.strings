@@ -13,6 +13,7 @@
 "manual_capture.comment.hint" = "Enter: 記録 / Esc: キャンセル";
 "manual_capture.comment.hint.submit" = "記録";
 "manual_capture.comment.hint.cancel" = "キャンセル";
+"manual_capture.comment.value.application_unavailable" = "（アプリ不明）";
 "menu.report.generate" = "日報を生成";
 "menu.report.generating" = "日報生成中...";
 "menu.about" = "timeSliceについて...";

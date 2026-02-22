@@ -21,6 +21,8 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
     }
 
     func present(
+        applicationName: String,
+        windowTitle: String?,
         initialComment: String = "",
         onSubmitComment: @escaping (String) -> Void,
         onCancel: @escaping () -> Void
@@ -29,7 +31,7 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         onCancelAction = onCancel
 
         let panel = ManualCaptureCommentPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 170),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 190),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -46,6 +48,8 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         panel.animationBehavior = .utilityWindow
 
         let commentView = ManualCaptureCommentView(
+            applicationName: applicationName,
+            windowTitle: windowTitle,
             initialComment: initialComment,
             onSubmitComment: { [weak self] commentText in
                 guard let self else {
@@ -149,6 +153,8 @@ private final class ManualCaptureCommentPanel: NSPanel {
 }
 
 private struct ManualCaptureCommentView: View {
+    let applicationName: String
+    let windowTitle: String?
     let onSubmitComment: (String) -> Void
     let onCancel: () -> Void
 
@@ -157,10 +163,14 @@ private struct ManualCaptureCommentView: View {
     @FocusState private var isInputFocused: Bool
 
     init(
+        applicationName: String,
+        windowTitle: String?,
         initialComment: String = "",
         onSubmitComment: @escaping (String) -> Void,
         onCancel: @escaping () -> Void
     ) {
+        self.applicationName = applicationName
+        self.windowTitle = windowTitle
         self.onSubmitComment = onSubmitComment
         self.onCancel = onCancel
         self._commentText = State(initialValue: initialComment)
@@ -168,14 +178,13 @@ private struct ManualCaptureCommentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles.rectangle.stack.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                Text("manual_capture.comment.title")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                ManualCaptureContextLineView(
+                    value: applicationName
+                )
+                ManualCaptureContextLineView(
+                    value: resolveWindowTitleText()
+                )
             }
 
             TextField(
@@ -262,9 +271,28 @@ private struct ManualCaptureCommentView: View {
         }
     }
 
+    private func resolveWindowTitleText() -> String {
+        guard let windowTitle, windowTitle.isEmpty == false else {
+            return L10n.string("viewer.value.no_window_title")
+        }
+        return windowTitle
+    }
+
     private func submitComment() {
         let normalizedComment = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
         onSubmitComment(normalizedComment)
+    }
+}
+
+private struct ManualCaptureContextLineView: View {
+    let value: String
+
+    var body: some View {
+        Text(value)
+            .font(.system(size: 13))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(.secondary)
     }
 }
 

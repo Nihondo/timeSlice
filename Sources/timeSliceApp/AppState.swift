@@ -173,13 +173,16 @@ final class AppState {
             let frontmostApplication = NSWorkspace.shared.frontmostApplication
             self.manualCaptureReturnApplication = frontmostApplication
             let shouldPromptForAccessibilityPermission = self.hasRequestedAccessibilityPermissionThisSession == false
-            let initialComment = FrontmostSelectionTextResolver.resolveInitialComment(
+            let manualCaptureContext = FrontmostSelectionTextResolver.resolveManualCaptureContext(
                 from: frontmostApplication,
                 shouldPromptForPermission: shouldPromptForAccessibilityPermission
             )
+            let manualCaptureApplicationName = resolveManualCaptureApplicationName(from: frontmostApplication)
             self.hasRequestedAccessibilityPermissionThisSession = true
             self.manualCaptureCommentPanelPresenter.present(
-                initialComment: initialComment,
+                applicationName: manualCaptureApplicationName,
+                windowTitle: manualCaptureContext.focusedWindowTitle,
+                initialComment: manualCaptureContext.initialComment,
                 onSubmitComment: { [weak self] manualComment in
                     guard let self else {
                         return
@@ -202,6 +205,17 @@ final class AppState {
                 }
             )
         }
+    }
+
+    private func resolveManualCaptureApplicationName(from application: NSRunningApplication?) -> String {
+        guard
+            let applicationName = application?.localizedName?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            applicationName.isEmpty == false
+        else {
+            return L10n.string("manual_capture.comment.value.application_unavailable")
+        }
+        return applicationName
     }
 
     func performSingleCaptureCycle(

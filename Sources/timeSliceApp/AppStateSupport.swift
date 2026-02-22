@@ -146,6 +146,11 @@ private func captureNowGlobalHotKeyEventHandler(
 }
 
 enum FrontmostSelectionTextResolver {
+    struct ManualCaptureContext {
+        let initialComment: String
+        let focusedWindowTitle: String?
+    }
+
     static func isAccessibilityPermissionGranted() -> Bool {
         AXIsProcessTrusted()
     }
@@ -161,14 +166,33 @@ enum FrontmostSelectionTextResolver {
         from application: NSRunningApplication?,
         shouldPromptForPermission: Bool
     ) -> String {
+        resolveManualCaptureContext(
+            from: application,
+            shouldPromptForPermission: shouldPromptForPermission
+        ).initialComment
+    }
+
+    static func resolveManualCaptureContext(
+        from application: NSRunningApplication?,
+        shouldPromptForPermission: Bool
+    ) -> ManualCaptureContext {
         guard isAccessibilityTrusted(shouldPromptForPermission: shouldPromptForPermission) else {
-            return ""
+            return ManualCaptureContext(initialComment: "", focusedWindowTitle: nil)
         }
         guard let processIdentifier = application?.processIdentifier else {
-            return ""
+            return ManualCaptureContext(initialComment: "", focusedWindowTitle: nil)
         }
 
         let applicationElement = AXUIElementCreateApplication(processIdentifier)
+        let resolvedInitialComment = resolveSelectedText(from: applicationElement)
+        let resolvedWindowTitle = resolveFocusedWindowTitle(from: applicationElement)
+        return ManualCaptureContext(
+            initialComment: resolvedInitialComment,
+            focusedWindowTitle: resolvedWindowTitle
+        )
+    }
+
+    private static func resolveSelectedText(from applicationElement: AXUIElement) -> String {
         guard
             let focusedElementValue = copyAttributeValue(
                 of: applicationElement,
@@ -187,7 +211,63 @@ enum FrontmostSelectionTextResolver {
         else {
             return ""
         }
-        return normalizeSelectedText(selectedTextValue)
+        guard let normalizedSelectedText = normalizeTextValue(selectedTextValue) else {
+            return ""
+        }
+        return normalizeSelectedText(normalizedSelectedText)
+    }
+
+    private static func resolveFocusedWindowTitle(from applicationElement: AXUIElement) -> String? {
+        if let focusedWindowElement = resolveFocusedWindowElement(from: applicationElement) {
+            return resolveWindowTitle(from: focusedWindowElement)
+        }
+        guard
+            let focusedElementValue = copyAttributeValue(
+                of: applicationElement,
+                attribute: kAXFocusedUIElementAttribute as CFString
+            ),
+            CFGetTypeID(focusedElementValue) == AXUIElementGetTypeID()
+        else {
+            return nil
+        }
+        let focusedElement = unsafeBitCast(focusedElementValue, to: AXUIElement.self)
+        guard
+            let windowElementValue = copyAttributeValue(
+                of: focusedElement,
+                attribute: kAXWindowAttribute as CFString
+            ),
+            CFGetTypeID(windowElementValue) == AXUIElementGetTypeID()
+        else {
+            return nil
+        }
+        let windowElement = unsafeBitCast(windowElementValue, to: AXUIElement.self)
+        return resolveWindowTitle(from: windowElement)
+    }
+
+    private static func resolveFocusedWindowElement(from applicationElement: AXUIElement) -> AXUIElement? {
+        guard
+            let focusedWindowValue = copyAttributeValue(
+                of: applicationElement,
+                attribute: kAXFocusedWindowAttribute as CFString
+            ),
+            CFGetTypeID(focusedWindowValue) == AXUIElementGetTypeID()
+        else {
+            return nil
+        }
+        return unsafeBitCast(focusedWindowValue, to: AXUIElement.self)
+    }
+
+    private static func resolveWindowTitle(from windowElement: AXUIElement) -> String? {
+        guard
+            let windowTitleValue = copyAttributeValue(
+                of: windowElement,
+                attribute: kAXTitleAttribute as CFString
+            ),
+            let normalizedWindowTitle = normalizeTextValue(windowTitleValue)
+        else {
+            return nil
+        }
+        return normalizeWindowTitle(normalizedWindowTitle)
     }
 
     private static func copyAttributeValue(of element: AXUIElement, attribute: CFString) -> CFTypeRef? {
@@ -199,20 +279,29 @@ enum FrontmostSelectionTextResolver {
         return attributeValue
     }
 
-    private static func normalizeSelectedText(_ selectedTextValue: CFTypeRef) -> String {
-        let selectedText: String
-        if let plainText = selectedTextValue as? String {
-            selectedText = plainText
-        } else if let attributedText = selectedTextValue as? NSAttributedString {
-            selectedText = attributedText.string
-        } else {
-            return ""
+    private static func normalizeTextValue(_ value: CFTypeRef) -> String? {
+        if let plainText = value as? String {
+            return plainText
         }
+        if let attributedText = value as? NSAttributedString {
+            return attributedText.string
+        }
+        return nil
+    }
 
-        return selectedText
+    private static func normalizeSelectedText(_ selectedText: String) -> String {
+        selectedText
             .replacingOccurrences(of: #"\s*\n+\s*"#, with: " ", options: .regularExpression)
             .replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizeWindowTitle(_ windowTitle: String) -> String? {
+        let normalizedWindowTitle = windowTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalizedWindowTitle.isEmpty == false else {
+            return nil
+        }
+        return normalizedWindowTitle
     }
 
     private static func isAccessibilityTrusted(shouldPromptForPermission: Bool) -> Bool {
