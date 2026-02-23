@@ -35,7 +35,8 @@ open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 ```
 CaptureScheduler (actor, periodic loop)
   → ScreenCapturing protocol → ScreenCaptureManager (ScreenCaptureKit)
-    → CapturedWindow { image, windowTitle? }
+    → CapturedWindow { image, windowTitle?, browserURL?, documentPath? }
+  → BrowserURLResolving protocol → BrowserURLResolver (AppleScript, per-browser)
   → TextRecognizing protocol → Vision-based recognizer implementation
   → DuplicateDetector (actor, hash-based consecutive dedup)
   → DataStore (JSON) + ImageStore (PNG)
@@ -43,7 +44,7 @@ CaptureScheduler (actor, periodic loop)
 
 - `CaptureScheduler.performCaptureCycle(captureTrigger:manualComment:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
 - `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
-- `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`
+- `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`, `browserURL: String?`, `documentPath: String?`
 - Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, text-recognition/image save is skipped and metadata-only record is stored
 - Manual capture (`captureTrigger: .manual`) is persisted even when recognized text is short/duplicate, and blank Enter input is stored as `comments: ""`
 
@@ -146,15 +147,15 @@ Stored structure:
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
-- General tab permission section tracks both screen recording and accessibility (selected text access) permissions with per-permission request buttons
-- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all/manual), and text search over `windowTitle`/`ocrText`/`comments` (applies on Enter). Search matches are highlighted, and manual records show an indicator next to timestamps in both panes.
+- General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
+- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all/manual), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and manual records show an indicator next to timestamps in both panes.
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
 
 ### Key Design Patterns
 
-- **Protocol-based DI**: `ScreenCapturing`, `TextRecognizing`, `CLIExecutable` protocols enable mock injection for tests
+- **Protocol-based DI**: `ScreenCapturing`, `TextRecognizing`, `BrowserURLResolving`, `CLIExecutable` protocols enable mock injection for tests
 - **Actor isolation**: `CaptureScheduler`, `DuplicateDetector`, `ReportScheduler` are actors for thread safety
-- **`@unchecked Sendable`**: Used on `DataStore`, `ImageStore`, `StoragePathResolver`, `CLIExecutor` (value-type structs or classes with only Sendable-safe internal state)
+- **`@unchecked Sendable`**: Used on `DataStore`, `ImageStore`, `StoragePathResolver`, `CLIExecutor`, `BrowserURLResolver` (value-type structs or classes with only Sendable-safe internal state)
 
 ### Concurrency Notes
 
@@ -165,6 +166,16 @@ Stored structure:
 ### Screen Capture Permission
 
 Running via terminal binds screen capture permission to Terminal/iTerm. Build and launch the `.app` bundle for proper permission binding.
+
+### Browser URL Capture
+
+- **`BrowserURLResolving`** protocol + **`BrowserURLResolver`** class in `BrowserURLResolving.swift`
+- Supported browsers: Safari, Chrome (+ beta/dev/canary), Edge (+ Beta/Dev/Canary), Brave (+ beta/nightly), Arc, Vivaldi
+- Firefox not supported (no AppleScript dictionary)
+- Uses `NSAppleScript` via `Task.detached` with `withTaskGroup` timeout race pattern
+- Per-browser first-attempt timeout: 30s (permission dialog may appear), subsequent: 3s
+- Requires `com.apple.security.automation.apple-events` entitlement (`timeSlice.entitlements`) and `NSAppleEventsUsageDescription` in Info.plist
+- macOS prompts Automation permission per target browser on first AppleScript execution; denied → returns `nil`, capture continues normally
 
 ## Not Yet Implemented
 

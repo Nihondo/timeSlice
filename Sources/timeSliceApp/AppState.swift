@@ -308,6 +308,12 @@ final class AppState {
         return isGranted
     }
 
+    func openAutomationPrivacySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     func loadCaptureViewerArtifacts(on targetDate: Date) async {
         isLoadingCaptureViewerArtifacts = true
         captureViewerStatusMessage = ""

@@ -115,6 +115,19 @@ struct SettingsView: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("settings.label.permission.automation")
+                        Spacer()
+                        Button("settings.button.open_system_settings") {
+                            appState.openAutomationPrivacySettings()
+                        }
+                    }
+                    Text("settings.description.automation")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Button("settings.button.refresh_permission") {
                     appState.refreshPermissionStatus()
                 }

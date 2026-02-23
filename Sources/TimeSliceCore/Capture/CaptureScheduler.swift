@@ -45,19 +45,25 @@ public struct ManualCaptureDraft: Sendable {
     public let capturedAt: Date
     public let ocrText: String
     public let imageData: Data?
+    public let browserURL: String?
+    public let documentPath: String?
 
     public init(
         applicationName: String,
         windowTitle: String?,
         capturedAt: Date,
         ocrText: String,
-        imageData: Data?
+        imageData: Data?,
+        browserURL: String? = nil,
+        documentPath: String? = nil
     ) {
         self.applicationName = applicationName
         self.windowTitle = windowTitle
         self.capturedAt = capturedAt
         self.ocrText = ocrText
         self.imageData = imageData
+        self.browserURL = browserURL
+        self.documentPath = documentPath
     }
 }
 
@@ -158,7 +164,9 @@ public actor CaptureScheduler {
                     windowTitle: capturedWindow.windowTitle,
                     capturedAt: capturedWindow.capturedAt,
                     ocrText: "",
-                    imageData: nil
+                    imageData: nil,
+                    browserURL: capturedWindow.browserURL,
+                    documentPath: capturedWindow.documentPath
                 )
                 lastErrorDescription = nil
                 return .prepared(manualCaptureDraft)
@@ -182,7 +190,9 @@ public actor CaptureScheduler {
                 windowTitle: capturedWindow.windowTitle,
                 capturedAt: capturedWindow.capturedAt,
                 ocrText: normalizedText,
-                imageData: encodedImageData
+                imageData: encodedImageData,
+                browserURL: capturedWindow.browserURL,
+                documentPath: capturedWindow.documentPath
             )
             lastErrorDescription = nil
             return .prepared(manualCaptureDraft)
@@ -211,7 +221,9 @@ public actor CaptureScheduler {
                 ocrText: manualCaptureDraft.ocrText,
                 hasImage: manualCaptureDraft.imageData != nil,
                 captureTrigger: .manual,
-                comments: normalizedManualComment
+                comments: normalizedManualComment,
+                browserURL: manualCaptureDraft.browserURL,
+                documentPath: manualCaptureDraft.documentPath
             )
             try dataStore.saveRecord(captureRecord)
             if let imageData = manualCaptureDraft.imageData {
@@ -273,7 +285,9 @@ public actor CaptureScheduler {
                 ocrText: "",
                 hasImage: false,
                 captureTrigger: captureTrigger,
-                comments: normalizedManualComment
+                comments: normalizedManualComment,
+                browserURL: capturedWindow.browserURL,
+                documentPath: capturedWindow.documentPath
             )
             try dataStore.saveRecord(captureRecord)
             try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
@@ -325,7 +339,9 @@ public actor CaptureScheduler {
             ocrText: normalizedText,
             hasImage: imageData != nil,
             captureTrigger: captureTrigger,
-            comments: normalizedManualComment
+            comments: normalizedManualComment,
+            browserURL: capturedWindow.browserURL,
+            documentPath: capturedWindow.documentPath
         )
         try dataStore.saveRecord(captureRecord)
 

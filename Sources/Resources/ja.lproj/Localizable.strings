@@ -30,11 +30,14 @@
 "settings.section.screen_capture" = "画面収録";
 "settings.label.permission" = "権限";
 "settings.label.permission.screen_recording" = "画面収録";
-"settings.label.permission.text_selection" = "選択テキストアクセス";
+"settings.label.permission.text_selection" = "アクセシビリティ（選択テキスト / ドキュメントパス）";
 "settings.permission.granted" = "許可済み";
 "settings.permission.denied" = "未許可";
 "settings.button.request_permission" = "要求";
 "settings.button.refresh_permission" = "権限状態を更新";
+"settings.label.permission.automation" = "オートメーション (ブラウザURL取得)";
+"settings.button.open_system_settings" = "システム設定を開く";
+"settings.description.automation" = "ブラウザURL取得時にmacOSが自動で許可を確認します";
 
 "settings.section.keyboard_shortcut" = "キーボードショートカット";
 "settings.label.capture_now_shortcut" = "今すぐ記録";
@@ -104,11 +107,13 @@
 "viewer.label.application_filter" = "アプリ";
 "viewer.label.capture_trigger_filter" = "記録種別";
 "viewer.button.reload" = "再読み込み";
-"viewer.placeholder.search_text" = "ウィンドウタイトル / 認識テキスト / コメントを検索";
+"viewer.placeholder.search_text" = "ウィンドウタイトル / 認識テキスト / URL / ファイルパス / コメントを検索";
 "viewer.label.record_count" = "レコード: %d件";
 "viewer.placeholder.select_record" = "左の一覧からレコードを選択してください。";
 "viewer.field.application_name" = "アプリ名";
 "viewer.field.window_title" = "ウィンドウタイトル";
+"viewer.field.browser_url" = "URL";
+"viewer.field.document_path" = "ファイルパス";
 "viewer.field.capture_trigger" = "記録トリガー";
 "viewer.field.image_state" = "画像状態";
 "viewer.section.image" = "画像";
@@ -184,4 +189,4 @@
 
 "report.prompt.all_day" = "全日";
 
-"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: テキスト認識結果\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n- `comments`: 手動記録コメント（空文字の場合あり）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";
+"report.prompt.default_template" = "以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。\nいまの作業ディレクトリは `timeSlice/data` です。\n次のファイルを読み込んで、内容を要約して日報を作成してください:\n{{JSON_FILE_LIST}}\n\n期待レコード件数の目安: {{RECORD_COUNT}} 件\n\n各 JSON の構造:\n- `applicationName`: フロントアプリ名\n- `windowTitle`: ウィンドウタイトル（null の場合あり）\n- `capturedAt`: ISO 8601 の記録時刻\n- `ocrText`: テキスト認識結果\n- `hasImage`: 画像保存フラグ\n- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）\n- `comments`: 手動記録コメント（空文字の場合あり）\n- `browserURL`: ブラウザのアクティブタブURL（null の場合あり、ブラウザアプリのみ）\n- `documentPath`: ドキュメントのファイルパス（null の場合あり、対応アプリのみ）\n\n重要:\n- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。\n- `captureTrigger` が `manual` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。\n- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。\n- 概要・作業タイムライン・成果物/進捗には、`manual` の記録に基づく内容を必ず含めてください。\n\n日報を Markdown で作成してください。次の構成を厳守してください:\n1. 概要（2-3文）\n2. 作業タイムライン（時間帯ごと）\n3. 使用アプリケーション一覧と使用時間\n4. 成果物・進捗\n5. 所感（任意）";

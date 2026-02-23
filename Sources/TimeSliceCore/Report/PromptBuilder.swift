@@ -88,6 +88,8 @@ public struct PromptBuilder: Sendable {
     - `hasImage`: 画像保存フラグ
     - `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ）
     - `comments`: 手動記録コメント（空文字の場合あり）
+    - `browserURL`: ブラウザのアクティブタブURL（null の場合あり、ブラウザアプリのみ）
+    - `documentPath`: ドキュメントのファイルパス（null の場合あり、対応アプリのみ）
 
     重要:
     - 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。

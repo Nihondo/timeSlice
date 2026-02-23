@@ -15,6 +15,8 @@
 		42A760F62F433BDF00FA9E46 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760CF2F433BDF00FA9E46 /* AppState.swift */; };
 		42A760F82F433BDF00FA9E46 /* ScreenCaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */; };
 		42A760FA2F433BDF00FA9E46 /* CaptureScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */; };
+		42A76F0CBD7A55A5948E0E5D /* BrowserURLResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */; };
+		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
 		42A760FB2F433BDF00FA9E46 /* DuplicateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760DA2F433BDF00FA9E46 /* DuplicateDetector.swift */; };
 		42A760FC2F433BDF00FA9E46 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760DE2F433BDF00FA9E46 /* DataStore.swift */; };
 		42A761002F433BDF00FA9E46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D12F433BDF00FA9E46 /* SettingsView.swift */; };
@@ -45,6 +47,8 @@
 		42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScheduler.swift; sourceTree = "<group>"; };
 		42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureManager.swift; sourceTree = "<group>"; };
 		42A760D62F433BDF00FA9E46 /* ScreenCapturing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCapturing.swift; sourceTree = "<group>"; };
+		42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserURLResolving.swift; sourceTree = "<group>"; };
+		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
 		42A760D82F433BDF00FA9E46 /* CaptureRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecord.swift; sourceTree = "<group>"; };
 		42A760DA2F433BDF00FA9E46 /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
 		42A760DB2F433BDF00FA9E46 /* OCRManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRManager.swift; sourceTree = "<group>"; };
@@ -121,6 +125,8 @@
 				42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */,
 				42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */,
 				42A760D62F433BDF00FA9E46 /* ScreenCapturing.swift */,
+				42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */,
+				42E2D0013001000000AA1122 /* DocumentPathResolving.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -296,6 +302,8 @@
 				42A760F62F433BDF00FA9E46 /* AppState.swift in Sources */,
 				42A760F82F433BDF00FA9E46 /* ScreenCaptureManager.swift in Sources */,
 				42A760FA2F433BDF00FA9E46 /* CaptureScheduler.swift in Sources */,
+				42A76F0CBD7A55A5948E0E5D /* BrowserURLResolving.swift in Sources */,
+				42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */,
 				42A760FB2F433BDF00FA9E46 /* DuplicateDetector.swift in Sources */,
 				42A760FC2F433BDF00FA9E46 /* DataStore.swift in Sources */,
 				42A761002F433BDF00FA9E46 /* SettingsView.swift in Sources */,
@@ -468,6 +476,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -475,6 +484,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "timeSlice needs Automation permission to capture the active browser tab URL.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -504,6 +514,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -511,6 +522,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "timeSlice needs Automation permission to capture the active browser tab URL.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

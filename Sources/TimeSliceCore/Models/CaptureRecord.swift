@@ -15,6 +15,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
     public let hasImage: Bool
     public let captureTrigger: CaptureTrigger
     public let comments: String?
+    public let browserURL: String?
+    public let documentPath: String?
 
     public init(
         id: UUID = UUID(),
@@ -24,7 +26,9 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         ocrText: String,
         hasImage: Bool,
         captureTrigger: CaptureTrigger = .scheduled,
-        comments: String? = nil
+        comments: String? = nil,
+        browserURL: String? = nil,
+        documentPath: String? = nil
     ) {
         self.id = id
         self.applicationName = applicationName
@@ -34,6 +38,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         self.hasImage = hasImage
         self.captureTrigger = captureTrigger
         self.comments = comments
+        self.browserURL = browserURL
+        self.documentPath = documentPath
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -45,6 +51,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         case hasImage
         case captureTrigger
         case comments
+        case browserURL
+        case documentPath
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,6 +65,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         hasImage = try container.decode(Bool.self, forKey: .hasImage)
         captureTrigger = try container.decodeIfPresent(CaptureTrigger.self, forKey: .captureTrigger) ?? .scheduled
         comments = try container.decodeIfPresent(String.self, forKey: .comments)
+        browserURL = try container.decodeIfPresent(String.self, forKey: .browserURL)
+        documentPath = try container.decodeIfPresent(String.self, forKey: .documentPath)
     }
 }
 

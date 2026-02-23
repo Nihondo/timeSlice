@@ -253,7 +253,15 @@ struct CaptureViewerView: View {
             of: normalizedSearchQueryText,
             options: [.caseInsensitive, .diacriticInsensitive]
         ) != nil
-        return matchesWindowTitle || matchesOCRText || matchesComment
+        let matchesBrowserURL = (artifact.record.browserURL ?? "").range(
+            of: normalizedSearchQueryText,
+            options: [.caseInsensitive, .diacriticInsensitive]
+        ) != nil
+        let matchesDocumentPath = (artifact.record.documentPath ?? "").range(
+            of: normalizedSearchQueryText,
+            options: [.caseInsensitive, .diacriticInsensitive]
+        ) != nil
+        return matchesWindowTitle || matchesOCRText || matchesComment || matchesBrowserURL || matchesDocumentPath
     }
 
     private func resolveHighlightedText(_ text: String) -> AttributedString {
@@ -369,6 +377,12 @@ struct CaptureViewerView: View {
                 Group {
                     Text("\(L10n.string("viewer.field.application_name")): \(artifact.record.applicationName)")
                     Text("\(L10n.string("viewer.field.window_title")): \(Text(resolveHighlightedText(windowTitleText)))")
+                    if let browserURL = artifact.record.browserURL, browserURL.isEmpty == false {
+                        Text("\(L10n.string("viewer.field.browser_url")): \(Text(resolveHighlightedText(browserURL)))")
+                    }
+                    if let documentPath = artifact.record.documentPath, documentPath.isEmpty == false {
+                        Text("\(L10n.string("viewer.field.document_path")): \(Text(resolveHighlightedText(documentPath)))")
+                    }
                 }
                 .font(.subheadline)
 
