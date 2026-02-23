@@ -73,13 +73,42 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
                 standardInputPipe: standardInputPipe
             )
 
+            // Accumulate stdout/stderr asynchronously to avoid blocking on
+            // readDataToEndOfFile() when child processes inherit pipe fds.
+            let outputAccumulator = PipeAccumulator()
+            let errorAccumulator = PipeAccumulator()
+            standardOutputPipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    standardOutputPipe.fileHandleForReading.readabilityHandler = nil
+                } else {
+                    outputAccumulator.append(data)
+                }
+            }
+            standardErrorPipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    standardErrorPipe.fileHandleForReading.readabilityHandler = nil
+                } else {
+                    errorAccumulator.append(data)
+                }
+            }
+
             let continuationGate = ContinuationGate(continuation: continuation)
             process.terminationHandler = { terminatedProcess in
+                // Stop readability handlers and drain remaining buffered data.
+                standardOutputPipe.fileHandleForReading.readabilityHandler = nil
+                standardErrorPipe.fileHandleForReading.readabilityHandler = nil
+                let remainingOutput = standardOutputPipe.fileHandleForReading.availableData
+                let remainingError = standardErrorPipe.fileHandleForReading.availableData
+                if remainingOutput.isEmpty == false { outputAccumulator.append(remainingOutput) }
+                if remainingError.isEmpty == false { errorAccumulator.append(remainingError) }
+
                 let executionResult = Self.resolveExecutionResult(
                     process: terminatedProcess,
                     command: normalizedCommand,
-                    standardOutputPipe: standardOutputPipe,
-                    standardErrorPipe: standardErrorPipe
+                    standardOutputText: outputAccumulator.text,
+                    standardErrorText: errorAccumulator.text
                 )
                 continuationGate.finish(with: executionResult)
             }
@@ -101,6 +130,8 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
                 command: normalizedCommand,
                 timeoutSeconds: timeoutSeconds,
                 process: process,
+                standardOutputPipe: standardOutputPipe,
+                standardErrorPipe: standardErrorPipe,
                 continuationGate: continuationGate
             )
         }
@@ -219,6 +250,8 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
         command: String,
         timeoutSeconds: TimeInterval,
         process: Process,
+        standardOutputPipe: Pipe,
+        standardErrorPipe: Pipe,
         continuationGate: ContinuationGate
     ) {
         Task {
@@ -232,6 +265,10 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
                 return
             }
 
+            // Clean up pipe handlers to prevent resource leaks.
+            standardOutputPipe.fileHandleForReading.readabilityHandler = nil
+            standardErrorPipe.fileHandleForReading.readabilityHandler = nil
+
             if process.isRunning {
                 process.terminate()
             }
@@ -244,14 +281,9 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
     private static func resolveExecutionResult(
         process: Process,
         command: String,
-        standardOutputPipe: Pipe,
-        standardErrorPipe: Pipe
+        standardOutputText: String,
+        standardErrorText: String
     ) -> Result<String, Error> {
-        let standardOutputData = standardOutputPipe.fileHandleForReading.readDataToEndOfFile()
-        let standardErrorData = standardErrorPipe.fileHandleForReading.readDataToEndOfFile()
-        let standardOutputText = String(data: standardOutputData, encoding: .utf8) ?? ""
-        let standardErrorText = String(data: standardErrorData, encoding: .utf8) ?? ""
-
         let mergedOutput = [standardOutputText, standardErrorText]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.isEmpty == false }
@@ -274,6 +306,23 @@ public final class CLIExecutor: CLIExecutable, @unchecked Sendable {
 private struct PreparedExecutionInput {
     let arguments: [String]
     let stdinInput: String?
+}
+
+private final class PipeAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data = Data()
+
+    func append(_ newData: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        data.append(newData)
+    }
+
+    var text: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
 }
 
 private final class ContinuationGate {
