@@ -68,6 +68,9 @@
 "settings.button.delete_excluded_window_title" = "削除";
 "settings.section.storage" = "保存";
 "settings.toggle.save_images" = "画像も保存する";
+"settings.label.image_format" = "画像保存形式";
+"settings.value.image_format.png" = "PNG";
+"settings.value.image_format.jpg" = "JPG";
 "settings.footer.storage" = "設定変更は即時反映されます（記録中は次回キャプチャから反映）。";
 
 "settings.section.ai_cli" = "AI CLIコマンド";
@@ -173,7 +176,7 @@
 "capture.skip_reason.no_window" = "ウィンドウなし";
 "capture.skip_reason.short_text" = "短文";
 "capture.skip_reason.duplicate_text" = "重複テキスト";
-"capture.skip_reason.png_encoding_failed" = "PNGエンコード失敗";
+"capture.skip_reason.image_encoding_failed" = "画像エンコード失敗";
 
 "message.scheduler.disabled" = "定時自動生成: 無効";
 "message.scheduler.enabled" = "定時自動生成: 有効";

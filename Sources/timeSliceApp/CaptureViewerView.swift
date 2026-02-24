@@ -32,6 +32,9 @@ struct CaptureViewerView: View {
     private var selectedTimeSortOrderRawValue = CaptureViewerTimeSortOrder.ascending.rawValue
     @State private var captureViewerDate = Date()
     @State private var selectedCaptureArtifactID: UUID?
+    @State private var displayedArtifacts: [CaptureRecordArtifact] = []
+    @State private var displayedArtifactsByID: [UUID: CaptureRecordArtifact] = [:]
+    @State private var isOCRSectionExpanded = false
     @State private var selectedApplicationFilter: CaptureViewerApplicationFilter = .all
     @State private var selectedCaptureTriggerFilter: CaptureViewerCaptureTriggerFilter = .all
     @State private var searchInputText = ""
@@ -84,7 +87,7 @@ struct CaptureViewerView: View {
                 }
                 .pickerStyle(.menu)
                 .onChange(of: selectedTimeSortOrderRawValue) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
+                    refreshDisplayedArtifacts()
                 }
 
                 Picker("viewer.label.application_filter", selection: $selectedApplicationFilter) {
@@ -97,7 +100,7 @@ struct CaptureViewerView: View {
                 }
                 .pickerStyle(.menu)
                 .onChange(of: selectedApplicationFilter) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
+                    refreshDisplayedArtifacts()
                 }
 
                 Picker("viewer.label.capture_trigger_filter", selection: $selectedCaptureTriggerFilter) {
@@ -108,7 +111,7 @@ struct CaptureViewerView: View {
                 }
                 .pickerStyle(.menu)
                 .onChange(of: selectedCaptureTriggerFilter) { _, _ in
-                    synchronizeSelectedCaptureArtifactIfNeeded()
+                    refreshDisplayedArtifacts()
                 }
 
                 TextField("viewer.placeholder.search_text", text: $searchInputText)
@@ -170,17 +173,20 @@ struct CaptureViewerView: View {
             applyExternalSearchRequestIfNeeded()
             guard appState.captureViewerArtifacts.isEmpty else {
                 synchronizeApplicationFilterIfNeeded()
-                synchronizeSelectedCaptureArtifactIfNeeded()
+                refreshDisplayedArtifacts()
                 return
             }
             loadCaptureViewerArtifacts()
+        }
+        .onChange(of: selectedCaptureArtifactID) { _, _ in
+            isOCRSectionExpanded = false
         }
         .onChange(of: appState.captureViewerSearchRequestSequence) { _, _ in
             applyExternalSearchRequestIfNeeded()
         }
         .onChange(of: appState.captureViewerArtifacts) { _, _ in
             synchronizeApplicationFilterIfNeeded()
-            synchronizeSelectedCaptureArtifactIfNeeded()
+            refreshDisplayedArtifacts()
         }
     }
 
@@ -191,7 +197,14 @@ struct CaptureViewerView: View {
         }
     }
 
-    private var displayedArtifacts: [CaptureRecordArtifact] {
+    private var selectedCaptureArtifact: CaptureRecordArtifact? {
+        guard let selectedCaptureArtifactID else {
+            return nil
+        }
+        return displayedArtifactsByID[selectedCaptureArtifactID]
+    }
+
+    private func resolveDisplayedArtifacts() -> [CaptureRecordArtifact] {
         let captureTriggerFilteredArtifacts = appState.captureViewerArtifacts.filter { artifact in
             switch selectedCaptureTriggerFilter {
             case .all:
@@ -210,13 +223,6 @@ struct CaptureViewerView: View {
         }
         let searchFilteredArtifacts = applicationFilteredArtifacts.filter(matchesSearchQuery)
         return searchFilteredArtifacts.sorted(by: compareCaptureArtifactsByTime)
-    }
-
-    private var selectedCaptureArtifact: CaptureRecordArtifact? {
-        guard let selectedCaptureArtifactID else {
-            return nil
-        }
-        return displayedArtifacts.first { $0.id == selectedCaptureArtifactID }
     }
 
     private func compareCaptureArtifactsByTime(_ leftArtifact: CaptureRecordArtifact, _ rightArtifact: CaptureRecordArtifact) -> Bool {
@@ -287,13 +293,32 @@ struct CaptureViewerView: View {
         return highlightedText
     }
 
+    private func resolveDisplayText(_ text: String) -> Text {
+        if normalizedSearchQueryText.isEmpty {
+            Text(text)
+        } else {
+            Text(resolveHighlightedText(text))
+        }
+    }
+
     private func loadCaptureViewerArtifacts() {
         let targetDate = captureViewerDate
         Task { @MainActor in
             await appState.loadCaptureViewerArtifacts(on: targetDate)
             synchronizeApplicationFilterIfNeeded()
-            synchronizeSelectedCaptureArtifactIfNeeded()
+            refreshDisplayedArtifacts()
         }
+    }
+
+    private func refreshDisplayedArtifacts() {
+        let refreshedArtifacts = resolveDisplayedArtifacts()
+        displayedArtifacts = refreshedArtifacts
+        displayedArtifactsByID = Dictionary(
+            uniqueKeysWithValues: refreshedArtifacts.map { artifact in
+                (artifact.id, artifact)
+            }
+        )
+        synchronizeSelectedCaptureArtifactIfNeeded()
     }
 
     private func synchronizeApplicationFilterIfNeeded() {
@@ -311,6 +336,7 @@ struct CaptureViewerView: View {
     private func synchronizeSelectedCaptureArtifactIfNeeded() {
         guard displayedArtifacts.isEmpty == false else {
             selectedCaptureArtifactID = nil
+            isOCRSectionExpanded = false
             return
         }
 
@@ -349,7 +375,7 @@ struct CaptureViewerView: View {
             Text(artifact.record.applicationName)
                 .lineLimit(1)
 
-            Text(resolveHighlightedText(windowTitleText))
+            resolveDisplayText(windowTitleText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -376,12 +402,12 @@ struct CaptureViewerView: View {
 
                 Group {
                     Text("\(L10n.string("viewer.field.application_name")): \(artifact.record.applicationName)")
-                    Text("\(L10n.string("viewer.field.window_title")): \(Text(resolveHighlightedText(windowTitleText)))")
+                    Text("\(L10n.string("viewer.field.window_title")): \(resolveDisplayText(windowTitleText))")
                     if let browserURL = artifact.record.browserURL, browserURL.isEmpty == false {
-                        Text("\(L10n.string("viewer.field.browser_url")): \(Text(resolveHighlightedText(browserURL)))")
+                        Text("\(L10n.string("viewer.field.browser_url")): \(resolveDisplayText(browserURL))")
                     }
                     if let documentPath = artifact.record.documentPath, documentPath.isEmpty == false {
-                        Text("\(L10n.string("viewer.field.document_path")): \(Text(resolveHighlightedText(documentPath)))")
+                        Text("\(L10n.string("viewer.field.document_path")): \(resolveDisplayText(documentPath))")
                     }
                 }
                 .font(.subheadline)
@@ -406,20 +432,23 @@ struct CaptureViewerView: View {
 
                 captureViewerSectionSeparator
 
-                VStack(alignment: .leading, spacing: 8) {
+                DisclosureGroup(isExpanded: $isOCRSectionExpanded) {
+                    if isOCRSectionExpanded {
+                        if artifact.record.ocrText.isEmpty {
+                            Text("viewer.value.empty_text")
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            resolveDisplayText(artifact.record.ocrText)
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                } label: {
                     Text("viewer.section.ocr")
                         .font(.headline)
-                    if artifact.record.ocrText.isEmpty {
-                        Text("viewer.value.empty_text")
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Text(resolveHighlightedText(artifact.record.ocrText))
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
                 }
 
                 captureViewerSectionSeparator
@@ -474,7 +503,7 @@ struct CaptureViewerView: View {
 
     private func applyCaptureViewerSearchQuery() {
         confirmedSearchQueryText = searchInputText
-        synchronizeSelectedCaptureArtifactIfNeeded()
+        refreshDisplayedArtifacts()
     }
 
     private func applyExternalSearchRequestIfNeeded() {
@@ -491,7 +520,7 @@ struct CaptureViewerView: View {
     @ViewBuilder
     private func captureViewerCommentTextView(comment: String?) -> some View {
         if let comment, comment.isEmpty == false {
-            Text(resolveHighlightedText(comment))
+            resolveDisplayText(comment)
         } else {
             Text(resolveCaptureCommentText(comment))
         }
@@ -522,15 +551,29 @@ struct CaptureViewerView: View {
             Text("viewer.message.image_missing_or_expired")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        } else if
-            let imageFileURL = artifact.imageFileURL,
-            let image = NSImage(contentsOf: imageFileURL)
-        {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 360, alignment: .leading)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else if let imageFileURL = artifact.imageFileURL {
+            AsyncImage(url: imageFileURL) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity, maxHeight: 160, alignment: .center)
+                case let .success(image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 360, alignment: .leading)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                case .failure:
+                    Text("viewer.message.image_load_failed")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                @unknown default:
+                    Text("viewer.message.image_load_failed")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         } else {
             Text("viewer.message.image_load_failed")
                 .font(.caption)

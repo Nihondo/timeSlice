@@ -10,6 +10,7 @@ enum AppSettingsKey {
     static let captureIntervalSeconds = "capture.intervalSeconds"
     static let captureMinimumTextLength = "capture.minimumTextLength"
     static let captureShouldSaveImages = "capture.shouldSaveImages"
+    static let captureImageFormat = "capture.imageFormat"
     static let captureExcludedApplications = "capture.excludedApplications"
     static let captureExcludedWindowTitles = "capture.excludedWindowTitles"
     static let reportCLICommand = "report.cliCommand"
@@ -177,6 +178,16 @@ enum AppSettingsResolver {
     static func resolveShouldSaveImages(userDefaults: UserDefaults = .standard) -> Bool {
         let hasValue = userDefaults.object(forKey: AppSettingsKey.captureShouldSaveImages) != nil
         return hasValue ? userDefaults.bool(forKey: AppSettingsKey.captureShouldSaveImages) : true
+    }
+
+    static func resolveCaptureImageFormat(userDefaults: UserDefaults = .standard) -> CaptureImageFormat {
+        let storedRawValue = userDefaults.string(forKey: AppSettingsKey.captureImageFormat)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard let storedRawValue, let imageFormat = CaptureImageFormat(rawValue: storedRawValue) else {
+            return .png
+        }
+        return imageFormat
     }
 
     static func resolveExcludedApplications(userDefaults: UserDefaults = .standard) -> [String] {

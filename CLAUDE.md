@@ -39,7 +39,7 @@ CaptureScheduler (actor, periodic loop)
   → BrowserURLResolving protocol → BrowserURLResolver (AppleScript, per-browser)
   → TextRecognizing protocol → Vision-based recognizer implementation
   → DuplicateDetector (actor, hash-based consecutive dedup)
-  → DataStore (JSON) + ImageStore (PNG)
+  → DataStore (JSON) + ImageStore (PNG/JPG selectable)
 ```
 
 - `CaptureScheduler.performCaptureCycle(captureTrigger:manualComment:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
@@ -128,7 +128,7 @@ App Sandbox is **disabled** (Hardened Runtime is enabled). All data goes to `~/L
 
 Stored structure:
 - `data/YYYY/MM/DD/HHMMSS_xxxx.json` — CaptureRecord (30-day retention)
-- `images/YYYY/MM/DD/HHMMSS_xxxx.png` — screenshots (3-day retention)
+- `images/YYYY/MM/DD/HHMMSS_xxxx.(png|jpg)` — screenshots (3-day retention)
 - `logs/report-last-run.json` — latest report execution details (command/prompt/output/status/error)
 - `reports/YYYY/MM/DD/report.md` — full-day report (custom output directory supported)
 - `reports/YYYY/MM/DD/report-HHMM-HHMM.md` — time-slot report (e.g. `report-0800-1200.md`)

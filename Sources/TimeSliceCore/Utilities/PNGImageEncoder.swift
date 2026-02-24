@@ -3,13 +3,37 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// Encodes `CGImage` into PNG data.
-public enum PNGImageEncoder {
-    public static func encodeImage(_ image: CGImage) -> Data? {
+/// Supported image formats for capture image persistence.
+public enum CaptureImageFormat: String, CaseIterable, Codable, Sendable {
+    case png
+    case jpg
+
+    public var fileExtension: String {
+        switch self {
+        case .png:
+            "png"
+        case .jpg:
+            "jpg"
+        }
+    }
+
+    var utTypeIdentifier: CFString {
+        switch self {
+        case .png:
+            UTType.png.identifier as CFString
+        case .jpg:
+            UTType.jpeg.identifier as CFString
+        }
+    }
+}
+
+/// Encodes `CGImage` into configured image data.
+public enum CaptureImageEncoder {
+    public static func encodeImage(_ image: CGImage, format: CaptureImageFormat) -> Data? {
         let mutableData = NSMutableData()
         guard let imageDestination = CGImageDestinationCreateWithData(
             mutableData,
-            UTType.png.identifier as CFString,
+            format.utTypeIdentifier,
             1,
             nil
         ) else {

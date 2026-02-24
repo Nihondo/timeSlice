@@ -133,18 +133,54 @@ public struct DataStore: @unchecked Sendable {
             )
         }
 
-        let imageFileURL = pathResolver.imageDirectoryURL(for: record.capturedAt)
-            .appendingPathComponent(
-                pathResolver.buildImageFileName(capturedAt: record.capturedAt, recordID: record.id)
-            )
-        let isImagePresent = fileManager.fileExists(atPath: imageFileURL.path)
+        let imageFileURL = resolveImageFileURL(for: record)
+        let isImagePresent = imageFileURL != nil
         let imageLinkState: CaptureImageLinkState = isImagePresent ? .available : .missingOrExpired
         return CaptureRecordArtifact(
             record: record,
             jsonFileURL: jsonFileURL,
-            imageFileURL: imageFileURL,
+            imageFileURL: imageFileURL ?? expectedImageFileURL(
+                for: record,
+                imageFormat: record.imageFormat ?? .png
+            ),
             imageLinkState: imageLinkState
         )
+    }
+
+    private func resolveImageFileURL(for record: CaptureRecord) -> URL? {
+        if let imageFormat = record.imageFormat {
+            let resolvedImageFileURL = expectedImageFileURL(for: record, imageFormat: imageFormat)
+            let isImagePresent = fileManager.fileExists(atPath: resolvedImageFileURL.path)
+            return isImagePresent ? resolvedImageFileURL : nil
+        }
+
+        for fileName in pathResolver.buildImageFileNameCandidates(
+            capturedAt: record.capturedAt,
+            recordID: record.id
+        ) {
+            let candidateFileURL = pathResolver.imageDirectoryURL(for: record.capturedAt)
+                .appendingPathComponent(fileName)
+            let isImagePresent = fileManager.fileExists(atPath: candidateFileURL.path)
+            if isImagePresent {
+                return candidateFileURL
+            }
+        }
+
+        return nil
+    }
+
+    private func expectedImageFileURL(
+        for record: CaptureRecord,
+        imageFormat: CaptureImageFormat = .png
+    ) -> URL {
+        pathResolver.imageDirectoryURL(for: record.capturedAt)
+            .appendingPathComponent(
+                pathResolver.buildImageFileName(
+                    capturedAt: record.capturedAt,
+                    recordID: record.id,
+                    imageFormat: imageFormat
+                )
+            )
     }
 
 }

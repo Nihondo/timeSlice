@@ -68,6 +68,9 @@
 "settings.button.delete_excluded_window_title" = "Delete";
 "settings.section.storage" = "Storage";
 "settings.toggle.save_images" = "Save images";
+"settings.label.image_format" = "Image format";
+"settings.value.image_format.png" = "PNG";
+"settings.value.image_format.jpg" = "JPG";
 "settings.footer.storage" = "Changes apply immediately (during recording, from the next capture).";
 
 "settings.section.ai_cli" = "AI CLI Command";
@@ -173,7 +176,7 @@
 "capture.skip_reason.no_window" = "No active window";
 "capture.skip_reason.short_text" = "Text too short";
 "capture.skip_reason.duplicate_text" = "Duplicate text";
-"capture.skip_reason.png_encoding_failed" = "PNG encoding failed";
+"capture.skip_reason.image_encoding_failed" = "Image encoding failed";
 
 "message.scheduler.disabled" = "Scheduled auto generation: Disabled";
 "message.scheduler.enabled" = "Scheduled auto generation: Enabled";

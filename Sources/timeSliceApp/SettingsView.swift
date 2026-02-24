@@ -17,6 +17,7 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.captureIntervalSeconds) private var captureIntervalSeconds = 60.0
     @AppStorage(AppSettingsKey.captureMinimumTextLength) private var minimumTextLength = 10
     @AppStorage(AppSettingsKey.captureShouldSaveImages) private var shouldSaveImages = true
+    @AppStorage(AppSettingsKey.captureImageFormat) private var captureImageFormatRawValue = CaptureImageFormat.png.rawValue
     @AppStorage(AppSettingsKey.reportCLICommand) private var reportCLICommand = "gemini"
     @AppStorage(AppSettingsKey.reportCLIArguments) private var reportCLIArguments = "-p"
     @AppStorage(AppSettingsKey.reportCLITimeoutSeconds) private var reportCLITimeoutSeconds = 300
@@ -303,6 +304,11 @@ struct SettingsView: View {
 
             Section {
                 Toggle("settings.toggle.save_images", isOn: $shouldSaveImages)
+                Picker("settings.label.image_format", selection: captureImageFormatBinding) {
+                    Text("settings.value.image_format.png").tag(CaptureImageFormat.png)
+                    Text("settings.value.image_format.jpg").tag(CaptureImageFormat.jpg)
+                }
+                .disabled(shouldSaveImages == false)
             } header: {
                 Text("settings.section.storage")
             } footer: {
@@ -457,6 +463,13 @@ struct SettingsView: View {
 
     private var enabledTimeSlotCount: Int {
         timeSlots.filter(\.isEnabled).count
+    }
+
+    private var captureImageFormatBinding: Binding<CaptureImageFormat> {
+        Binding(
+            get: { CaptureImageFormat(rawValue: captureImageFormatRawValue) ?? .png },
+            set: { captureImageFormatRawValue = $0.rawValue }
+        )
     }
 
     private var timeSlotsListView: some View {

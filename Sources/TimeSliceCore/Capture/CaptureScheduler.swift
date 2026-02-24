@@ -4,6 +4,7 @@ public struct CaptureSchedulerConfiguration: Sendable {
     public let captureIntervalSeconds: TimeInterval
     public let minimumTextLength: Int
     public let shouldSaveImages: Bool
+    public let imageFormat: CaptureImageFormat
     public let excludedApplications: [String]
     public let excludedWindowTitles: [String]
 
@@ -11,12 +12,14 @@ public struct CaptureSchedulerConfiguration: Sendable {
         captureIntervalSeconds: TimeInterval = 60,
         minimumTextLength: Int = 10,
         shouldSaveImages: Bool = true,
+        imageFormat: CaptureImageFormat = .png,
         excludedApplications: [String] = [],
         excludedWindowTitles: [String] = []
     ) {
         self.captureIntervalSeconds = captureIntervalSeconds
         self.minimumTextLength = minimumTextLength
         self.shouldSaveImages = shouldSaveImages
+        self.imageFormat = imageFormat
         self.excludedApplications = excludedApplications
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.isEmpty == false }
@@ -30,7 +33,7 @@ public enum CaptureSkipReason: String, Sendable {
     case noWindow
     case shortText
     case duplicateText
-    case pngEncodingFailed
+    case imageEncodingFailed
 }
 
 public enum CaptureCycleOutcome: Sendable {
@@ -181,7 +184,10 @@ public actor CaptureScheduler {
             let normalizedText = recognizedText.trimmingCharacters(in: .whitespacesAndNewlines)
             let encodedImageData: Data?
             if configuration.shouldSaveImages {
-                encodedImageData = PNGImageEncoder.encodeImage(capturedWindow.image)
+                encodedImageData = CaptureImageEncoder.encodeImage(
+                    capturedWindow.image,
+                    format: configuration.imageFormat
+                )
             } else {
                 encodedImageData = nil
             }
@@ -220,6 +226,7 @@ public actor CaptureScheduler {
                 capturedAt: manualCaptureDraft.capturedAt,
                 ocrText: manualCaptureDraft.ocrText,
                 hasImage: manualCaptureDraft.imageData != nil,
+                imageFormat: manualCaptureDraft.imageData == nil ? nil : configuration.imageFormat,
                 captureTrigger: .manual,
                 comments: normalizedManualComment,
                 browserURL: manualCaptureDraft.browserURL,
@@ -230,7 +237,8 @@ public actor CaptureScheduler {
                 try imageStore.saveImageData(
                     imageData,
                     capturedAt: manualCaptureDraft.capturedAt,
-                    recordID: captureRecord.id
+                    recordID: captureRecord.id,
+                    imageFormat: configuration.imageFormat
                 )
             }
             try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
@@ -284,6 +292,7 @@ public actor CaptureScheduler {
                 capturedAt: capturedWindow.capturedAt,
                 ocrText: "",
                 hasImage: false,
+                imageFormat: nil,
                 captureTrigger: captureTrigger,
                 comments: normalizedManualComment,
                 browserURL: capturedWindow.browserURL,
@@ -321,12 +330,15 @@ public actor CaptureScheduler {
 
         let imageData: Data?
         if configuration.shouldSaveImages {
-            if let encodedImageData = PNGImageEncoder.encodeImage(capturedWindow.image) {
+            if let encodedImageData = CaptureImageEncoder.encodeImage(
+                capturedWindow.image,
+                format: configuration.imageFormat
+            ) {
                 imageData = encodedImageData
             } else if isManualCapture {
                 imageData = nil
             } else {
-                return .skipped(.pngEncodingFailed)
+                return .skipped(.imageEncodingFailed)
             }
         } else {
             imageData = nil
@@ -338,6 +350,7 @@ public actor CaptureScheduler {
             capturedAt: capturedWindow.capturedAt,
             ocrText: normalizedText,
             hasImage: imageData != nil,
+            imageFormat: imageData == nil ? nil : configuration.imageFormat,
             captureTrigger: captureTrigger,
             comments: normalizedManualComment,
             browserURL: capturedWindow.browserURL,
@@ -349,7 +362,8 @@ public actor CaptureScheduler {
             try imageStore.saveImageData(
                 imageData,
                 capturedAt: capturedWindow.capturedAt,
-                recordID: captureRecord.id
+                recordID: captureRecord.id,
+                imageFormat: configuration.imageFormat
             )
         }
 

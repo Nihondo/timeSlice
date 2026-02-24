@@ -1,6 +1,6 @@
 import Foundation
 
-/// Persists screenshot PNG files and cleans old image directories.
+/// Persists screenshot image files and cleans old image directories.
 public struct ImageStore: @unchecked Sendable {
     public let imageRetentionDays: Int
 
@@ -20,17 +20,22 @@ public struct ImageStore: @unchecked Sendable {
         self.imageRetentionDays = imageRetentionDays
     }
 
-    /// Saves screenshot PNG data and returns the saved file location.
+    /// Saves screenshot image data and returns the saved file location.
     @discardableResult
     public func saveImageData(
         _ imageData: Data,
         capturedAt: Date,
-        recordID: UUID
+        recordID: UUID,
+        imageFormat: CaptureImageFormat
     ) throws -> URL {
         let directoryURL = pathResolver.imageDirectoryURL(for: capturedAt)
         try StorageMaintenance.ensureDirectoryExists(at: directoryURL, fileManager: fileManager)
 
-        let fileName = pathResolver.buildImageFileName(capturedAt: capturedAt, recordID: recordID)
+        let fileName = pathResolver.buildImageFileName(
+            capturedAt: capturedAt,
+            recordID: recordID,
+            imageFormat: imageFormat
+        )
         let fileURL = directoryURL.appendingPathComponent(fileName)
         try imageData.write(to: fileURL, options: .atomic)
         return fileURL

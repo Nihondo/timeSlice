@@ -13,6 +13,7 @@ final class AppState {
         let captureIntervalSeconds: TimeInterval
         let minimumTextLength: Int
         let shouldSaveImages: Bool
+        let imageFormat: CaptureImageFormat
         let excludedApplications: [String]
         let excludedWindowTitles: [String]
 
@@ -21,6 +22,7 @@ final class AppState {
                 captureIntervalSeconds: captureIntervalSeconds,
                 minimumTextLength: minimumTextLength,
                 shouldSaveImages: shouldSaveImages,
+                imageFormat: imageFormat,
                 excludedApplications: excludedApplications,
                 excludedWindowTitles: excludedWindowTitles
             )
@@ -481,6 +483,7 @@ final class AppState {
             captureIntervalSeconds: AppSettingsResolver.resolveCaptureIntervalSeconds(userDefaults: userDefaults),
             minimumTextLength: AppSettingsResolver.resolveMinimumTextLength(userDefaults: userDefaults),
             shouldSaveImages: AppSettingsResolver.resolveShouldSaveImages(userDefaults: userDefaults),
+            imageFormat: AppSettingsResolver.resolveCaptureImageFormat(userDefaults: userDefaults),
             excludedApplications: AppSettingsResolver.resolveExcludedApplications(userDefaults: userDefaults),
             excludedWindowTitles: AppSettingsResolver.resolveExcludedWindowTitles(userDefaults: userDefaults)
         )
@@ -738,8 +741,8 @@ final class AppState {
             return L10n.string("capture.skip_reason.short_text")
         case .duplicateText:
             return L10n.string("capture.skip_reason.duplicate_text")
-        case .pngEncodingFailed:
-            return L10n.string("capture.skip_reason.png_encoding_failed")
+        case .imageEncodingFailed:
+            return L10n.string("capture.skip_reason.image_encoding_failed")
         }
     }
 }

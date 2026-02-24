@@ -29,10 +29,24 @@ public struct StoragePathResolver: @unchecked Sendable {
         return "\(timestamp)_\(shortIdentifier).json"
     }
 
-    public func buildImageFileName(capturedAt: Date, recordID: UUID) -> String {
+    public func buildImageFileName(
+        capturedAt: Date,
+        recordID: UUID,
+        imageFormat: CaptureImageFormat
+    ) -> String {
         let timestamp = makeTimestampString(from: capturedAt)
         let shortIdentifier = recordID.uuidString.prefix(4).lowercased()
-        return "\(timestamp)_\(shortIdentifier).png"
+        return "\(timestamp)_\(shortIdentifier).\(imageFormat.fileExtension)"
+    }
+
+    public func buildImageFileNameCandidates(capturedAt: Date, recordID: UUID) -> [String] {
+        CaptureImageFormat.allCases.map { imageFormat in
+            buildImageFileName(
+                capturedAt: capturedAt,
+                recordID: recordID,
+                imageFormat: imageFormat
+            )
+        }
     }
 
     private func directoryURL(basePath: String, date: Date) -> URL {

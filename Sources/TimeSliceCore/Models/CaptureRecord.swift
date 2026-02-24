@@ -13,6 +13,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
     public let capturedAt: Date
     public let ocrText: String
     public let hasImage: Bool
+    public let imageFormat: CaptureImageFormat?
     public let captureTrigger: CaptureTrigger
     public let comments: String?
     public let browserURL: String?
@@ -25,6 +26,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         capturedAt: Date,
         ocrText: String,
         hasImage: Bool,
+        imageFormat: CaptureImageFormat? = nil,
         captureTrigger: CaptureTrigger = .scheduled,
         comments: String? = nil,
         browserURL: String? = nil,
@@ -36,6 +38,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         self.capturedAt = capturedAt
         self.ocrText = ocrText
         self.hasImage = hasImage
+        self.imageFormat = imageFormat
         self.captureTrigger = captureTrigger
         self.comments = comments
         self.browserURL = browserURL
@@ -49,6 +52,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         case capturedAt
         case ocrText
         case hasImage
+        case imageFormat
         case captureTrigger
         case comments
         case browserURL
@@ -63,6 +67,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         capturedAt = try container.decode(Date.self, forKey: .capturedAt)
         ocrText = try container.decode(String.self, forKey: .ocrText)
         hasImage = try container.decode(Bool.self, forKey: .hasImage)
+        imageFormat = try container.decodeIfPresent(CaptureImageFormat.self, forKey: .imageFormat)
         captureTrigger = try container.decodeIfPresent(CaptureTrigger.self, forKey: .captureTrigger) ?? .scheduled
         comments = try container.decodeIfPresent(String.self, forKey: .comments)
         browserURL = try container.decodeIfPresent(String.self, forKey: .browserURL)
