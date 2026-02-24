@@ -15,8 +15,6 @@
 		42A760F62F433BDF00FA9E46 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760CF2F433BDF00FA9E46 /* AppState.swift */; };
 		42A760F82F433BDF00FA9E46 /* ScreenCaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */; };
 		42A760FA2F433BDF00FA9E46 /* CaptureScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */; };
-		42A76F0CBD7A55A5948E0E5D /* BrowserURLResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */; };
-		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
 		42A760FB2F433BDF00FA9E46 /* DuplicateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760DA2F433BDF00FA9E46 /* DuplicateDetector.swift */; };
 		42A760FC2F433BDF00FA9E46 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760DE2F433BDF00FA9E46 /* DataStore.swift */; };
 		42A761002F433BDF00FA9E46 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760D12F433BDF00FA9E46 /* SettingsView.swift */; };
@@ -33,10 +31,12 @@
 		42A761122F449A3C00FA9E46 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A761112F449A3C00FA9E46 /* Localization.swift */; };
 		42A761132F449A3C00FA9E46 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 42A761152F449A3C00FA9E46 /* Localizable.strings */; };
 		42A7611A2F5E000000FA9E46 /* ReportTimeSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7611B2F5E000000FA9E46 /* ReportTimeSlot.swift */; };
+		42A76F0CBD7A55A5948E0E5D /* BrowserURLResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */; };
 		42C1A7BA2FF1E00100AA1122 /* ManualCaptureCommentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */; };
 		42D800042FF4000000AA1122 /* AppStateSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800012FF4000000AA1122 /* AppStateSupport.swift */; };
 		42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800022FF4000000AA1122 /* CaptureViewerView.swift */; };
 		42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800032FF4000000AA1122 /* SettingsComponents.swift */; };
+		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,8 +47,6 @@
 		42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScheduler.swift; sourceTree = "<group>"; };
 		42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureManager.swift; sourceTree = "<group>"; };
 		42A760D62F433BDF00FA9E46 /* ScreenCapturing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCapturing.swift; sourceTree = "<group>"; };
-		42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserURLResolving.swift; sourceTree = "<group>"; };
-		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
 		42A760D82F433BDF00FA9E46 /* CaptureRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecord.swift; sourceTree = "<group>"; };
 		42A760DA2F433BDF00FA9E46 /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
 		42A760DB2F433BDF00FA9E46 /* OCRManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRManager.swift; sourceTree = "<group>"; };
@@ -69,10 +67,12 @@
 		42A761172F449A3C00FA9E46 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		42A7611B2F5E000000FA9E46 /* ReportTimeSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportTimeSlot.swift; sourceTree = "<group>"; };
+		42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserURLResolving.swift; sourceTree = "<group>"; };
 		42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCaptureCommentPanel.swift; sourceTree = "<group>"; };
 		42D800012FF4000000AA1122 /* AppStateSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSupport.swift; sourceTree = "<group>"; };
 		42D800022FF4000000AA1122 /* CaptureViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewerView.swift; sourceTree = "<group>"; };
 		42D800032FF4000000AA1122 /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
+		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -472,11 +472,11 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -490,7 +490,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -511,10 +511,10 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -528,7 +528,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
