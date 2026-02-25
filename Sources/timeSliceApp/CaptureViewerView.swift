@@ -25,6 +25,11 @@ private enum CaptureViewerCaptureTriggerFilter: String, CaseIterable, Identifiab
     }
 }
 
+private enum CaptureViewerFocusTarget: Hashable {
+    case searchInput
+    case captureList
+}
+
 struct CaptureViewerView: View {
     @Bindable var appState: AppState
 
@@ -40,7 +45,7 @@ struct CaptureViewerView: View {
     @State private var searchInputText = ""
     @State private var confirmedSearchQueryText = ""
     @State private var lastAppliedExternalSearchRequestSequence: UInt64 = 0
-    @FocusState private var isSearchInputFocused: Bool
+    @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
         confirmedSearchQueryText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -117,7 +122,7 @@ struct CaptureViewerView: View {
                 TextField("viewer.placeholder.search_text", text: $searchInputText)
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: 220, idealWidth: 300, maxWidth: 360)
-                    .focused($isSearchInputFocused)
+                    .focused($focusedControl, equals: .searchInput)
                     .onSubmit {
                         applyCaptureViewerSearchQuery()
                     }
@@ -153,6 +158,7 @@ struct CaptureViewerView: View {
                             .tag(artifact.id)
                     }
                 }
+                .focused($focusedControl, equals: .captureList)
                 .listStyle(.inset)
                 .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
 
@@ -170,13 +176,19 @@ struct CaptureViewerView: View {
         }
         .padding(12)
         .onAppear {
-            applyExternalSearchRequestIfNeeded()
+            let didApplyExternalSearchRequest = applyExternalSearchRequestIfNeeded()
             guard appState.captureViewerArtifacts.isEmpty else {
                 synchronizeApplicationFilterIfNeeded()
                 refreshDisplayedArtifacts()
+                if didApplyExternalSearchRequest == false {
+                    focusCaptureList()
+                }
                 return
             }
             loadCaptureViewerArtifacts()
+            if didApplyExternalSearchRequest == false {
+                focusCaptureList()
+            }
         }
         .onChange(of: selectedCaptureArtifactID) { _, _ in
             isOCRSectionExpanded = false
@@ -506,15 +518,23 @@ struct CaptureViewerView: View {
         refreshDisplayedArtifacts()
     }
 
-    private func applyExternalSearchRequestIfNeeded() {
+    @discardableResult
+    private func applyExternalSearchRequestIfNeeded() -> Bool {
         let requestedSequence = appState.captureViewerSearchRequestSequence
         guard requestedSequence != lastAppliedExternalSearchRequestSequence else {
-            return
+            return false
         }
         lastAppliedExternalSearchRequestSequence = requestedSequence
         searchInputText = appState.captureViewerSearchQuery
         applyCaptureViewerSearchQuery()
-        isSearchInputFocused = true
+        focusedControl = .searchInput
+        return true
+    }
+
+    private func focusCaptureList() {
+        Task { @MainActor in
+            focusedControl = .captureList
+        }
     }
 
     @ViewBuilder
