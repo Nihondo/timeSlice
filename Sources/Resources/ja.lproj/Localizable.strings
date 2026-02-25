@@ -55,7 +55,7 @@
 "settings.value.seconds" = "%d 秒";
 "settings.stepper.minimum_text_length" = "最小テキスト長: %d 文字";
 "settings.section.filter" = "フィルタ";
-"settings.footer.filter" = "この文字数以下の短文はテキスト認識結果に記録されません。";
+"settings.footer.filter" = "この文字数未満の短文はテキスト認識結果に記録されません。";
 "settings.section.excluded_apps" = "テキスト認識除外アプリ";
 "settings.footer.excluded_apps" = "フロントアプリ名に指定キーワードが部分一致した場合、テキスト認識を実行せずにアプリ名のみ記録します。";
 "settings.placeholder.excluded_app_name" = "アプリ名を入力";

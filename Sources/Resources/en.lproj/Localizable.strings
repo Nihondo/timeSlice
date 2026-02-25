@@ -55,7 +55,7 @@
 "settings.value.seconds" = "%d sec";
 "settings.stepper.minimum_text_length" = "Minimum text length: %d chars";
 "settings.section.filter" = "Filter";
-"settings.footer.filter" = "Text shorter than this length will not be stored.";
+"settings.footer.filter" = "In scheduled capture, OCR lines shorter than this length are excluded.";
 "settings.section.excluded_apps" = "Text Recognition Excluded Apps";
 "settings.footer.excluded_apps" = "If the foreground app name partially matches a keyword, text recognition is skipped and only the app name is recorded.";
 "settings.placeholder.excluded_app_name" = "Enter app name";

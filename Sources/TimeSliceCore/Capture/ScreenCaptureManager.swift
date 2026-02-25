@@ -55,6 +55,10 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
                 return false
             }
 
+            guard window.windowLayer == 0 else {
+                return false
+            }
+
             return window.frame.width > 1 && window.frame.height > 1
         }
 
@@ -106,16 +110,109 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
         frame.width * frame.height
     }
 
+    private func hasExtremeAspectRatio(_ frame: CGRect) -> Bool {
+        let width = frame.width
+        let height = frame.height
+        guard width > 0, height > 0 else {
+            return true
+        }
+
+        let aspectRatio = max(width / height, height / width)
+        // Guard against malformed frames that occasionally appear with fullscreen/video windows.
+        return aspectRatio >= 6
+    }
+
+    private func hasNonEmptyWindowTitle(_ title: String?) -> Bool {
+        guard let title else {
+            return false
+        }
+        return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    private func isLikelyOverlayWindow(frame: CGRect, title: String?) -> Bool {
+        let isShortHeightWindow = frame.height < 120
+        guard isShortHeightWindow else {
+            return false
+        }
+
+        if hasExtremeAspectRatio(frame) {
+            return true
+        }
+        return hasNonEmptyWindowTitle(title) == false
+    }
+
+    private func isLikelyOverlayWindow(_ window: SCWindow) -> Bool {
+        isLikelyOverlayWindow(frame: window.frame, title: window.title)
+    }
+
+    private func resolveLargestWindow(from windows: [SCWindow]) -> SCWindow? {
+        windows.max(by: { calculateWindowArea($0.frame) < calculateWindowArea($1.frame) })
+    }
+
+    private func resolvePreferredWindow(from windows: [SCWindow]) -> SCWindow? {
+        guard windows.isEmpty == false else {
+            return nil
+        }
+
+        let titledWindows = windows.filter { hasNonEmptyWindowTitle($0.title) }
+        if let largestTitledWindow = resolveLargestWindow(from: titledWindows) {
+            return largestTitledWindow
+        }
+        return resolveLargestWindow(from: windows)
+    }
+
     private func resolveCaptureTargetWindow(
         from candidateWindows: [SCWindow],
         processIdentifier: pid_t
     ) -> SCWindow? {
+        guard !candidateWindows.isEmpty else {
+            return nil
+        }
+
+        let nonOverlayWindows = candidateWindows.filter { !isLikelyOverlayWindow($0) }
+        let activeWindows = candidateWindows.filter(\.isActive)
+        let activeNonOverlayWindows = activeWindows.filter { !isLikelyOverlayWindow($0) }
+
+        if activeNonOverlayWindows.count == 1, let activeWindow = activeNonOverlayWindows.first {
+            return activeWindow
+        }
+
+        if !activeNonOverlayWindows.isEmpty,
+           let frontmostWindowID = resolveFrontmostWindowID(processIdentifier: processIdentifier),
+           let frontmostActiveWindow = activeNonOverlayWindows.first(where: { $0.windowID == frontmostWindowID }) {
+            return frontmostActiveWindow
+        }
+
+        if let frontmostWindowID = resolveFrontmostWindowID(processIdentifier: processIdentifier),
+           let frontmostWindow = candidateWindows.first(where: { $0.windowID == frontmostWindowID }) {
+            if !isLikelyOverlayWindow(frontmostWindow) {
+                return frontmostWindow
+            }
+            if let preferredWindow = resolvePreferredWindow(from: nonOverlayWindows) {
+                return preferredWindow
+            }
+            return frontmostWindow
+        }
+
+        if let preferredActiveWindow = resolvePreferredWindow(from: activeNonOverlayWindows) {
+            return preferredActiveWindow
+        }
+
+        if let preferredWindow = resolvePreferredWindow(from: nonOverlayWindows) {
+            return preferredWindow
+        }
+
         if let frontmostWindowID = resolveFrontmostWindowID(processIdentifier: processIdentifier),
            let frontmostWindow = candidateWindows.first(where: { $0.windowID == frontmostWindowID }) {
             return frontmostWindow
         }
 
-        return candidateWindows.max(by: { calculateWindowArea($0.frame) < calculateWindowArea($1.frame) })
+        let nonExtremeWindows = candidateWindows.filter { !hasExtremeAspectRatio($0.frame) }
+        if let largestNonExtremeWindow = resolveLargestWindow(from: nonExtremeWindows) {
+            return largestNonExtremeWindow
+        }
+
+        return resolveLargestWindow(from: candidateWindows)
     }
 
     private func resolveFrontmostWindowID(processIdentifier: pid_t) -> CGWindowID? {
@@ -130,6 +227,8 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
         else {
             return nil
         }
+
+        var fallbackWindowID: CGWindowID?
 
         for windowInfo in windowInfoList {
             guard
@@ -147,9 +246,31 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
             guard let windowNumber = windowInfo[kCGWindowNumber as String] as? NSNumber else {
                 continue
             }
-            return CGWindowID(windowNumber.uint32Value)
+            let windowID = CGWindowID(windowNumber.uint32Value)
+            if fallbackWindowID == nil {
+                fallbackWindowID = windowID
+            }
+
+            let windowBounds = resolveWindowBounds(from: windowInfo)
+            let windowName = windowInfo[kCGWindowName as String] as? String
+            if let windowBounds,
+               isLikelyOverlayWindow(frame: windowBounds, title: windowName) {
+                continue
+            }
+
+            return windowID
         }
 
-        return nil
+        return fallbackWindowID
+    }
+
+    private func resolveWindowBounds(from windowInfo: [String: Any]) -> CGRect? {
+        guard
+            let boundsDictionaryValue = windowInfo[kCGWindowBounds as String] as? [String: Any]
+        else {
+            return nil
+        }
+        let boundsDictionary = boundsDictionaryValue as CFDictionary
+        return CGRect(dictionaryRepresentation: boundsDictionary)
     }
 }

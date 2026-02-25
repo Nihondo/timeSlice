@@ -47,6 +47,7 @@ CaptureScheduler (actor, periodic loop)
 - `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`, `browserURL: String?`, `documentPath: String?`
 - Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, text-recognition/image save is skipped and metadata-only record is stored
 - Manual capture (`captureTrigger: .manual`) is persisted even when recognized text is short/duplicate, and blank Enter input is stored as `comments: ""`
+- For scheduled captures, OCR text is normalized line-by-line and lines shorter than `minimumTextLength` are excluded; if no valid lines remain, the cycle is skipped as `.shortText`
 
 ### Report Pipeline
 
@@ -139,7 +140,7 @@ Stored structure:
 
 - **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
-  - Capture settings: `captureExcludedApplications`, `captureExcludedWindowTitles`
+  - Capture settings: `captureIntervalSeconds`, `captureMinimumTextLength`, `captureShouldSaveImages`, `captureImageFormat`, `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
   - Viewer settings: `captureViewerTimeSortOrder`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`

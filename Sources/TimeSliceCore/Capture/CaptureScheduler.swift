@@ -314,8 +314,11 @@ public actor CaptureScheduler {
             }
             recognizedText = ""
         }
-        let normalizedText = recognizedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard normalizedText.count >= configuration.minimumTextLength || isManualCapture else {
+        let normalizedText = normalizeRecognizedText(
+            recognizedText,
+            isManualCapture: isManualCapture
+        )
+        guard normalizedText.isEmpty == false || isManualCapture else {
             return .skipped(.shortText)
         }
 
@@ -391,5 +394,24 @@ public actor CaptureScheduler {
             return nil
         }
         return manualComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func normalizeRecognizedText(
+        _ recognizedText: String,
+        isManualCapture: Bool
+    ) -> String {
+        let normalizedLines = recognizedText
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.isEmpty == false }
+
+        guard isManualCapture == false else {
+            return normalizedLines.joined(separator: "\n")
+        }
+
+        let filteredLines = normalizedLines.filter { lineText in
+            lineText.count >= configuration.minimumTextLength
+        }
+        return filteredLines.joined(separator: "\n")
     }
 }
