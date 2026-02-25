@@ -444,7 +444,27 @@ struct CaptureViewerView: View {
 
                 captureViewerSectionSeparator
 
-                DisclosureGroup(isExpanded: $isOCRSectionExpanded) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isOCRSectionExpanded.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: isOCRSectionExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 12)
+                            Text("viewer.section.ocr")
+                                .font(.headline)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                     if isOCRSectionExpanded {
                         if artifact.record.ocrText.isEmpty {
                             Text("viewer.value.empty_text")
@@ -458,9 +478,6 @@ struct CaptureViewerView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                } label: {
-                    Text("viewer.section.ocr")
-                        .font(.headline)
                 }
 
                 captureViewerSectionSeparator
