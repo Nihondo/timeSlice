@@ -35,6 +35,7 @@ open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 ```
 CaptureScheduler (actor, periodic loop)
   → ScreenCapturing protocol → ScreenCaptureManager (ScreenCaptureKit)
+                             → RectangleCaptureScreenCapturing (screencapture -i)
     → CapturedWindow { image, windowTitle?, browserURL?, documentPath? }
   → BrowserURLResolving protocol → BrowserURLResolver (AppleScript, per-browser)
   → TextRecognizing protocol → Vision-based recognizer implementation
@@ -43,11 +44,13 @@ CaptureScheduler (actor, periodic loop)
 ```
 
 - `CaptureScheduler.performCaptureCycle(captureTrigger:manualComment:)` returns `CaptureCycleOutcome` enum (.saved/.skipped/.failed)
-- `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey)
+- `CaptureScheduler.prepareManualCaptureDraft()` / `saveManualCaptureDraft(_:manualComment:captureTrigger:)` — two-phase flow used by both manual and rectangle captures. `captureTrigger` defaults to `.manual`
+- `CaptureTrigger` enum: `.scheduled` (periodic loop) / `.manual` ("Capture Now" button or global hotkey) / `.rectangleCapture` (interactive rectangle via `screencapture -i`)
 - `CaptureRecord` includes: `windowTitle: String?`, `captureTrigger: CaptureTrigger`, `comments: String?`, `browserURL: String?`, `documentPath: String?`
 - Capture exclusion supports **partial matching** on both foreground `applicationName` and `windowTitle`; when matched, text-recognition/image save is skipped and metadata-only record is stored
-- Manual capture (`captureTrigger: .manual`) is persisted even when recognized text is short/duplicate, and blank Enter input is stored as `comments: ""`
+- Non-scheduled captures (`.manual`, `.rectangleCapture`) are persisted even when recognized text is short/duplicate. Manual blank Enter input is stored as `comments: ""`; rectangle captures also store `comments` (from popup after selection)
 - For scheduled captures, OCR text is normalized line-by-line and lines shorter than `minimumTextLength` are excluded; if no valid lines remain, the cycle is skipped as `.shortText`
+- `normalizeManualComment` returns `nil` only for `.scheduled`; both `.manual` and `.rectangleCapture` always persist `comments`
 
 ### Report Pipeline
 
@@ -98,12 +101,17 @@ ReportScheduler (actor, time-slot-based auto-generation)
 
 ### Global Keyboard Shortcuts
 
-- **`GlobalHotKeyManager`** (in AppStateSupport.swift): registers system-wide hotkey using Carbon `RegisterEventHotKey` API
-- User records shortcut in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
+- **`GlobalHotKeyManager`** (in AppStateSupport.swift): manages two system-wide hotkeys using Carbon `RegisterEventHotKey` API
+  - `id: 1` — Capture Now (`onHotKeyPressed` callback → comment popup → manual capture)
+  - `id: 2` — Rectangle Capture (`onRectangleCaptureHotKeyPressed` callback → `screencapture -i` → comment popup → save)
+- `updateRegistration(_:)` / `updateRectangleCaptureRegistration(_:)` — separate registration methods per hotkey slot
+- User records shortcuts in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
-- Settings keys: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
-- Triggers Spotlight-like comment popup (`NSPanel`) first
-- In popup: `Enter` executes manual capture + text recognition + save (blank input persists as `comments: ""`)
+- Settings keys for Capture Now: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
+- Settings keys for Rectangle Capture: `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`
+- Capture Now triggers Spotlight-like comment popup (`NSPanel`) first
+- Rectangle Capture runs `screencapture -i` (interactive selection) first; comment popup appears after selection completes
+- In popup: `Enter` executes capture + text recognition + save (blank input persists as `comments: ""`)
 - In popup: `⌘ + ENTER` does not save; it opens Capture Viewer and applies current input as the search query
 - Popup header shows capture target context values in two lines (no labels): frontmost application name and window title (`(No Title)` fallback)
 - On popup open, tries to prefill the comment field with currently selected text from the frontmost app (AX permission required; first attempt prompts for permission when missing; falls back to empty when unavailable)
@@ -111,7 +119,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 
 ### Notifications
 
-- **Capture completion**: manual captures post notification with app name + window title (or fallback text)
+- **Capture completion**: both `.manual` and `.rectangleCapture` triggers post a notification with app name + window title (or fallback text); `.scheduled` captures do not post notifications
 - **Report generation success**: both manual and scheduled, showing report file name + record count
 - **Report generation failure**: both manual and scheduled, showing localized error message
 - **`ReportNotificationManager`** (in AppStateSupport.swift): manages `UNUserNotificationCenter` authorization and posting
@@ -143,14 +151,14 @@ Stored structure:
   - Capture settings: `captureIntervalSeconds`, `captureMinimumTextLength`, `captureShouldSaveImages`, `captureImageFormat`, `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
   - Viewer settings: `captureViewerTimeSortOrder`
-  - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
+  - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`, `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
-- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all/manual), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and manual records show an indicator next to timestamps in both panes.
-- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
+- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all / manual only — `.rectangleCapture` records appear under "all"), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes.
+- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
 
 ### Key Design Patterns
 
