@@ -3,6 +3,7 @@ import Foundation
 public enum CaptureTrigger: String, Codable, Sendable {
     case scheduled
     case manual
+    case rectangleCapture
 }
 
 /// One OCR capture entry stored by timeSlice.

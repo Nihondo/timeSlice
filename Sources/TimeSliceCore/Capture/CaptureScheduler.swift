@@ -212,11 +212,12 @@ public actor CaptureScheduler {
     @discardableResult
     public func saveManualCaptureDraft(
         _ manualCaptureDraft: ManualCaptureDraft,
-        manualComment: String? = nil
+        manualComment: String? = nil,
+        captureTrigger: CaptureTrigger = .manual
     ) async -> CaptureCycleOutcome {
         do {
             let normalizedManualComment = normalizeManualComment(
-                captureTrigger: .manual,
+                captureTrigger: captureTrigger,
                 manualComment: manualComment
             )
             _ = await duplicateDetector.shouldStoreText(manualCaptureDraft.ocrText)
@@ -227,7 +228,7 @@ public actor CaptureScheduler {
                 ocrText: manualCaptureDraft.ocrText,
                 hasImage: manualCaptureDraft.imageData != nil,
                 imageFormat: manualCaptureDraft.imageData == nil ? nil : configuration.imageFormat,
-                captureTrigger: .manual,
+                captureTrigger: captureTrigger,
                 comments: normalizedManualComment,
                 browserURL: manualCaptureDraft.browserURL,
                 documentPath: manualCaptureDraft.documentPath
@@ -390,7 +391,7 @@ public actor CaptureScheduler {
     }
 
     private func normalizeManualComment(captureTrigger: CaptureTrigger, manualComment: String?) -> String? {
-        guard captureTrigger == .manual else {
+        guard captureTrigger != .scheduled else {
             return nil
         }
         return manualComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

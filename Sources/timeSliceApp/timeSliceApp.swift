@@ -92,6 +92,9 @@ private struct MenuBarMenuContentView: View {
     @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
     @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
 
     var body: some View {
         Button {
@@ -121,6 +124,8 @@ private struct MenuBarMenuContentView: View {
         }
 
         captureNowButton
+
+        captureRectangleButton
 
         Button {
             Task {
@@ -181,6 +186,30 @@ private struct MenuBarMenuContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var captureRectangleButton: some View {
+        if
+            let rectangleCaptureShortcutConfiguration,
+            let shortcutCharacter = rectangleCaptureShortcutConfiguration.key.first
+        {
+            Button {
+                appState.startRectangleCaptureFlow()
+            } label: {
+                Label(L10n.string("menu.capture.rectangle"), systemImage: "rectangle.dashed.badge.record")
+            }
+            .keyboardShortcut(
+                KeyEquivalent(shortcutCharacter),
+                modifiers: rectangleCaptureShortcutConfiguration.eventModifiers
+            )
+        } else {
+            Button {
+                appState.startRectangleCaptureFlow()
+            } label: {
+                Label(L10n.string("menu.capture.rectangle"), systemImage: "rectangle.dashed.badge.record")
+            }
+        }
+    }
+
     private var captureNowShortcutConfiguration: CaptureNowShortcutConfiguration? {
         CaptureNowShortcutResolver.resolveConfiguration(
             shortcutKey: captureNowShortcutKey,
@@ -188,6 +217,16 @@ private struct MenuBarMenuContentView: View {
             hasStoredModifiers: UserDefaults.standard.object(forKey: AppSettingsKey.captureNowShortcutModifiers) != nil,
             storedKeyCode: captureNowShortcutKeyCode,
             hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.captureNowShortcutKeyCode) != nil
+        )
+    }
+
+    private var rectangleCaptureShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        CaptureNowShortcutResolver.resolveConfiguration(
+            shortcutKey: rectangleCaptureShortcutKey,
+            storedModifiersRawValue: rectangleCaptureShortcutModifiersRawValue,
+            hasStoredModifiers: UserDefaults.standard.object(forKey: AppSettingsKey.rectangleCaptureShortcutModifiers) != nil,
+            storedKeyCode: rectangleCaptureShortcutKeyCode,
+            hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.rectangleCaptureShortcutKeyCode) != nil
         )
     }
 

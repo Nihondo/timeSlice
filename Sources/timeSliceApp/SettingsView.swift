@@ -27,6 +27,9 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
     @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
     @State private var promptTemplateEditorText = ""
     @State private var hasInitializedPromptTemplateEditor = false
     @State private var excludedApplications: [String] = []
@@ -145,6 +148,16 @@ struct SettingsView: View {
                         onShortcutCleared: clearCaptureNowShortcut
                     )
                 }
+                HStack {
+                    Text("settings.label.rectangle_capture_shortcut")
+                    Spacer()
+                    CaptureNowShortcutRecorderView(
+                        shortcutDisplayText: rectangleCaptureShortcutDisplayText,
+                        hasShortcut: rectangleCaptureShortcutConfiguration != nil,
+                        onShortcutCaptured: updateRectangleCaptureShortcut(key:keyCode:modifiers:),
+                        onShortcutCleared: clearRectangleCaptureShortcut
+                    )
+                }
             } header: {
                 Text("settings.section.keyboard_shortcut")
             } footer: {
@@ -186,6 +199,29 @@ struct SettingsView: View {
         captureNowShortcutKey = ""
         captureNowShortcutKeyCode = 0
         captureNowShortcutModifiersRawValue = 0
+    }
+
+    private var rectangleCaptureShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        AppSettingsResolver.resolveRectangleCaptureShortcutConfiguration()
+    }
+
+    private var rectangleCaptureShortcutDisplayText: String {
+        guard let rectangleCaptureShortcutConfiguration else {
+            return L10n.string("settings.button.record_shortcut")
+        }
+        return rectangleCaptureShortcutConfiguration.displayText
+    }
+
+    private func updateRectangleCaptureShortcut(key: String, keyCode: Int, modifiers: EventModifiers) {
+        rectangleCaptureShortcutKey = key
+        rectangleCaptureShortcutKeyCode = keyCode
+        rectangleCaptureShortcutModifiersRawValue = Int(modifiers.intersection(CaptureNowShortcutResolver.allowedModifiers).rawValue)
+    }
+
+    private func clearRectangleCaptureShortcut() {
+        rectangleCaptureShortcutKey = ""
+        rectangleCaptureShortcutKeyCode = 0
+        rectangleCaptureShortcutModifiersRawValue = 0
     }
 
     private var launchAtLoginBinding: Binding<Bool> {

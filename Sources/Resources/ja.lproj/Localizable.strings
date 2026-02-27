@@ -8,6 +8,7 @@
 "menu.capture.start" = "記録開始";
 "menu.capture.stop" = "記録終了";
 "menu.capture.now" = "今すぐ記録";
+"menu.capture.rectangle" = "矩形をキャプチャ";
 "manual_capture.comment.title" = "timeSlice";
 "manual_capture.comment.placeholder" = "コメントを追加して記録（省略可）";
 "manual_capture.comment.hint" = "Enter: 記録 / ⌘ + ENTER: 検索 / Esc: キャンセル";
@@ -41,6 +42,7 @@
 
 "settings.section.keyboard_shortcut" = "キーボードショートカット";
 "settings.label.capture_now_shortcut" = "今すぐ記録";
+"settings.label.rectangle_capture_shortcut" = "矩形をキャプチャ";
 "settings.button.record_shortcut" = "ショートカットを設定";
 "settings.button.shortcut_recording" = "キー入力待ち...";
 "settings.button.clear_shortcut" = "クリア";
@@ -141,6 +143,7 @@
 "viewer.value.filter_manual_only" = "手動のみ";
 "viewer.value.trigger_scheduled" = "定期";
 "viewer.value.trigger_manual" = "手動";
+"viewer.value.trigger_rectangle_capture" = "矩形";
 "viewer.value.image_available" = "あり";
 "viewer.value.image_not_captured" = "未保存";
 "viewer.value.image_missing_or_expired" = "欠損/期限切れ";
@@ -166,6 +169,8 @@
 "notification.report.title.scheduled_failed" = "定時日報生成に失敗しました";
 "notification.report.body.failed" = "日報生成失敗: %@";
 "notification.capture.title.manual" = "テキスト認識の記録が完了しました";
+"notification.capture.title.rectangle_capture" = "矩形キャプチャが完了しました";
+"rectangle_capture.application_name" = "矩形キャプチャ";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "（タイトルなし）";
 

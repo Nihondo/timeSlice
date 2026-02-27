@@ -6,10 +6,13 @@ import Carbon
 
 final class GlobalHotKeyManager {
     var onHotKeyPressed: (() -> Void)?
+    var onRectangleCaptureHotKeyPressed: (() -> Void)?
 
     private var eventHandlerRef: EventHandlerRef?
     private var registeredHotKeyRef: EventHotKeyRef?
+    private var registeredRectangleCaptureHotKeyRef: EventHotKeyRef?
     private let hotKeyID = EventHotKeyID(signature: 0x5453484B, id: 1)
+    private let rectangleCaptureHotKeyID = EventHotKeyID(signature: 0x5453484B, id: 2)
 
     init() {
         installHotKeyEventHandlerIfNeeded()
@@ -17,6 +20,7 @@ final class GlobalHotKeyManager {
 
     deinit {
         unregisterHotKeyIfNeeded()
+        unregisterRectangleCaptureHotKeyIfNeeded()
         removeHotKeyEventHandlerIfNeeded()
     }
 
@@ -50,6 +54,36 @@ final class GlobalHotKeyManager {
         registeredHotKeyRef = createdHotKeyRef
     }
 
+    func updateRectangleCaptureRegistration(_ shortcutConfiguration: CaptureNowShortcutConfiguration?) {
+        unregisterRectangleCaptureHotKeyIfNeeded()
+
+        guard
+            let shortcutConfiguration,
+            let keyCode = shortcutConfiguration.keyCode
+        else {
+            return
+        }
+
+        let carbonModifiers = resolveCarbonModifiers(shortcutConfiguration.modifiersRawValue)
+        guard keyCode >= 0 else {
+            return
+        }
+
+        var createdHotKeyRef: EventHotKeyRef?
+        let registrationStatus = RegisterEventHotKey(
+            UInt32(keyCode),
+            carbonModifiers,
+            rectangleCaptureHotKeyID,
+            GetEventDispatcherTarget(),
+            0,
+            &createdHotKeyRef
+        )
+        guard registrationStatus == noErr else {
+            return
+        }
+        registeredRectangleCaptureHotKeyRef = createdHotKeyRef
+    }
+
     fileprivate func handleHotKeyPressedEvent(_ eventRef: EventRef?) -> OSStatus {
         guard let eventRef else {
             return OSStatus(eventNotHandledErr)
@@ -68,12 +102,18 @@ final class GlobalHotKeyManager {
         guard parameterStatus == noErr else {
             return parameterStatus
         }
-        guard pressedHotKeyID.signature == hotKeyID.signature, pressedHotKeyID.id == hotKeyID.id else {
+        guard pressedHotKeyID.signature == hotKeyID.signature else {
             return OSStatus(eventNotHandledErr)
         }
 
-        onHotKeyPressed?()
-        return noErr
+        if pressedHotKeyID.id == hotKeyID.id {
+            onHotKeyPressed?()
+            return noErr
+        } else if pressedHotKeyID.id == rectangleCaptureHotKeyID.id {
+            onRectangleCaptureHotKeyPressed?()
+            return noErr
+        }
+        return OSStatus(eventNotHandledErr)
     }
 
     private func installHotKeyEventHandlerIfNeeded() {
@@ -113,6 +153,14 @@ final class GlobalHotKeyManager {
         }
         UnregisterEventHotKey(registeredHotKeyRef)
         self.registeredHotKeyRef = nil
+    }
+
+    private func unregisterRectangleCaptureHotKeyIfNeeded() {
+        guard let registeredRectangleCaptureHotKeyRef else {
+            return
+        }
+        UnregisterEventHotKey(registeredRectangleCaptureHotKeyRef)
+        self.registeredRectangleCaptureHotKeyRef = nil
     }
 
     private func resolveCarbonModifiers(_ shortcutModifiersRawValue: Int) -> UInt32 {

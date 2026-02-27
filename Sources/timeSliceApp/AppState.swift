@@ -165,6 +165,55 @@ final class AppState {
         statusMessage = L10n.string("state.stopped")
     }
 
+    func startRectangleCaptureFlow() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Wait briefly so the menu bar dropdown closes before screencapture -i launches.
+            try? await Task.sleep(for: .milliseconds(300))
+            let configuration = resolveCaptureRuntimeSettings().schedulerConfiguration
+            let rectangleCapturing = RectangleCaptureScreenCapturing(
+                applicationName: L10n.string("rectangle_capture.application_name")
+            )
+            let scheduler = CaptureScheduler(
+                screenCapturer: rectangleCapturing,
+                textRecognizer: ocrManager,
+                duplicateDetector: duplicateDetector,
+                dataStore: dataStore,
+                imageStore: imageStore,
+                configuration: configuration
+            )
+            let preparationOutcome = await scheduler.prepareManualCaptureDraft()
+            switch preparationOutcome {
+            case .skipped, .failed:
+                // User cancelled screencapture (Esc) or an error occurred — nothing to show.
+                return
+            case let .prepared(draft):
+                manualCaptureCommentPanelPresenter.present(
+                    applicationName: draft.applicationName,
+                    windowTitle: draft.windowTitle,
+                    onSubmitComment: { [weak self] manualComment in
+                        guard let self else { return }
+                        Task { @MainActor in
+                            let saveOutcome = await scheduler.saveManualCaptureDraft(
+                                draft,
+                                manualComment: manualComment,
+                                captureTrigger: .rectangleCapture
+                            )
+                            await self.applyCaptureCycleOutcome(saveOutcome, captureTrigger: .rectangleCapture)
+                        }
+                    },
+                    onSearchInViewer: { [weak self] searchQuery in
+                        guard let self else { return }
+                        Task { @MainActor in
+                            self.requestCaptureViewerSearch(searchQuery)
+                        }
+                    },
+                    onCancel: {}
+                )
+            }
+        }
+    }
+
     func startManualCaptureFlow() {
         Task { @MainActor [weak self] in
             guard let self else {
@@ -252,7 +301,7 @@ final class AppState {
         let cycleOutcomeWindowTitle = resolveCaptureWindowTitle(from: cycleOutcome)
         lastCaptureResultMessage = cycleOutcomeMessage
         await refreshTodayRecordCount()
-        if captureTrigger == .manual {
+        if captureTrigger != .scheduled {
             await reportNotificationManager.postCaptureCompletedNotification(
                 resultMessage: cycleOutcomeNotificationMessage,
                 windowTitle: cycleOutcomeWindowTitle
@@ -662,6 +711,14 @@ final class AppState {
                 self.startManualCaptureFlow()
             }
         }
+        globalHotKeyManager.onRectangleCaptureHotKeyPressed = { [weak self] in
+            guard let self else {
+                return
+            }
+            Task { @MainActor in
+                self.startRectangleCaptureFlow()
+            }
+        }
         refreshCaptureNowGlobalHotKeyRegistration()
         startUserDefaultsObservationForSettingsChanges()
     }
@@ -706,6 +763,8 @@ final class AppState {
     private func refreshCaptureNowGlobalHotKeyRegistration() {
         let captureNowShortcut = AppSettingsResolver.resolveCaptureNowShortcutConfiguration(userDefaults: userDefaults)
         globalHotKeyManager.updateRegistration(captureNowShortcut)
+        let rectangleCaptureShortcut = AppSettingsResolver.resolveRectangleCaptureShortcutConfiguration(userDefaults: userDefaults)
+        globalHotKeyManager.updateRectangleCaptureRegistration(rectangleCaptureShortcut)
     }
 
     @discardableResult

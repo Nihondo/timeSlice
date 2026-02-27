@@ -8,6 +8,7 @@
 "menu.capture.start" = "Start Capture";
 "menu.capture.stop" = "Stop Capture";
 "menu.capture.now" = "Capture Now";
+"menu.capture.rectangle" = "Capture Rectangle";
 "manual_capture.comment.title" = "timeSlice : ";
 "manual_capture.comment.placeholder" = "Add a comment and record (optional)";
 "manual_capture.comment.hint" = "Enter: Capture / ⌘ + ENTER: Search / Esc: Cancel";
@@ -41,6 +42,7 @@
 
 "settings.section.keyboard_shortcut" = "Keyboard Shortcut";
 "settings.label.capture_now_shortcut" = "Capture Now";
+"settings.label.rectangle_capture_shortcut" = "Capture Rectangle";
 "settings.button.record_shortcut" = "Set Shortcut";
 "settings.button.shortcut_recording" = "Waiting for key...";
 "settings.button.clear_shortcut" = "Clear";
@@ -141,6 +143,7 @@
 "viewer.value.filter_manual_only" = "Manual Only";
 "viewer.value.trigger_scheduled" = "Scheduled";
 "viewer.value.trigger_manual" = "Manual";
+"viewer.value.trigger_rectangle_capture" = "Rectangle";
 "viewer.value.image_available" = "Available";
 "viewer.value.image_not_captured" = "Not saved";
 "viewer.value.image_missing_or_expired" = "Missing/Expired";
@@ -166,6 +169,8 @@
 "notification.report.title.scheduled_failed" = "Scheduled Report Generation Failed";
 "notification.report.body.failed" = "Report generation failed: %@";
 "notification.capture.title.manual" = "Text Recognition Capture Completed";
+"notification.capture.title.rectangle_capture" = "Rectangle Capture Completed";
+"rectangle_capture.application_name" = "Rectangle Capture";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "(No Title)";
 
