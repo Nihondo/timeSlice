@@ -4,6 +4,11 @@ public enum CaptureTrigger: String, Codable, Sendable {
     case scheduled
     case manual
     case rectangleCapture
+
+    /// Returns true for captures explicitly initiated by the user.
+    public var isUserInitiated: Bool {
+        self == .manual || self == .rectangleCapture
+    }
 }
 
 /// One OCR capture entry stored by timeSlice.

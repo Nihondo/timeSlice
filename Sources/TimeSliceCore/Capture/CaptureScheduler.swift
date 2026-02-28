@@ -272,7 +272,7 @@ public actor CaptureScheduler {
         captureTrigger: CaptureTrigger,
         manualComment: String?
     ) async throws -> CaptureCycleOutcome {
-        let isManualCapture = captureTrigger == .manual
+        let isUserInitiatedCapture = captureTrigger.isUserInitiated
         let normalizedManualComment = normalizeManualComment(
             captureTrigger: captureTrigger,
             manualComment: manualComment
@@ -310,20 +310,20 @@ public actor CaptureScheduler {
         do {
             recognizedText = try await textRecognizer.recognizeText(from: capturedWindow.image)
         } catch {
-            guard isManualCapture else {
+            guard isUserInitiatedCapture else {
                 throw error
             }
             recognizedText = ""
         }
         let normalizedText = normalizeRecognizedText(
             recognizedText,
-            isManualCapture: isManualCapture
+            isUserInitiatedCapture: isUserInitiatedCapture
         )
-        guard normalizedText.isEmpty == false || isManualCapture else {
+        guard normalizedText.isEmpty == false || isUserInitiatedCapture else {
             return .skipped(.shortText)
         }
 
-        if isManualCapture {
+        if isUserInitiatedCapture {
             _ = await duplicateDetector.shouldStoreText(normalizedText)
         } else {
             let shouldStoreRecord = await duplicateDetector.shouldStoreText(normalizedText)
@@ -339,7 +339,7 @@ public actor CaptureScheduler {
                 format: configuration.imageFormat
             ) {
                 imageData = encodedImageData
-            } else if isManualCapture {
+            } else if isUserInitiatedCapture {
                 imageData = nil
             } else {
                 return .skipped(.imageEncodingFailed)
@@ -399,14 +399,14 @@ public actor CaptureScheduler {
 
     private func normalizeRecognizedText(
         _ recognizedText: String,
-        isManualCapture: Bool
+        isUserInitiatedCapture: Bool
     ) -> String {
         let normalizedLines = recognizedText
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.isEmpty == false }
 
-        guard isManualCapture == false else {
+        guard isUserInitiatedCapture == false else {
             return normalizedLines.joined(separator: "\n")
         }
 

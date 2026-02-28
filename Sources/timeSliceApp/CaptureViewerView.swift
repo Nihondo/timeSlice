@@ -222,7 +222,7 @@ struct CaptureViewerView: View {
             case .all:
                 return true
             case .manualOnly:
-                return artifact.record.captureTrigger == .manual
+                return artifact.record.captureTrigger.isUserInitiated
             }
         }
         let applicationFilteredArtifacts = captureTriggerFilteredArtifacts.filter { artifact in
@@ -565,7 +565,7 @@ struct CaptureViewerView: View {
 
     @ViewBuilder
     private func captureViewerManualIndicatorView(for captureTrigger: CaptureTrigger) -> some View {
-        if captureTrigger == .manual {
+        if captureTrigger.isUserInitiated {
             Text("viewer.value.trigger_manual")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.orange)
