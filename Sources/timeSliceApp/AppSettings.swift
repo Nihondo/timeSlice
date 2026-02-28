@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Carbon
 #if canImport(TimeSliceCore)
 import TimeSliceCore
 #endif
@@ -34,7 +35,7 @@ struct CaptureNowShortcutConfiguration: Equatable {
     let modifiersRawValue: Int
     let keyCode: Int?
 
-    var eventModifiers: EventModifiers {
+    var eventModifiers: SwiftUI.EventModifiers {
         CaptureNowShortcutResolver.resolveStoredEventModifiers(modifiersRawValue)
     }
 
@@ -44,7 +45,7 @@ struct CaptureNowShortcutConfiguration: Equatable {
 }
 
 enum CaptureNowShortcutResolver {
-    static let allowedModifiers: EventModifiers = [.command, .control, .option, .shift]
+    static let allowedModifiers: SwiftUI.EventModifiers = [.command, .control, .option, .shift]
 
     static func resolveConfiguration(
         shortcutKey: String,
@@ -53,7 +54,10 @@ enum CaptureNowShortcutResolver {
         storedKeyCode: Int,
         hasStoredKeyCode: Bool
     ) -> CaptureNowShortcutConfiguration? {
-        guard let normalizedKey = normalizeStoredKey(shortcutKey) else {
+        let resolvedKeyCode = hasStoredKeyCode ? storedKeyCode : nil
+        let normalizedKeyFromKeyCode = resolvedKeyCode.flatMap { resolveNormalizedKeyFromKeyCode($0) }
+        let normalizedStoredKey = normalizeStoredKey(shortcutKey)
+        guard let normalizedKey = normalizedKeyFromKeyCode ?? normalizedStoredKey else {
             return nil
         }
         let resolvedModifiersRawValue = resolveModifiersRawValue(
@@ -61,7 +65,6 @@ enum CaptureNowShortcutResolver {
             hasStoredModifiers: hasStoredModifiers,
             hasShortcut: true
         )
-        let resolvedKeyCode = hasStoredKeyCode ? storedKeyCode : nil
         return CaptureNowShortcutConfiguration(
             key: normalizedKey,
             modifiersRawValue: resolvedModifiersRawValue,
@@ -69,11 +72,11 @@ enum CaptureNowShortcutResolver {
         )
     }
 
-    static func resolveStoredEventModifiers(_ modifiersRawValue: Int) -> EventModifiers {
-        EventModifiers(rawValue: modifiersRawValue).intersection(allowedModifiers)
+    static func resolveStoredEventModifiers(_ modifiersRawValue: Int) -> SwiftUI.EventModifiers {
+        SwiftUI.EventModifiers(rawValue: modifiersRawValue).intersection(allowedModifiers)
     }
 
-    static func makeDisplayText(key: String, modifiers: EventModifiers) -> String {
+    static func makeDisplayText(key: String, modifiers: SwiftUI.EventModifiers) -> String {
         modifierSymbols(modifiers: modifiers) + key.uppercased()
     }
 
@@ -90,6 +93,16 @@ enum CaptureNowShortcutResolver {
         return normalizedKey
     }
 
+    static func resolveNormalizedKeyFromKeyCode(_ keyCode: Int) -> String? {
+        guard keyCode >= 0, keyCode <= Int(UInt16.max) else {
+            return nil
+        }
+        guard let keyString = resolveKeyStringFromCurrentLayout(keyCode: UInt16(keyCode)) else {
+            return nil
+        }
+        return normalizeStoredKey(keyString)
+    }
+
     static func resolveModifiersRawValue(
         storedModifiersRawValue: Int,
         hasStoredModifiers: Bool,
@@ -100,13 +113,13 @@ enum CaptureNowShortcutResolver {
         }
 
         if hasShortcut {
-            return Int(EventModifiers.command.rawValue)
+            return Int(SwiftUI.EventModifiers.command.rawValue)
         }
 
         return 0
     }
 
-    private static func modifierSymbols(modifiers: EventModifiers) -> String {
+    private static func modifierSymbols(modifiers: SwiftUI.EventModifiers) -> String {
         var symbols = ""
         if modifiers.contains(.control) {
             symbols += "⌃"
@@ -121,6 +134,48 @@ enum CaptureNowShortcutResolver {
             symbols += "⌘"
         }
         return symbols
+    }
+
+    private static func resolveKeyStringFromCurrentLayout(keyCode: UInt16) -> String? {
+        guard
+            let keyboardLayoutInputSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+            let keyboardLayoutDataPointer = TISGetInputSourceProperty(
+                keyboardLayoutInputSource,
+                kTISPropertyUnicodeKeyLayoutData
+            )
+        else {
+            return nil
+        }
+
+        let keyboardLayoutData = unsafeBitCast(keyboardLayoutDataPointer, to: CFData.self)
+        guard let keyboardLayoutDataBytes = CFDataGetBytePtr(keyboardLayoutData) else {
+            return nil
+        }
+        let keyboardLayout = keyboardLayoutDataBytes.withMemoryRebound(
+            to: UCKeyboardLayout.self,
+            capacity: 1
+        ) { $0 }
+
+        var deadKeyState: UInt32 = 0
+        var resolvedLength = 0
+        var resolvedCharacters = [UniChar](repeating: 0, count: 4)
+
+        let translationStatus = UCKeyTranslate(
+            keyboardLayout,
+            keyCode,
+            UInt16(kUCKeyActionDisplay),
+            0,
+            UInt32(LMGetKbdType()),
+            OptionBits(kUCKeyTranslateNoDeadKeysBit),
+            &deadKeyState,
+            resolvedCharacters.count,
+            &resolvedLength,
+            &resolvedCharacters
+        )
+        guard translationStatus == noErr, resolvedLength > 0 else {
+            return nil
+        }
+        return String(utf16CodeUnits: resolvedCharacters, count: resolvedLength)
     }
 }
 

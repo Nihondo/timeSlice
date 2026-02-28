@@ -37,6 +37,7 @@
 		42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800022FF4000000AA1122 /* CaptureViewerView.swift */; };
 		42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800032FF4000000AA1122 /* SettingsComponents.swift */; };
 		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
+		42E2D0043002000000AA1122 /* RectangleCaptureScreenCapturing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +74,7 @@
 		42D800022FF4000000AA1122 /* CaptureViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewerView.swift; sourceTree = "<group>"; };
 		42D800032FF4000000AA1122 /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
 		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
+		42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangleCaptureScreenCapturing.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +126,7 @@
 			children = (
 				42A760D42F433BDF00FA9E46 /* CaptureScheduler.swift */,
 				42A760D52F433BDF00FA9E46 /* ScreenCaptureManager.swift */,
+				42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */,
 				42A760D62F433BDF00FA9E46 /* ScreenCapturing.swift */,
 				42A7E49C5C429911EAFCD61E /* BrowserURLResolving.swift */,
 				42E2D0013001000000AA1122 /* DocumentPathResolving.swift */,
@@ -250,7 +253,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					42A7608F2F433B8200FA9E46 = {
 						CreatedOnToolsVersion = 26.2;
@@ -304,6 +307,7 @@
 				42A760FA2F433BDF00FA9E46 /* CaptureScheduler.swift in Sources */,
 				42A76F0CBD7A55A5948E0E5D /* BrowserURLResolving.swift in Sources */,
 				42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */,
+				42E2D0043002000000AA1122 /* RectangleCaptureScreenCapturing.swift in Sources */,
 				42A760FB2F433BDF00FA9E46 /* DuplicateDetector.swift in Sources */,
 				42A760FC2F433BDF00FA9E46 /* DataStore.swift in Sources */,
 				42A761002F433BDF00FA9E46 /* SettingsView.swift in Sources */,
@@ -346,6 +350,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -377,6 +382,7 @@
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -401,6 +407,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -412,6 +419,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -443,6 +451,7 @@
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -460,6 +469,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -470,6 +480,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = timeSliceIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				AUTOMATION_APPLE_EVENTS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
@@ -477,7 +488,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = NO;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = NO;
@@ -509,13 +521,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = timeSliceIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				AUTOMATION_APPLE_EVENTS = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = NO;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = NO;

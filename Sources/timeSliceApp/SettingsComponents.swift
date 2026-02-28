@@ -173,6 +173,17 @@ struct CaptureNowShortcutRecorderView: View {
     }
 
     private func resolveCapturedKey(event: NSEvent) -> String? {
+        if let keyFromKeyCode = CaptureNowShortcutResolver.resolveNormalizedKeyFromKeyCode(Int(event.keyCode)) {
+            return keyFromKeyCode
+        }
+
+        if
+            let inputCharacters = event.characters(byApplyingModifiers: []),
+            let firstCharacter = inputCharacters.first
+        {
+            return CaptureNowShortcutResolver.normalizeStoredKey(String(firstCharacter))
+        }
+
         guard let inputCharacters = event.charactersIgnoringModifiers, let firstCharacter = inputCharacters.first else {
             return nil
         }
