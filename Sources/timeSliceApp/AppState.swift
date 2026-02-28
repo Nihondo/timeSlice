@@ -34,6 +34,11 @@ final class AppState {
         case timeSlot(timeSlot: ReportTimeSlot, targetDate: Date, isSoleEnabledSlot: Bool)
     }
 
+    private struct CaptureViewerSelectionRequest {
+        let recordID: UUID
+        let capturedAt: Date
+    }
+
     private let userDefaults: UserDefaults
     private let dataStore: DataStore
     private let imageStore: ImageStore
@@ -51,6 +56,7 @@ final class AppState {
     private var reportSchedulerRefreshTask: Task<Void, Never>?
     private var lastProcessedScheduledResultSequence: UInt64 = 0
     private var userDefaultsDidChangeObserver: NSObjectProtocol?
+    private var captureNotificationSelectionObserver: NSObjectProtocol?
     private var appliedCaptureSettings: CaptureRuntimeSettings?
     private var manualCaptureReturnApplication: NSRunningApplication?
     private var hasRequestedAccessibilityPermissionThisSession = false
@@ -73,6 +79,9 @@ final class AppState {
     var captureViewerStatusMessage = ""
     var captureViewerSearchQuery = ""
     var captureViewerSearchRequestSequence: UInt64 = 0
+    var captureViewerSelectionRequestRecordID: UUID?
+    var captureViewerSelectionRequestCapturedAt: Date?
+    var captureViewerSelectionRequestSequence: UInt64 = 0
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -117,6 +126,7 @@ final class AppState {
         synchronizeLaunchAtLoginSetting()
         synchronizeStartCaptureOnAppLaunchSetting()
         configureCaptureNowGlobalHotKey()
+        startCaptureNotificationSelectionObservation()
         if isStartCaptureOnAppLaunchEnabled {
             Task {
                 await startCapture()
@@ -303,12 +313,15 @@ final class AppState {
         let cycleOutcomeMessage = makeOutcomeMessage(from: cycleOutcome)
         let cycleOutcomeNotificationMessage = makeNotificationMessage(from: cycleOutcome)
         let cycleOutcomeWindowTitle = resolveCaptureWindowTitle(from: cycleOutcome)
+        let savedCaptureRecord = resolveSavedCaptureRecord(from: cycleOutcome)
         lastCaptureResultMessage = cycleOutcomeMessage
         await refreshTodayRecordCount()
         if captureTrigger != .scheduled {
             await reportNotificationManager.postCaptureCompletedNotification(
                 resultMessage: cycleOutcomeNotificationMessage,
-                windowTitle: cycleOutcomeWindowTitle
+                windowTitle: cycleOutcomeWindowTitle,
+                captureRecordID: savedCaptureRecord?.id,
+                capturedAt: savedCaptureRecord?.capturedAt
             )
         }
     }
@@ -402,6 +415,12 @@ final class AppState {
     func requestCaptureViewerSearch(_ searchQuery: String) {
         captureViewerSearchQuery = searchQuery
         captureViewerSearchRequestSequence &+= 1
+    }
+
+    func requestCaptureViewerSelection(recordID: UUID, capturedAt: Date) {
+        captureViewerSelectionRequestRecordID = recordID
+        captureViewerSelectionRequestCapturedAt = capturedAt
+        captureViewerSelectionRequestSequence &+= 1
     }
 
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {
@@ -637,6 +656,13 @@ final class AppState {
         return captureRecord.windowTitle
     }
 
+    private func resolveSavedCaptureRecord(from cycleOutcome: CaptureCycleOutcome) -> CaptureRecord? {
+        guard case let .saved(captureRecord) = cycleOutcome else {
+            return nil
+        }
+        return captureRecord
+    }
+
     private func makeSchedulerStatusMessage(from schedulerState: ReportSchedulerState) -> String {
         guard schedulerState.isEnabled else {
             return L10n.string("message.scheduler.disabled")
@@ -742,6 +768,61 @@ final class AppState {
                 self.updateReportSchedule()
             }
         }
+    }
+
+    private func startCaptureNotificationSelectionObservation() {
+        captureNotificationSelectionObserver = NotificationCenter.default.addObserver(
+            forName: .captureNotificationDidRequestOpenRecord,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else {
+                return
+            }
+            MainActor.assumeIsolated {
+                guard
+                    let selectionRequest = Self.resolveCaptureViewerSelectionRequest(from: notification.userInfo)
+                else {
+                    return
+                }
+                self.requestCaptureViewerSelection(
+                    recordID: selectionRequest.recordID,
+                    capturedAt: selectionRequest.capturedAt
+                )
+            }
+        }
+    }
+
+    private static func resolveCaptureViewerSelectionRequest(
+        from userInfo: [AnyHashable: Any]?
+    ) -> CaptureViewerSelectionRequest? {
+        guard
+            let userInfo,
+            let recordIDString = userInfo[CaptureNotificationUserInfoKey.captureRecordID] as? String,
+            let recordID = UUID(uuidString: recordIDString),
+            let capturedAtEpochSeconds = resolveCapturedAtEpochSeconds(
+                from: userInfo[CaptureNotificationUserInfoKey.capturedAtEpochSeconds]
+            )
+        else {
+            return nil
+        }
+        return CaptureViewerSelectionRequest(
+            recordID: recordID,
+            capturedAt: Date(timeIntervalSince1970: capturedAtEpochSeconds)
+        )
+    }
+
+    private static func resolveCapturedAtEpochSeconds(from value: Any?) -> TimeInterval? {
+        if let epochSeconds = value as? TimeInterval {
+            return epochSeconds
+        }
+        if let epochSeconds = value as? NSNumber {
+            return epochSeconds.doubleValue
+        }
+        if let epochSecondsText = value as? String {
+            return TimeInterval(epochSecondsText)
+        }
+        return nil
     }
 
     private func refreshCaptureSchedulerForUpdatedSettings() async {

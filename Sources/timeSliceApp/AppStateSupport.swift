@@ -369,6 +369,17 @@ enum ReportNotificationUserInfoKey {
     static let reportFilePath = "reportFilePath"
 }
 
+enum CaptureNotificationUserInfoKey {
+    static let captureRecordID = "captureRecordID"
+    static let capturedAtEpochSeconds = "capturedAtEpochSeconds"
+}
+
+extension Notification.Name {
+    static let captureNotificationDidRequestOpenRecord = Notification.Name(
+        "captureNotificationDidRequestOpenRecord"
+    )
+}
+
 enum ReportFileOpeningExecutor {
     static func executeOpenCommand(reportFilePath: String) {
         let openProcess = Process()
@@ -467,7 +478,12 @@ final class ReportNotificationManager {
         }
     }
 
-    func postCaptureCompletedNotification(resultMessage: String, windowTitle: String?) async {
+    func postCaptureCompletedNotification(
+        resultMessage: String,
+        windowTitle: String?,
+        captureRecordID: UUID?,
+        capturedAt: Date?
+    ) async {
         await refreshAuthorizationState()
         guard isNotificationAuthorized else {
             return
@@ -484,6 +500,12 @@ final class ReportNotificationManager {
         let notificationContent = UNMutableNotificationContent()
         notificationContent.title = L10n.string("notification.capture.title.manual")
         notificationContent.body = [resultMessage, captureDetailMessage].joined(separator: "\n")
+        if let captureRecordID, let capturedAt {
+            notificationContent.userInfo = [
+                CaptureNotificationUserInfoKey.captureRecordID: captureRecordID.uuidString,
+                CaptureNotificationUserInfoKey.capturedAtEpochSeconds: capturedAt.timeIntervalSince1970
+            ]
+        }
         notificationContent.sound = .default
 
         let notificationRequest = UNNotificationRequest(

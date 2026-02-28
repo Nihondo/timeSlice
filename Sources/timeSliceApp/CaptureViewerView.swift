@@ -45,6 +45,8 @@ struct CaptureViewerView: View {
     @State private var searchInputText = ""
     @State private var confirmedSearchQueryText = ""
     @State private var lastAppliedExternalSearchRequestSequence: UInt64 = 0
+    @State private var lastAppliedExternalSelectionRequestSequence: UInt64 = 0
+    @State private var pendingExternalSelectionRecordID: UUID?
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
@@ -176,17 +178,18 @@ struct CaptureViewerView: View {
         }
         .padding(12)
         .onAppear {
+            let didApplyExternalSelectionRequest = applyExternalSelectionRequestIfNeeded()
             let didApplyExternalSearchRequest = applyExternalSearchRequestIfNeeded()
             guard appState.captureViewerArtifacts.isEmpty else {
                 synchronizeApplicationFilterIfNeeded()
                 refreshDisplayedArtifacts()
-                if didApplyExternalSearchRequest == false {
+                if didApplyExternalSelectionRequest == false && didApplyExternalSearchRequest == false {
                     focusCaptureList()
                 }
                 return
             }
             loadCaptureViewerArtifacts()
-            if didApplyExternalSearchRequest == false {
+            if didApplyExternalSelectionRequest == false && didApplyExternalSearchRequest == false {
                 focusCaptureList()
             }
         }
@@ -195,6 +198,9 @@ struct CaptureViewerView: View {
         }
         .onChange(of: appState.captureViewerSearchRequestSequence) { _, _ in
             applyExternalSearchRequestIfNeeded()
+        }
+        .onChange(of: appState.captureViewerSelectionRequestSequence) { _, _ in
+            applyExternalSelectionRequestIfNeeded()
         }
         .onChange(of: appState.captureViewerArtifacts) { _, _ in
             synchronizeApplicationFilterIfNeeded()
@@ -331,6 +337,7 @@ struct CaptureViewerView: View {
             }
         )
         synchronizeSelectedCaptureArtifactIfNeeded()
+        applyPendingExternalSelectionIfNeeded()
     }
 
     private func synchronizeApplicationFilterIfNeeded() {
@@ -359,6 +366,17 @@ struct CaptureViewerView: View {
             return
         }
         selectedCaptureArtifactID = displayedArtifacts.first?.id
+    }
+
+    private func applyPendingExternalSelectionIfNeeded() {
+        guard let pendingRecordID = pendingExternalSelectionRecordID else {
+            return
+        }
+        guard displayedArtifactsByID[pendingRecordID] != nil else {
+            return
+        }
+        selectedCaptureArtifactID = pendingRecordID
+        pendingExternalSelectionRecordID = nil
     }
 
     @ViewBuilder
@@ -548,6 +566,41 @@ struct CaptureViewerView: View {
         return true
     }
 
+    @discardableResult
+    private func applyExternalSelectionRequestIfNeeded() -> Bool {
+        let requestedSequence = appState.captureViewerSelectionRequestSequence
+        guard requestedSequence != lastAppliedExternalSelectionRequestSequence else {
+            return false
+        }
+        lastAppliedExternalSelectionRequestSequence = requestedSequence
+        guard
+            let requestedRecordID = appState.captureViewerSelectionRequestRecordID,
+            let requestedCapturedAt = appState.captureViewerSelectionRequestCapturedAt
+        else {
+            return false
+        }
+
+        pendingExternalSelectionRecordID = requestedRecordID
+        resetFiltersForExternalSelection()
+
+        let targetDate = Self.captureViewerDayCalendar.startOfDay(for: requestedCapturedAt)
+        let currentDate = Self.captureViewerDayCalendar.startOfDay(for: captureViewerDate)
+        if targetDate != currentDate {
+            captureViewerDate = targetDate
+        } else {
+            loadCaptureViewerArtifacts()
+        }
+        focusCaptureList()
+        return true
+    }
+
+    private func resetFiltersForExternalSelection() {
+        selectedApplicationFilter = .all
+        selectedCaptureTriggerFilter = .all
+        searchInputText = ""
+        confirmedSearchQueryText = ""
+    }
+
     private func focusCaptureList() {
         Task { @MainActor in
             focusedControl = .captureList
@@ -667,6 +720,8 @@ struct CaptureViewerView: View {
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
+
+    private static let captureViewerDayCalendar: Calendar = .autoupdatingCurrent
 
     private static let captureViewerDateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()

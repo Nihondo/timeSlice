@@ -119,11 +119,11 @@ ReportScheduler (actor, time-slot-based auto-generation)
 
 ### Notifications
 
-- **Capture completion**: both `.manual` and `.rectangleCapture` triggers post a notification with app name + window title (or fallback text); `.scheduled` captures do not post notifications
+- **Capture completion**: both `.manual` and `.rectangleCapture` triggers post a notification with app name + window title (or fallback text); `.scheduled` captures do not post notifications. For saved records, notification `userInfo` includes `captureRecordID` + `capturedAtEpochSeconds`, and clicking the notification opens Capture Viewer with the corresponding record selected.
 - **Report generation success**: both manual and scheduled, showing report file name + record count
 - **Report generation failure**: both manual and scheduled, showing localized error message
 - **`ReportNotificationManager`** (in AppStateSupport.swift): manages `UNUserNotificationCenter` authorization and posting
-- **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click → opens report file via `/usr/bin/open`
+- **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click routing — report notifications open report file via `/usr/bin/open`; capture notifications post a selection request event consumed by `AppState`
 
 ### Localization
 
@@ -146,7 +146,7 @@ Stored structure:
 
 ### App Layer (timeSliceApp)
 
-- **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation
+- **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation, and bridges capture-notification click events into Capture Viewer selection requests
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
   - Capture settings: `captureIntervalSeconds`, `captureMinimumTextLength`, `captureShouldSaveImages`, `captureImageFormat`, `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
@@ -157,7 +157,7 @@ Stored structure:
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
-- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes.
+- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes. It also accepts external selection requests (notification click), resets filters/search as needed, and selects the target record by ID.
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
 
 ### Key Design Patterns

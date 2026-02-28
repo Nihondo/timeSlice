@@ -45,13 +45,19 @@ final class TimeSliceAppDelegate: NSObject, NSApplicationDelegate, UNUserNotific
         guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
             return
         }
-        guard
-            let reportFilePath = response.notification.request.content.userInfo[ReportNotificationUserInfoKey.reportFilePath] as? String
-        else {
+        let notificationUserInfo = response.notification.request.content.userInfo
+        if let reportFilePath = notificationUserInfo[ReportNotificationUserInfoKey.reportFilePath] as? String {
+            ReportFileOpeningExecutor.executeOpenCommand(reportFilePath: reportFilePath)
             return
         }
-
-        ReportFileOpeningExecutor.executeOpenCommand(reportFilePath: reportFilePath)
+        guard notificationUserInfo[CaptureNotificationUserInfoKey.captureRecordID] != nil else {
+            return
+        }
+        NotificationCenter.default.post(
+            name: .captureNotificationDidRequestOpenRecord,
+            object: nil,
+            userInfo: notificationUserInfo
+        )
     }
 
     nonisolated func userNotificationCenter(
@@ -78,6 +84,13 @@ private struct MenuBarStatusLabelView: View {
         )
         .onChange(of: appState.captureViewerSearchRequestSequence) { _, _ in
             guard appState.captureViewerSearchRequestSequence > 0 else {
+                return
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: SettingsWindowIdentifier.viewer)
+        }
+        .onChange(of: appState.captureViewerSelectionRequestSequence) { _, _ in
+            guard appState.captureViewerSelectionRequestSequence > 0 else {
                 return
             }
             NSApp.activate(ignoringOtherApps: true)
