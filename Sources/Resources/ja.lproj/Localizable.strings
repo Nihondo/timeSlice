@@ -8,7 +8,7 @@
 "menu.capture.start" = "記録開始";
 "menu.capture.stop" = "記録終了";
 "menu.capture.now" = "今すぐ記録";
-"menu.capture.rectangle" = "矩形をキャプチャ";
+"menu.capture.rectangle" = "選択範囲をキャプチャ";
 "manual_capture.comment.title" = "timeSlice";
 "manual_capture.comment.placeholder" = "コメントを追加して記録（省略可）";
 "manual_capture.comment.hint" = "Enter: 記録 / ⌘ + ENTER: 検索 / Esc: キャンセル";
@@ -42,7 +42,7 @@
 
 "settings.section.keyboard_shortcut" = "キーボードショートカット";
 "settings.label.capture_now_shortcut" = "今すぐ記録";
-"settings.label.rectangle_capture_shortcut" = "矩形をキャプチャ";
+"settings.label.rectangle_capture_shortcut" = "選択範囲をキャプチャ";
 "settings.button.record_shortcut" = "ショートカットを設定";
 "settings.button.shortcut_recording" = "キー入力待ち...";
 "settings.button.clear_shortcut" = "クリア";
