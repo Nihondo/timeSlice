@@ -16,8 +16,8 @@ public final class RectangleCaptureScreenCapturing: ScreenCapturing, @unchecked 
             .appendingPathComponent("timeslice_rect_\(UUID().uuidString).png")
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
+        let process = Process()
         let terminationStatus: Int32 = await withCheckedContinuation { continuation in
-            let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
             // -i: interactive rectangle selection
             // -t png: PNG output format
