@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 /// ScreenCapturing implementation that uses `screencapture -i` for interactive rectangle selection.
 /// Returns nil when the user cancels (Esc key), which CaptureScheduler maps to .skipped(.noWindow).
