@@ -168,6 +168,10 @@ final class AppState {
     func startRectangleCaptureFlow() {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            if self.manualCaptureCommentPanelPresenter.isPresenting {
+                self.manualCaptureCommentPanelPresenter.dismissActivePanelIfNeeded()
+                return
+            }
             // Wait briefly so the menu bar dropdown closes before screencapture -i launches.
             try? await Task.sleep(for: .milliseconds(300))
             let configuration = resolveCaptureRuntimeSettings().schedulerConfiguration
