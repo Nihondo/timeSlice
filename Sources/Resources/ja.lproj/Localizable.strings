@@ -169,8 +169,8 @@
 "notification.report.title.scheduled_failed" = "定時日報生成に失敗しました";
 "notification.report.body.failed" = "日報生成失敗: %@";
 "notification.capture.title.manual" = "テキスト認識の記録が完了しました";
-"notification.capture.title.rectangle_capture" = "矩形キャプチャが完了しました";
-"rectangle_capture.application_name" = "矩形キャプチャ";
+"notification.capture.title.rectangle_capture" = "選択範囲キャプチャが完了しました";
+"rectangle_capture.application_name" = "選択範囲キャプチャ";
 "notification.capture.body.window_title" = "%@";
 "notification.capture.value.window_title_unavailable" = "（タイトルなし）";
 
