@@ -315,6 +315,32 @@ public actor CaptureScheduler {
             }
             recognizedText = ""
         }
+        if !isUserInitiatedCapture {
+            let isExcludedByOcrText = matchesExcludedKeyword(
+                recognizedText,
+                excludedKeywords: configuration.excludedWindowTitles
+            )
+            if isExcludedByOcrText {
+                let captureRecord = CaptureRecord(
+                    applicationName: capturedWindow.applicationName,
+                    windowTitle: capturedWindow.windowTitle,
+                    capturedAt: capturedWindow.capturedAt,
+                    ocrText: "",
+                    hasImage: false,
+                    imageFormat: nil,
+                    captureTrigger: captureTrigger,
+                    comments: normalizedManualComment,
+                    browserURL: capturedWindow.browserURL,
+                    documentPath: capturedWindow.documentPath
+                )
+                try dataStore.saveRecord(captureRecord)
+                try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
+                try imageStore.cleanupExpiredImages(referenceDate: dateProvider.now)
+                lastErrorDescription = nil
+                return .saved(captureRecord)
+            }
+        }
+
         let normalizedText = normalizeRecognizedText(
             recognizedText,
             isUserInitiatedCapture: isUserInitiatedCapture

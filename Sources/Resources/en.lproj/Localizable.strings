@@ -63,9 +63,9 @@
 "settings.placeholder.excluded_app_name" = "Enter app name";
 "settings.button.add_excluded_app" = "Add";
 "settings.button.delete_excluded_app" = "Delete";
-"settings.section.excluded_window_titles" = "Text Recognition Excluded Window Titles";
-"settings.footer.excluded_window_titles" = "If the window title partially matches a keyword, text recognition is skipped and only the app name is recorded.";
-"settings.placeholder.excluded_window_title" = "Enter window title";
+"settings.section.excluded_window_titles" = "Text Recognition Excluded Keywords";
+"settings.footer.excluded_window_titles" = "If the window title or recognized text partially matches a keyword, only the app name is recorded.";
+"settings.placeholder.excluded_window_title" = "Enter keyword";
 "settings.button.add_excluded_window_title" = "Add";
 "settings.button.delete_excluded_window_title" = "Delete";
 "settings.section.storage" = "Storage";
