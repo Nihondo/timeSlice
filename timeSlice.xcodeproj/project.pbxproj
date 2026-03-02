@@ -37,6 +37,7 @@
 		42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800022FF4000000AA1122 /* CaptureViewerView.swift */; };
 		42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800032FF4000000AA1122 /* SettingsComponents.swift */; };
 		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
+		42A7612A2F6A000000FA9E46 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A7612B2F6A000000FA9E46 /* PromptTemplate.swift */; };
 		42E2D0043002000000AA1122 /* RectangleCaptureScreenCapturing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */; };
 /* End PBXBuildFile section */
 
@@ -75,6 +76,7 @@
 		42D800032FF4000000AA1122 /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
 		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
 		42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangleCaptureScreenCapturing.swift; sourceTree = "<group>"; };
+		42A7612B2F6A000000FA9E46 /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +116,7 @@
 				42D800022FF4000000AA1122 /* CaptureViewerView.swift */,
 				42A761112F449A3C00FA9E46 /* Localization.swift */,
 				42C1A7B92FF1E00100AA1122 /* ManualCaptureCommentPanel.swift */,
+				42A7612B2F6A000000FA9E46 /* PromptTemplate.swift */,
 				42A760D12F433BDF00FA9E46 /* SettingsView.swift */,
 				42D800032FF4000000AA1122 /* SettingsComponents.swift */,
 				42A760D22F433BDF00FA9E46 /* timeSliceApp.swift */,
@@ -326,6 +329,7 @@
 				42D800042FF4000000AA1122 /* AppStateSupport.swift in Sources */,
 				42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */,
 				42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */,
+				42A7612A2F6A000000FA9E46 /* PromptTemplate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -85,7 +85,7 @@ ReportScheduler (actor, time-slot-based auto-generation)
 ```
 
 - **Time-slot-only model**: no single-time mode — all scheduling uses time slots
-- `ReportTimeSlot` (Codable, Identifiable): configurable time window with start/end times, enable/disable. No label field — uses auto-generated `timeRangeLabel` (e.g. "08:00-25:00")
+- `ReportTimeSlot` (Codable, Identifiable): configurable time window with start/end times, enable/disable, and optional `promptTemplateID: UUID?`. No label field — uses auto-generated `timeRangeLabel` (e.g. "08:00-25:00")
 - `endHour` supports values up to 30 (next day 06:00). `endHour >= 24` means execution fires after midnight, targeting the previous day's records
 - `executionIsNextDay`, `executionHour`, `primaryDayTimeRange`, `overflowDayTimeRange` — computed properties for cross-midnight handling
 - `ReportTimeRange`: lightweight filter struct with `contains(_:Date)` for record filtering
@@ -98,6 +98,8 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - Scheduled result notifications are deduplicated via `lastResultSequence` and emitted once per execution
 - Scheduler loop lifecycle is guarded by a generation counter (`schedulerLoopGeneration`) so stale canceled loops cannot clear or replace the active loop state during `updateSchedule()` races; this prevents duplicate auto-generation for the same slot time.
 - Migration from legacy settings (`reportTargetDayOffset`, `reportTimeSlotsEnabled`, `reportAutoGenerationHour/Minute`) via `AppSettingsResolver.migrateReportSettingsIfNeeded()`
+- Migration from legacy single prompt template to multi-template list via `AppSettingsResolver.migratePromptTemplateIfNeeded()` (migration key: `migration.promptTemplates.v1`)
+- Migration from legacy single CLI config (`reportCLICommand` + `reportCLIArguments`) to CLI profile list via `AppSettingsResolver.migrateCLIProfilesIfNeeded()` (migration key: `migration.cliProfiles.v1`)
 
 ### Global Keyboard Shortcuts
 
@@ -149,16 +151,26 @@ Stored structure:
 - **`AppState`** (`@MainActor @Observable`): owns all core instances including `ReportScheduler`, `ReportNotificationManager`, and `GlobalHotKeyManager`. Coordinates UI state, handles capture start/stop and report generation, and bridges capture-notification click events into Capture Viewer selection requests
 - **`AppSettings`**: `AppSettingsKey` enum for UserDefaults keys + `AppSettingsResolver` enum with static resolver functions (defaults, clamping, parsing). All settings persisted via `@AppStorage`
   - Capture settings: `captureIntervalSeconds`, `captureMinimumTextLength`, `captureShouldSaveImages`, `captureImageFormat`, `captureExcludedApplications`, `captureExcludedWindowTitles`
-  - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate`, `reportTimeSlotsJSON`
+  - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate` (legacy), `reportPromptTemplatesJSON`, `reportTimeSlotsJSON`, `reportCLIProfilesJSON`, `reportSelectedCLIProfileID`
   - Viewer settings: `captureViewerTimeSortOrder`
   - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`, `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
-- Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour)
+- Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour); each row also includes a prompt template Picker (inline in the same HStack row)
+- **`PromptTemplate`** (in `PromptTemplate.swift`): `Codable, Identifiable, Equatable, Sendable` struct with `id: UUID`, `name: String`, `template: String`. Stored as JSON array in `reportPromptTemplatesJSON`. "Default" template is not persisted — represented by `selectedPromptTemplateID == nil`
+- **`ReportCLIProfile`** (in `PromptTemplate.swift`): `Codable, Identifiable, Equatable, Sendable` struct with `id: UUID`, `name: String`, `command: String`, `argumentsText: String`. Stored as JSON array in `reportCLIProfilesJSON`; active profile is tracked by `reportSelectedCLIProfileID`
+- `AppSettingsResolver.resolvePromptTemplates()` / `savePromptTemplates()` — JSON encode/decode for template list
+- `AppSettingsResolver.resolveReportCLIProfiles()` / `saveReportCLIProfiles()` — JSON encode/decode for CLI profile list
+- `AppSettingsResolver.migratePromptTemplateIfNeeded()` — migrates legacy `reportPromptTemplate` to a named "カスタム" entry and assigns it to all existing slots; runs once per installation
+- `AppSettingsResolver.migrateCLIProfilesIfNeeded()` — migrates legacy single CLI command/arguments to a named profile and keeps one active selection; runs once per installation
+- `resolveReportGenerationConfigurationForSlot()` resolves prompt by looking up `slot.promptTemplateID` in the templates list; falls back to legacy `reportPromptTemplate` if `nil`
 - **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
 - General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
+- CLI tab: Picker to select active CLI profile, +/- buttons to add/delete sets, editable set name/command/arguments fields, and shared timeout Stepper. Changes auto-saved via `saveCLIProfiles()`
+- Prompt tab: Picker to select active template (Default + custom templates), +/- buttons to add/delete, name `TextField` for rename, `TextEditor` for content editing (computed `Binding<String>`). Default template is read-only and cannot be deleted. Changes auto-saved via `savePromptTemplates()`
 - **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter, trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes. It also accepts external selection requests (notification click), resets filters/search as needed, and selects the target record by ID.
 - **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
+  - "Generate report" (`reportGenerateButton` `@ViewBuilder` in `MenuBarMenuContentView`) adapts to enabled time slots: 1 slot → `Button` calling `generateReportForTimeSlot(isSoleEnabledSlot: true)`; 2+ slots → `Menu` submenu with one entry per enabled slot (label = `slot.timeRangeLabel`); 0 slots → fallback `generateDailyReport()` (full-day). Slot list is reactive via `@AppStorage(reportTimeSlotsJSON)`.
 
 ### Key Design Patterns
 

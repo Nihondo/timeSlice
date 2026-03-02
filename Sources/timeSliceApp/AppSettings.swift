@@ -17,9 +17,12 @@ enum AppSettingsKey {
     static let reportCLICommand = "report.cliCommand"
     static let reportCLIArguments = "report.cliArguments"
     static let reportCLITimeoutSeconds = "report.cliTimeoutSeconds"
+    static let reportCLIProfilesJSON = "report.cliProfilesJSON"
+    static let reportSelectedCLIProfileID = "report.selectedCLIProfileID"
     static let reportAutoGenerationEnabled = "report.autoGenerationEnabled"
     static let reportOutputDirectoryPath = "report.outputDirectoryPath"
     static let reportPromptTemplate = "report.promptTemplate"
+    static let reportPromptTemplatesJSON = "report.promptTemplatesJSON"
     static let reportTimeSlotsJSON = "report.timeSlotsJSON"
     static let captureViewerTimeSortOrder = "viewer.timeSortOrder"
     static let captureNowShortcutKey = "shortcut.captureNowKey"
@@ -203,6 +206,9 @@ enum ExcludedKeywordNormalizer {
 }
 
 enum AppSettingsResolver {
+    private static let defaultReportCLICommand = "gemini"
+    private static let defaultReportCLIArgumentsText = "-p"
+
     static func resolveCaptureNowShortcutConfiguration(userDefaults: UserDefaults = .standard) -> CaptureNowShortcutConfiguration? {
         CaptureNowShortcutResolver.resolveConfiguration(
             shortcutKey: userDefaults.string(forKey: AppSettingsKey.captureNowShortcutKey) ?? "",
@@ -269,16 +275,26 @@ enum AppSettingsResolver {
     }
 
     static func resolveReportCommand(userDefaults: UserDefaults = .standard) -> String {
-        let configuredCommand = userDefaults.string(forKey: AppSettingsKey.reportCLICommand)?
+        if let selectedProfile = resolveSelectedReportCLIProfile(userDefaults: userDefaults) {
+            let configuredCommand = selectedProfile.command
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if configuredCommand.isEmpty == false {
+                return configuredCommand
+            }
+        }
+        let configuredCommand = resolveLegacyReportCommand(userDefaults: userDefaults)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let configuredCommand, configuredCommand.isEmpty == false else {
-            return "gemini"
+            return defaultReportCLICommand
         }
         return configuredCommand
     }
 
     static func resolveReportArguments(userDefaults: UserDefaults = .standard) -> [String] {
-        let argumentsText = userDefaults.string(forKey: AppSettingsKey.reportCLIArguments) ?? "-p"
+        if let selectedProfile = resolveSelectedReportCLIProfile(userDefaults: userDefaults) {
+            return parseCLIArguments(selectedProfile.argumentsText)
+        }
+        let argumentsText = resolveLegacyReportArgumentsText(userDefaults: userDefaults) ?? defaultReportCLIArgumentsText
         return parseCLIArguments(argumentsText)
     }
 
@@ -311,19 +327,62 @@ enum AppSettingsResolver {
         userDefaults: UserDefaults = .standard
     ) -> ReportGenerationConfiguration {
         let outputFileName = isSoleEnabledSlot ? "report.md" : slot.outputFileName
+        let promptTemplate: String?
+        if let promptTemplateID = slot.promptTemplateID {
+            let templates = resolvePromptTemplates(userDefaults: userDefaults)
+            promptTemplate = templates.first { $0.id == promptTemplateID }?.template
+        } else {
+            promptTemplate = resolveReportPromptTemplate(userDefaults: userDefaults)
+        }
         return ReportGenerationConfiguration(
             command: resolveReportCommand(userDefaults: userDefaults),
             arguments: resolveReportArguments(userDefaults: userDefaults),
             timeoutSeconds: resolveReportTimeoutSeconds(userDefaults: userDefaults),
             outputFileName: outputFileName,
             outputDirectoryURL: resolveReportOutputDirectoryURL(userDefaults: userDefaults),
-            promptTemplate: resolveReportPromptTemplate(userDefaults: userDefaults)
+            promptTemplate: promptTemplate
         )
     }
 
     static func resolveReportAutoGenerationEnabled(userDefaults: UserDefaults = .standard) -> Bool {
         let hasValue = userDefaults.object(forKey: AppSettingsKey.reportAutoGenerationEnabled) != nil
         return hasValue ? userDefaults.bool(forKey: AppSettingsKey.reportAutoGenerationEnabled) : false
+    }
+
+    /// Loads CLI profiles from UserDefaults. Returns an empty array if none are saved.
+    static func resolveReportCLIProfiles(userDefaults: UserDefaults = .standard) -> [ReportCLIProfile] {
+        guard let jsonData = userDefaults.data(forKey: AppSettingsKey.reportCLIProfilesJSON) else {
+            return []
+        }
+        guard let profiles = try? JSONDecoder().decode([ReportCLIProfile].self, from: jsonData),
+              profiles.isEmpty == false else {
+            return []
+        }
+        let normalizedProfiles = profiles.map(normalizeReportCLIProfile)
+        if normalizedProfiles != profiles {
+            saveReportCLIProfiles(normalizedProfiles, userDefaults: userDefaults)
+        }
+        return normalizedProfiles
+    }
+
+    static func saveReportCLIProfiles(_ profiles: [ReportCLIProfile], userDefaults: UserDefaults = .standard) {
+        guard let jsonData = try? JSONEncoder().encode(profiles) else { return }
+        userDefaults.set(jsonData, forKey: AppSettingsKey.reportCLIProfilesJSON)
+    }
+
+    static func resolveSelectedReportCLIProfileID(userDefaults: UserDefaults = .standard) -> UUID? {
+        guard let rawValue = userDefaults.string(forKey: AppSettingsKey.reportSelectedCLIProfileID) else {
+            return nil
+        }
+        return UUID(uuidString: rawValue)
+    }
+
+    static func saveSelectedReportCLIProfileID(_ profileID: UUID?, userDefaults: UserDefaults = .standard) {
+        guard let profileID else {
+            userDefaults.removeObject(forKey: AppSettingsKey.reportSelectedCLIProfileID)
+            return
+        }
+        userDefaults.set(profileID.uuidString, forKey: AppSettingsKey.reportSelectedCLIProfileID)
     }
 
     private static func parseCLIArguments(_ argumentsText: String) -> [String] {
@@ -382,6 +441,75 @@ enum AppSettingsResolver {
         return trimmedTemplate.isEmpty ? nil : configuredTemplate
     }
 
+    /// Loads prompt templates from UserDefaults. Returns an empty array if none are saved.
+    static func resolvePromptTemplates(userDefaults: UserDefaults = .standard) -> [PromptTemplate] {
+        guard let jsonData = userDefaults.data(forKey: AppSettingsKey.reportPromptTemplatesJSON) else {
+            return []
+        }
+        return (try? JSONDecoder().decode([PromptTemplate].self, from: jsonData)) ?? []
+    }
+
+    static func savePromptTemplates(_ templates: [PromptTemplate], userDefaults: UserDefaults = .standard) {
+        guard let jsonData = try? JSONEncoder().encode(templates) else { return }
+        userDefaults.set(jsonData, forKey: AppSettingsKey.reportPromptTemplatesJSON)
+    }
+
+    /// Migrates the legacy single prompt template to the new multi-template list.
+    /// If a custom template existed, it is preserved as a named template and all time slots
+    /// are updated to reference it. Safe to call multiple times; runs only once.
+    static func migratePromptTemplateIfNeeded(userDefaults: UserDefaults = .standard) {
+        let migrationKey = "migration.promptTemplates.v1"
+        guard userDefaults.bool(forKey: migrationKey) == false else { return }
+
+        if let existingTemplate = resolveReportPromptTemplate(userDefaults: userDefaults) {
+            let template = PromptTemplate(name: "カスタム", template: existingTemplate)
+            savePromptTemplates([template], userDefaults: userDefaults)
+
+            let existingSlots = resolveReportTimeSlots(userDefaults: userDefaults)
+            let updatedSlots = existingSlots.map { slot in
+                ReportTimeSlot(
+                    id: slot.id,
+                    startHour: slot.startHour,
+                    startMinute: slot.startMinute,
+                    endHour: slot.endHour,
+                    endMinute: slot.endMinute,
+                    isEnabled: slot.isEnabled,
+                    promptTemplateID: template.id
+                )
+            }
+            saveReportTimeSlots(updatedSlots, userDefaults: userDefaults)
+            userDefaults.removeObject(forKey: AppSettingsKey.reportPromptTemplate)
+        }
+
+        userDefaults.set(true, forKey: migrationKey)
+    }
+
+    /// Migrates legacy single CLI command settings to profile list.
+    /// Safe to call multiple times; runs only once per installation.
+    static func migrateCLIProfilesIfNeeded(userDefaults: UserDefaults = .standard) {
+        let migrationKey = "migration.cliProfiles.v1"
+        guard userDefaults.bool(forKey: migrationKey) == false else { return }
+
+        let resolvedProfiles = resolveReportCLIProfiles(userDefaults: userDefaults)
+        let profilesToSave: [ReportCLIProfile]
+        if resolvedProfiles.isEmpty {
+            profilesToSave = [makeLegacyReportCLIProfile(userDefaults: userDefaults)]
+        } else {
+            profilesToSave = resolvedProfiles
+        }
+        saveReportCLIProfiles(profilesToSave, userDefaults: userDefaults)
+
+        let selectedProfileID = resolveSelectedReportCLIProfileID(userDefaults: userDefaults)
+        if let selectedProfileID,
+           profilesToSave.contains(where: { $0.id == selectedProfileID }) {
+            // Keep existing selection.
+        } else {
+            saveSelectedReportCLIProfileID(profilesToSave.first?.id, userDefaults: userDefaults)
+        }
+
+        userDefaults.set(true, forKey: migrationKey)
+    }
+
     /// Migrates legacy report settings to the new time-slot-only model.
     /// Safe to call multiple times; runs only once per installation.
     static func migrateReportSettingsIfNeeded(userDefaults: UserDefaults = .standard) {
@@ -413,7 +541,47 @@ enum AppSettingsResolver {
             startMinute: min(max(slot.startMinute, 0), 59),
             endHour: min(max(slot.endHour, 1), 30),
             endMinute: min(max(slot.endMinute, 0), 59),
-            isEnabled: slot.isEnabled
+            isEnabled: slot.isEnabled,
+            promptTemplateID: slot.promptTemplateID
+        )
+    }
+
+    private static func resolveSelectedReportCLIProfile(userDefaults: UserDefaults = .standard) -> ReportCLIProfile? {
+        let profiles = resolveReportCLIProfiles(userDefaults: userDefaults)
+        guard profiles.isEmpty == false else {
+            return nil
+        }
+        if let selectedProfileID = resolveSelectedReportCLIProfileID(userDefaults: userDefaults),
+           let selectedProfile = profiles.first(where: { $0.id == selectedProfileID }) {
+            return selectedProfile
+        }
+        return profiles.first
+    }
+
+    private static func makeLegacyReportCLIProfile(userDefaults: UserDefaults = .standard) -> ReportCLIProfile {
+        ReportCLIProfile(
+            name: "Default",
+            command: resolveLegacyReportCommand(userDefaults: userDefaults) ?? defaultReportCLICommand,
+            argumentsText: resolveLegacyReportArgumentsText(userDefaults: userDefaults) ?? defaultReportCLIArgumentsText
+        )
+    }
+
+    private static func resolveLegacyReportCommand(userDefaults: UserDefaults = .standard) -> String? {
+        userDefaults.string(forKey: AppSettingsKey.reportCLICommand)
+    }
+
+    private static func resolveLegacyReportArgumentsText(userDefaults: UserDefaults = .standard) -> String? {
+        userDefaults.string(forKey: AppSettingsKey.reportCLIArguments)
+    }
+
+    private static func normalizeReportCLIProfile(_ profile: ReportCLIProfile) -> ReportCLIProfile {
+        let trimmedName = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedName = trimmedName.isEmpty ? "Profile" : trimmedName
+        return ReportCLIProfile(
+            id: profile.id,
+            name: resolvedName,
+            command: profile.command,
+            argumentsText: profile.argumentsText
         )
     }
 }

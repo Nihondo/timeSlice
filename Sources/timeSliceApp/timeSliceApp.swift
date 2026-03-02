@@ -108,6 +108,11 @@ private struct MenuBarMenuContentView: View {
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
+    @AppStorage(AppSettingsKey.reportTimeSlotsJSON) private var reportTimeSlotsJSON: String = ""
+
+    private var enabledReportSlots: [ReportTimeSlot] {
+        AppSettingsResolver.resolveReportTimeSlots().filter(\.isEnabled)
+    }
 
     var body: some View {
         Button {
@@ -140,17 +145,7 @@ private struct MenuBarMenuContentView: View {
 
         captureRectangleButton
 
-        Button {
-            Task {
-                await appState.generateDailyReport()
-            }
-        } label: {
-            Label(
-                appState.isGeneratingReport ? L10n.string("menu.report.generating") : L10n.string("menu.report.generate"),
-                systemImage: appState.isGeneratingReport ? "hourglass" : "doc.text"
-            )
-        }
-        .disabled(appState.isGeneratingReport)
+        reportGenerateButton
 
         Button {
             openWindowBringingAppToFront(id: SettingsWindowIdentifier.viewer)
@@ -220,6 +215,47 @@ private struct MenuBarMenuContentView: View {
             } label: {
                 Label(L10n.string("menu.capture.rectangle"), systemImage: "rectangle.dashed.badge.record")
             }
+        }
+    }
+
+    @ViewBuilder
+    private var reportGenerateButton: some View {
+        let labelText = appState.isGeneratingReport ? L10n.string("menu.report.generating") : L10n.string("menu.report.generate")
+        let labelImage = appState.isGeneratingReport ? "hourglass" : "doc.text"
+        let slots = enabledReportSlots
+        if slots.count >= 2 {
+            Menu {
+                ForEach(slots) { slot in
+                    Button {
+                        Task {
+                            await appState.generateReportForTimeSlot(slot, isSoleEnabledSlot: false)
+                        }
+                    } label: {
+                        Label(slot.timeRangeLabel, systemImage: "clock")
+                    }
+                }
+            } label: {
+                Label(labelText, systemImage: labelImage)
+            }
+            .disabled(appState.isGeneratingReport)
+        } else if let slot = slots.first {
+            Button {
+                Task {
+                    await appState.generateReportForTimeSlot(slot, isSoleEnabledSlot: true)
+                }
+            } label: {
+                Label(labelText, systemImage: labelImage)
+            }
+            .disabled(appState.isGeneratingReport)
+        } else {
+            Button {
+                Task {
+                    await appState.generateDailyReport()
+                }
+            } label: {
+                Label(labelText, systemImage: labelImage)
+            }
+            .disabled(appState.isGeneratingReport)
         }
     }
 

@@ -76,6 +76,10 @@
 "settings.footer.storage" = "設定変更は即時反映されます（記録中は次回キャプチャから反映）。";
 
 "settings.section.ai_cli" = "AI CLIコマンド";
+"settings.cli.profile_picker_label" = "保存セット";
+"settings.cli.profile_name" = "セット名";
+"settings.cli.default_profile_name" = "デフォルト";
+"settings.cli.new_profile_name" = "新しいセット";
 "settings.label.cli_command" = "CLIコマンド名";
 "settings.placeholder.cli_command" = "例: gemini";
 "settings.label.additional_arguments" = "追加引数";
@@ -91,9 +95,15 @@
 "settings.label.report_target_date" = "対象日";
 
 "settings.section.prompt_template" = "プロンプトテンプレート";
+"settings.prompt.template_picker_label" = "テンプレート";
+"settings.prompt.default_template_name" = "デフォルト";
+"settings.prompt.new_template_name" = "新しいテンプレート";
+"settings.prompt.template_name_label" = "テンプレート名";
+"settings.prompt.picker_label" = "プロンプト";
 "settings.prompt.placeholders" = "使用可能なプレースホルダ: {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}";
-"settings.button.reset_default_prompt" = "デフォルトに戻す";
-"settings.prompt.footer" = "未カスタマイズ時は既定テンプレートを表示します。編集内容は自動保存されます。";
+"settings.button.reset_default_prompt" = "デフォルト内容に戻す";
+"settings.prompt.footer" = "編集内容は自動保存されます。";
+"settings.prompt.footer_default" = "デフォルトテンプレートは変更できません。";
 "settings.section.report_output" = "保存先";
 "settings.label.report_output_directory" = "日報保存先";
 "settings.button.select_report_output_directory" = "保存先を選択";

@@ -86,6 +86,7 @@ final class AppState {
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
         AppSettingsResolver.migrateReportSettingsIfNeeded(userDefaults: userDefaults)
+        AppSettingsResolver.migrateCLIProfilesIfNeeded(userDefaults: userDefaults)
         let rootDirectoryURL = Self.resolveRootDirectoryURL()
         let pathResolver = StoragePathResolver(rootDirectoryURL: rootDirectoryURL)
         let createdDataStore = DataStore(pathResolver: pathResolver)

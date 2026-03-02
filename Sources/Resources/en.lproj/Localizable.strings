@@ -76,6 +76,10 @@
 "settings.footer.storage" = "Changes apply immediately (during recording, from the next capture).";
 
 "settings.section.ai_cli" = "AI CLI Command";
+"settings.cli.profile_picker_label" = "Saved Set";
+"settings.cli.profile_name" = "Set name";
+"settings.cli.default_profile_name" = "Default";
+"settings.cli.new_profile_name" = "New Set";
 "settings.label.cli_command" = "CLI command";
 "settings.placeholder.cli_command" = "e.g. gemini";
 "settings.label.additional_arguments" = "Additional arguments";
@@ -91,9 +95,15 @@
 "settings.label.report_target_date" = "Target date";
 
 "settings.section.prompt_template" = "Prompt Template";
+"settings.prompt.template_picker_label" = "Template";
+"settings.prompt.default_template_name" = "Default";
+"settings.prompt.new_template_name" = "New Template";
+"settings.prompt.template_name_label" = "Template Name";
+"settings.prompt.picker_label" = "Prompt";
 "settings.prompt.placeholders" = "Available placeholders: {{DATE}}, {{TIME_RANGE}}, {{JSON_GLOB_PATH}}, {{JSON_FILE_LIST}}, {{RECORD_COUNT}}";
-"settings.button.reset_default_prompt" = "Reset to Default";
-"settings.prompt.footer" = "If not customized, the default template is used. Edits are saved automatically.";
+"settings.button.reset_default_prompt" = "Reset to Default Content";
+"settings.prompt.footer" = "Edits are saved automatically.";
+"settings.prompt.footer_default" = "Default template is read-only.";
 "settings.section.report_output" = "Output";
 "settings.label.report_output_directory" = "Report Output Directory";
 "settings.button.select_report_output_directory" = "Select Output Directory";

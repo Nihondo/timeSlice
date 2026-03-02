@@ -18,20 +18,21 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.captureMinimumTextLength) private var minimumTextLength = 10
     @AppStorage(AppSettingsKey.captureShouldSaveImages) private var shouldSaveImages = true
     @AppStorage(AppSettingsKey.captureImageFormat) private var captureImageFormatRawValue = CaptureImageFormat.png.rawValue
-    @AppStorage(AppSettingsKey.reportCLICommand) private var reportCLICommand = "gemini"
-    @AppStorage(AppSettingsKey.reportCLIArguments) private var reportCLIArguments = "-p"
     @AppStorage(AppSettingsKey.reportCLITimeoutSeconds) private var reportCLITimeoutSeconds = 300
     @AppStorage(AppSettingsKey.reportAutoGenerationEnabled) private var isReportAutoGenerationEnabled = false
     @AppStorage(AppSettingsKey.reportOutputDirectoryPath) private var reportOutputDirectoryPath = ""
-    @AppStorage(AppSettingsKey.reportPromptTemplate) private var reportPromptTemplate = ""
     @AppStorage(AppSettingsKey.captureNowShortcutKey) private var captureNowShortcutKey = ""
     @AppStorage(AppSettingsKey.captureNowShortcutModifiers) private var captureNowShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.captureNowShortcutKeyCode) private var captureNowShortcutKeyCode = 0
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
-    @State private var promptTemplateEditorText = ""
-    @State private var hasInitializedPromptTemplateEditor = false
+    @State private var cliProfiles: [ReportCLIProfile] = []
+    @State private var selectedCLIProfileID: UUID? = nil
+    @State private var hasInitializedCLIProfiles = false
+    @State private var promptTemplates: [PromptTemplate] = []
+    @State private var selectedPromptTemplateID: UUID? = nil
+    @State private var hasInitializedPromptTemplates = false
     @State private var excludedApplications: [String] = []
     @State private var excludedApplicationNameInput = ""
     @State private var hasInitializedExcludedApplications = false
@@ -83,13 +84,11 @@ struct SettingsView: View {
             maxHeight: 1200
         )
         .onAppear {
-            initializePromptTemplateEditorIfNeeded()
+            initializeCLIProfilesIfNeeded()
+            initializePromptTemplatesIfNeeded()
             initializeExcludedApplicationsIfNeeded()
             initializeExcludedWindowTitlesIfNeeded()
             initializeTimeSlotsIfNeeded()
-        }
-        .onChange(of: promptTemplateEditorText) { _, newValue in
-            updateStoredPromptTemplate(editorText: newValue)
         }
         .onChange(of: isReportAutoGenerationEnabled) { _, _ in
             appState.updateReportSchedule()
@@ -357,6 +356,44 @@ struct SettingsView: View {
     private var cliSettingsView: some View {
         Form {
             Section("settings.section.ai_cli") {
+                HStack(spacing: 8) {
+                    Text("settings.cli.profile_picker_label")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $selectedCLIProfileID) {
+                        ForEach(cliProfiles) { profile in
+                            Text(profile.name).tag(Optional(profile.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .onChange(of: selectedCLIProfileID) { _, updatedID in
+                        AppSettingsResolver.saveSelectedReportCLIProfileID(updatedID)
+                    }
+                    Spacer()
+                    Button {
+                        addCLIProfile()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    Button {
+                        deleteSelectedCLIProfile()
+                    } label: {
+                        Image(systemName: "minus")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(canDeleteCLIProfile == false)
+                }
+
+                HStack {
+                    Text("settings.cli.profile_name")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("", text: currentCLIProfileNameBinding)
+                        .textFieldStyle(.roundedBorder)
+                }
+
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("settings.label.cli_command")
@@ -365,7 +402,7 @@ struct SettingsView: View {
 
                         LeftAlignedTextField(
                             placeholder: L10n.string("settings.placeholder.cli_command"),
-                            text: $reportCLICommand
+                            text: currentCLIProfileCommandBinding
                         )
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -381,7 +418,7 @@ struct SettingsView: View {
 
                         LeftAlignedTextField(
                             placeholder: L10n.string("settings.placeholder.additional_arguments"),
-                            text: $reportCLIArguments
+                            text: currentCLIProfileArgumentsBinding
                         )
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -398,6 +435,55 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var canDeleteCLIProfile: Bool {
+        cliProfiles.count > 1 && selectedCLIProfileID != nil
+    }
+
+    private var currentCLIProfileNameBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let selectedCLIProfileID,
+                      let profile = cliProfiles.first(where: { $0.id == selectedCLIProfileID }) else {
+                    return ""
+                }
+                return profile.name
+            },
+            set: { updatedName in
+                updateSelectedCLIProfile(name: updatedName)
+            }
+        )
+    }
+
+    private var currentCLIProfileCommandBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let selectedCLIProfileID,
+                      let profile = cliProfiles.first(where: { $0.id == selectedCLIProfileID }) else {
+                    return ""
+                }
+                return profile.command
+            },
+            set: { updatedCommand in
+                updateSelectedCLIProfile(command: updatedCommand)
+            }
+        )
+    }
+
+    private var currentCLIProfileArgumentsBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let selectedCLIProfileID,
+                      let profile = cliProfiles.first(where: { $0.id == selectedCLIProfileID }) else {
+                    return ""
+                }
+                return profile.argumentsText
+            },
+            set: { updatedArgumentsText in
+                updateSelectedCLIProfile(argumentsText: updatedArgumentsText)
+            }
+        )
     }
 
     private var reportSettingsView: some View {
@@ -469,29 +555,116 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
+    private var isDefaultTemplateSelected: Bool {
+        selectedPromptTemplateID == nil
+    }
+
+    private var currentTemplateTextBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let id = selectedPromptTemplateID,
+                      let template = promptTemplates.first(where: { $0.id == id }) else {
+                    return PromptBuilder.defaultTemplate
+                }
+                return template.template
+            },
+            set: { newValue in
+                guard let id = selectedPromptTemplateID,
+                      let index = promptTemplates.firstIndex(where: { $0.id == id }) else {
+                    return
+                }
+                guard promptTemplates[index].template != newValue else { return }
+                promptTemplates[index].template = newValue
+                savePromptTemplates()
+            }
+        )
+    }
+
+    private var currentTemplateNameBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let id = selectedPromptTemplateID,
+                      let template = promptTemplates.first(where: { $0.id == id }) else {
+                    return L10n.string("settings.prompt.default_template_name")
+                }
+                return template.name
+            },
+            set: { newValue in
+                guard let id = selectedPromptTemplateID,
+                      let index = promptTemplates.firstIndex(where: { $0.id == id }) else {
+                    return
+                }
+                guard promptTemplates[index].name != newValue else { return }
+                promptTemplates[index].name = newValue
+                savePromptTemplates()
+            }
+        )
+    }
+
     private var promptSettingsView: some View {
         Form {
             Section("settings.section.prompt_template") {
+                HStack(spacing: 8) {
+                    Text("settings.prompt.template_picker_label")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $selectedPromptTemplateID) {
+                        Text(L10n.string("settings.prompt.default_template_name")).tag(Optional<UUID>.none)
+                        ForEach(promptTemplates) { template in
+                            Text(template.name).tag(Optional(template.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    Spacer()
+                    Button {
+                        addPromptTemplate()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    Button {
+                        deleteSelectedPromptTemplate()
+                    } label: {
+                        Image(systemName: "minus")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isDefaultTemplateSelected)
+                }
+
+                if !isDefaultTemplateSelected {
+                    HStack {
+                        Text("settings.prompt.template_name_label")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("", text: currentTemplateNameBinding)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                }
+
                 Text("settings.prompt.placeholders")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                TextEditor(text: $promptTemplateEditorText)
+                TextEditor(text: currentTemplateTextBinding)
                     .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 280)
+                    .frame(minHeight: 240)
+                    .disabled(isDefaultTemplateSelected)
 
                 HStack {
-                    Button("settings.button.reset_default_prompt") {
-                        promptTemplateEditorText = resolveDefaultPromptTemplateText()
-                        reportPromptTemplate = ""
+                    if !isDefaultTemplateSelected {
+                        Button("settings.button.reset_default_prompt") {
+                            resetSelectedTemplateToDefault()
+                        }
                     }
-
                     Spacer()
+                    Text(isDefaultTemplateSelected
+                        ? L10n.string("settings.prompt.footer_default")
+                        : L10n.string("settings.prompt.footer"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
                 }
-
-                Text("settings.prompt.footer")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -541,6 +714,24 @@ struct SettingsView: View {
                         .font(.caption2)
                         .foregroundStyle(.orange)
                         .frame(width: 44, alignment: .leading)
+
+                    Text("settings.prompt.picker_label")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $slot.promptTemplateID) {
+                        Text(L10n.string("settings.prompt.default_template_name")).tag(Optional<UUID>.none)
+                        ForEach(promptTemplates) { template in
+                            Text(template.name).tag(Optional(template.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .onChange(of: slot.promptTemplateID) { _, _ in
+                        saveTimeSlots()
+                    }
+
+                    Spacer()
 
                     Button {
                         removeTimeSlot(id: slot.id)
@@ -642,12 +833,114 @@ struct SettingsView: View {
         appState.updateReportSchedule()
     }
 
-    private func initializePromptTemplateEditorIfNeeded() {
-        guard hasInitializedPromptTemplateEditor == false else {
+    private func initializeCLIProfilesIfNeeded() {
+        guard hasInitializedCLIProfiles == false else { return }
+        hasInitializedCLIProfiles = true
+        AppSettingsResolver.migrateCLIProfilesIfNeeded()
+        cliProfiles = AppSettingsResolver.resolveReportCLIProfiles()
+        if cliProfiles.isEmpty {
+            let defaultProfile = ReportCLIProfile(
+                name: L10n.string("settings.cli.default_profile_name"),
+                command: "gemini",
+                argumentsText: "-p"
+            )
+            cliProfiles = [defaultProfile]
+            AppSettingsResolver.saveReportCLIProfiles(cliProfiles)
+        }
+
+        let storedSelectedID = AppSettingsResolver.resolveSelectedReportCLIProfileID()
+        if let storedSelectedID,
+           cliProfiles.contains(where: { $0.id == storedSelectedID }) {
+            selectedCLIProfileID = storedSelectedID
+        } else {
+            selectedCLIProfileID = cliProfiles.first?.id
+            AppSettingsResolver.saveSelectedReportCLIProfileID(selectedCLIProfileID)
+        }
+    }
+
+    private func addCLIProfile() {
+        let newProfile = ReportCLIProfile(
+            name: L10n.string("settings.cli.new_profile_name"),
+            command: "gemini",
+            argumentsText: "-p"
+        )
+        cliProfiles.append(newProfile)
+        selectedCLIProfileID = newProfile.id
+        saveCLIProfiles()
+    }
+
+    private func deleteSelectedCLIProfile() {
+        guard canDeleteCLIProfile, let selectedCLIProfileID else { return }
+        cliProfiles.removeAll { $0.id == selectedCLIProfileID }
+        self.selectedCLIProfileID = cliProfiles.first?.id
+        saveCLIProfiles()
+    }
+
+    private func updateSelectedCLIProfile(name: String? = nil, command: String? = nil, argumentsText: String? = nil) {
+        guard let selectedCLIProfileID,
+              let profileIndex = cliProfiles.firstIndex(where: { $0.id == selectedCLIProfileID }) else {
             return
         }
-        promptTemplateEditorText = resolveStoredPromptTemplateText()
-        hasInitializedPromptTemplateEditor = true
+
+        var updatedProfile = cliProfiles[profileIndex]
+        if let name, updatedProfile.name != name {
+            updatedProfile.name = name
+        }
+        if let command, updatedProfile.command != command {
+            updatedProfile.command = command
+        }
+        if let argumentsText, updatedProfile.argumentsText != argumentsText {
+            updatedProfile.argumentsText = argumentsText
+        }
+        guard updatedProfile != cliProfiles[profileIndex] else { return }
+        cliProfiles[profileIndex] = updatedProfile
+        saveCLIProfiles()
+    }
+
+    private func saveCLIProfiles() {
+        AppSettingsResolver.saveReportCLIProfiles(cliProfiles)
+        AppSettingsResolver.saveSelectedReportCLIProfileID(selectedCLIProfileID)
+    }
+
+    private func initializePromptTemplatesIfNeeded() {
+        guard hasInitializedPromptTemplates == false else { return }
+        hasInitializedPromptTemplates = true
+        AppSettingsResolver.migratePromptTemplateIfNeeded()
+        promptTemplates = AppSettingsResolver.resolvePromptTemplates()
+    }
+
+    private func addPromptTemplate() {
+        let newTemplate = PromptTemplate(
+            name: L10n.string("settings.prompt.new_template_name"),
+            template: PromptBuilder.defaultTemplate
+        )
+        promptTemplates.append(newTemplate)
+        savePromptTemplates()
+        selectedPromptTemplateID = newTemplate.id
+    }
+
+    private func deleteSelectedPromptTemplate() {
+        guard let id = selectedPromptTemplateID else { return }
+        promptTemplates.removeAll { $0.id == id }
+        savePromptTemplates()
+        selectedPromptTemplateID = nil
+        var needsSave = false
+        for i in timeSlots.indices where timeSlots[i].promptTemplateID == id {
+            timeSlots[i].promptTemplateID = nil
+            needsSave = true
+        }
+        if needsSave { saveTimeSlots() }
+    }
+
+    private func resetSelectedTemplateToDefault() {
+        guard let id = selectedPromptTemplateID,
+              let index = promptTemplates.firstIndex(where: { $0.id == id }) else { return }
+        promptTemplates[index].template = PromptBuilder.defaultTemplate
+        savePromptTemplates()
+    }
+
+    private func savePromptTemplates() {
+        AppSettingsResolver.savePromptTemplates(promptTemplates)
     }
 
     private var canAddExcludedApplication: Bool {
@@ -800,18 +1093,6 @@ struct SettingsView: View {
         return trimmedKeyword
     }
 
-    private func resolveStoredPromptTemplateText() -> String {
-        let trimmedTemplate = reportPromptTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedTemplate.isEmpty == false else {
-            return resolveDefaultPromptTemplateText()
-        }
-        return reportPromptTemplate
-    }
-
-    private func resolveDefaultPromptTemplateText() -> String {
-        PromptBuilder.defaultTemplate
-    }
-
     private func resolveReportOutputDirectoryDisplayText() -> String {
         reportOutputDirectoryPath.isEmpty
             ? L10n.string("settings.value.report_output_default")
@@ -837,12 +1118,4 @@ struct SettingsView: View {
         reportOutputDirectoryPath = selectedDirectoryURL.path
     }
 
-    private func updateStoredPromptTemplate(editorText: String) {
-        let trimmedEditorText = editorText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedEditorText.isEmpty || editorText == resolveDefaultPromptTemplateText() {
-            reportPromptTemplate = ""
-            return
-        }
-        reportPromptTemplate = editorText
-    }
 }

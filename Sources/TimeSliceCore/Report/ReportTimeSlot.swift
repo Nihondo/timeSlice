@@ -39,6 +39,8 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
     public var endHour: Int
     public var endMinute: Int
     public var isEnabled: Bool
+    /// ID of the prompt template to use for this slot. nil means use the default template.
+    public var promptTemplateID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -46,7 +48,8 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         startMinute: Int,
         endHour: Int,
         endMinute: Int,
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        promptTemplateID: UUID? = nil
     ) {
         self.id = id
         self.startHour = startHour
@@ -54,11 +57,12 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         self.endHour = endHour
         self.endMinute = endMinute
         self.isEnabled = isEnabled
+        self.promptTemplateID = promptTemplateID
     }
 
     /// Decodes from JSON, ignoring unknown keys (e.g. legacy "label" field).
     enum CodingKeys: String, CodingKey {
-        case id, startHour, startMinute, endHour, endMinute, isEnabled
+        case id, startHour, startMinute, endHour, endMinute, isEnabled, promptTemplateID
     }
 
     /// Actual execution hour (endHour modulo 24).
