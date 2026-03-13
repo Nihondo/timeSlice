@@ -68,6 +68,29 @@ public struct DataStore: @unchecked Sendable {
         return artifacts.sorted { $0.record.capturedAt < $1.record.capturedAt }
     }
 
+    /// Moves one viewer artifact's JSON and linked image file to Trash.
+    @discardableResult
+    public func trashRecordArtifact(_ artifact: CaptureRecordArtifact) throws -> [URL] {
+        var trashedItemURLs: [URL] = []
+        trashedItemURLs.reserveCapacity(2)
+
+        if let trashedJSONFileURL = try trashItemIfExists(at: artifact.jsonFileURL) {
+            trashedItemURLs.append(trashedJSONFileURL)
+        }
+        if let imageFileURL = artifact.imageFileURL,
+           let trashedImageFileURL = try trashItemIfExists(at: imageFileURL) {
+            trashedItemURLs.append(trashedImageFileURL)
+        }
+
+        return trashedItemURLs
+    }
+
+    /// Moves one file to Trash when it exists.
+    @discardableResult
+    public func trashFileIfExists(at fileURL: URL) throws -> Bool {
+        try trashItemIfExists(at: fileURL) != nil
+    }
+
     /// Loads records for a time slot that may span across midnight.
     /// Merges records from the primary date and optional overflow (next calendar) date.
     public func loadRecordsForSlot(
@@ -181,6 +204,16 @@ public struct DataStore: @unchecked Sendable {
                     imageFormat: imageFormat
                 )
             )
+    }
+
+    private func trashItemIfExists(at fileURL: URL) throws -> URL? {
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+
+        var trashedItemURL: NSURL?
+        try fileManager.trashItem(at: fileURL, resultingItemURL: &trashedItemURL)
+        return trashedItemURL as URL?
     }
 
 }

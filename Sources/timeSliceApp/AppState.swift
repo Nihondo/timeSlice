@@ -413,6 +413,33 @@ final class AppState {
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
+    func openCaptureViewerURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    func copyCaptureViewerText(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
+    func trashCaptureViewerImageFile(_ fileURL: URL) async -> Bool {
+        let localDataStore = dataStore
+        return await performCaptureViewerTrash {
+            _ = try localDataStore.trashFileIfExists(at: fileURL)
+        }
+    }
+
+    func trashCaptureViewerRecord(_ artifact: CaptureRecordArtifact) async -> Bool {
+        let localDataStore = dataStore
+        return await performCaptureViewerTrash {
+            _ = try localDataStore.trashRecordArtifact(artifact)
+        }
+    }
+
     func requestCaptureViewerSearch(_ searchQuery: String) {
         captureViewerSearchQuery = searchQuery
         captureViewerSearchRequestSequence &+= 1
@@ -877,6 +904,24 @@ final class AppState {
         formatter.timeStyle = .short
         return formatter
     }()
+
+    private func performCaptureViewerTrash(
+        operation: @escaping @Sendable () throws -> Void
+    ) async -> Bool {
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                try operation()
+            }.value
+            captureViewerStatusMessage = ""
+            return true
+        } catch {
+            captureViewerStatusMessage = L10n.format(
+                "viewer.message.trash_failed",
+                error.localizedDescription
+            )
+            return false
+        }
+    }
 
     private func localizedCaptureSkipReason(_ captureSkipReason: CaptureSkipReason) -> String {
         switch captureSkipReason {

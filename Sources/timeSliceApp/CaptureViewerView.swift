@@ -47,6 +47,7 @@ struct CaptureViewerView: View {
     @State private var lastAppliedExternalSearchRequestSequence: UInt64 = 0
     @State private var lastAppliedExternalSelectionRequestSequence: UInt64 = 0
     @State private var pendingExternalSelectionRecordID: UUID?
+    @State private var pendingSelectionAfterReloadRecordID: UUID?
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
@@ -336,7 +337,10 @@ struct CaptureViewerView: View {
                 (artifact.id, artifact)
             }
         )
-        synchronizeSelectedCaptureArtifactIfNeeded()
+        let didApplyPendingSelection = applyPendingSelectionAfterReloadIfNeeded()
+        if didApplyPendingSelection == false {
+            synchronizeSelectedCaptureArtifactIfNeeded()
+        }
         applyPendingExternalSelectionIfNeeded()
     }
 
@@ -379,6 +383,19 @@ struct CaptureViewerView: View {
         pendingExternalSelectionRecordID = nil
     }
 
+    @discardableResult
+    private func applyPendingSelectionAfterReloadIfNeeded() -> Bool {
+        guard let pendingRecordID = pendingSelectionAfterReloadRecordID else {
+            return false
+        }
+        pendingSelectionAfterReloadRecordID = nil
+        guard displayedArtifactsByID[pendingRecordID] != nil else {
+            return false
+        }
+        selectedCaptureArtifactID = pendingRecordID
+        return true
+    }
+
     @ViewBuilder
     private func captureViewerRowView(artifact: CaptureRecordArtifact) -> some View {
         let windowTitleText = artifact.record.windowTitle?.isEmpty == false
@@ -411,6 +428,14 @@ struct CaptureViewerView: View {
                 .lineLimit(1)
         }
         .padding(.vertical, 2)
+        .contextMenu {
+            Button("viewer.menu.reveal_json") {
+                appState.revealCaptureViewerFile(artifact.jsonFileURL)
+            }
+            Button("viewer.menu.delete_record", role: .destructive) {
+                trashCaptureViewerRecord(artifact)
+            }
+        }
     }
 
     @ViewBuilder
@@ -431,13 +456,49 @@ struct CaptureViewerView: View {
                 captureViewerSectionSeparator
 
                 Group {
-                    Text("\(L10n.string("viewer.field.application_name")): \(artifact.record.applicationName)")
-                    Text("\(L10n.string("viewer.field.window_title")): \(resolveDisplayText(windowTitleText))")
+                    captureViewerTextRow(
+                        fieldName: L10n.string("viewer.field.application_name"),
+                        value: artifact.record.applicationName
+                    )
+                    captureViewerTextRow(
+                        fieldName: L10n.string("viewer.field.window_title"),
+                        value: windowTitleText
+                    )
                     if let browserURL = artifact.record.browserURL, browserURL.isEmpty == false {
-                        Text("\(L10n.string("viewer.field.browser_url")): \(resolveDisplayText(browserURL))")
+                        captureViewerLinkRow(
+                            fieldName: L10n.string("viewer.field.browser_url"),
+                            value: browserURL,
+                            action: {
+                                appState.openCaptureViewerURL(browserURL)
+                            }
+                        ) {
+                            Button("viewer.menu.open_url") {
+                                appState.openCaptureViewerURL(browserURL)
+                            }
+                            Button("viewer.menu.copy_url") {
+                                appState.copyCaptureViewerText(browserURL)
+                            }
+                        }
                     }
                     if let documentPath = artifact.record.documentPath, documentPath.isEmpty == false {
-                        Text("\(L10n.string("viewer.field.document_path")): \(resolveDisplayText(documentPath))")
+                        let documentFileURL = URL(fileURLWithPath: documentPath)
+                        captureViewerLinkRow(
+                            fieldName: L10n.string("viewer.field.document_path"),
+                            value: documentPath,
+                            action: {
+                                appState.openCaptureViewerFile(documentFileURL)
+                            }
+                        ) {
+                            Button("viewer.menu.open_file") {
+                                appState.openCaptureViewerFile(documentFileURL)
+                            }
+                            Button("viewer.menu.reveal_file") {
+                                appState.revealCaptureViewerFile(documentFileURL)
+                            }
+                            Button("viewer.menu.copy_file_path") {
+                                appState.copyCaptureViewerText(documentPath)
+                            }
+                        }
                     }
                 }
                 .font(.subheadline)
@@ -494,46 +555,6 @@ struct CaptureViewerView: View {
                                 .font(.system(.body, design: .monospaced))
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                }
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.files")
-                        .font(.headline)
-
-                    Text(artifact.jsonFileURL.path)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-
-                    HStack {
-                        Button("viewer.button.open_json") {
-                            appState.openCaptureViewerFile(artifact.jsonFileURL)
-                        }
-                        Button("viewer.button.reveal_json") {
-                            appState.revealCaptureViewerFile(artifact.jsonFileURL)
-                        }
-                    }
-
-                    if let imageFileURL = artifact.imageFileURL {
-                        Text(imageFileURL.path)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-
-                        HStack {
-                            Button("viewer.button.open_image") {
-                                appState.openCaptureViewerFile(imageFileURL)
-                            }
-                            .disabled(artifact.imageLinkState != .available)
-
-                            Button("viewer.button.reveal_image") {
-                                appState.revealCaptureViewerFile(imageFileURL)
-                            }
-                            .disabled(artifact.imageLinkState != .available)
                         }
                     }
                 }
@@ -654,6 +675,17 @@ struct CaptureViewerView: View {
                         .scaledToFit()
                         .frame(maxWidth: .infinity, maxHeight: 360, alignment: .leading)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contextMenu {
+                            Button("viewer.menu.open_image") {
+                                appState.openCaptureViewerFile(imageFileURL)
+                            }
+                            Button("viewer.menu.reveal_image") {
+                                appState.revealCaptureViewerFile(imageFileURL)
+                            }
+                            Button("viewer.menu.delete_image", role: .destructive) {
+                                trashCaptureViewerImage(artifact: artifact, imageFileURL: imageFileURL)
+                            }
+                        }
                 case .failure:
                     Text("viewer.message.image_load_failed")
                         .font(.caption)
@@ -669,6 +701,78 @@ struct CaptureViewerView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func captureViewerTextRow(fieldName: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text("\(fieldName):")
+            resolveDisplayText(value)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func captureViewerLinkRow<MenuContent: View>(
+        fieldName: String,
+        value: String,
+        action: @escaping () -> Void,
+        @ViewBuilder menuContent: () -> MenuContent
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text("\(fieldName):")
+            Button(action: action) {
+                resolveDisplayText(value)
+                    .underline()
+                    .multilineTextAlignment(.leading)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .contextMenu(menuItems: menuContent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func trashCaptureViewerImage(artifact: CaptureRecordArtifact, imageFileURL: URL) {
+        let preferredRecordID = selectedCaptureArtifactID == artifact.id ? artifact.id : selectedCaptureArtifactID
+        Task {
+            let didTrashImage = await appState.trashCaptureViewerImageFile(imageFileURL)
+            guard didTrashImage else {
+                return
+            }
+            pendingSelectionAfterReloadRecordID = preferredRecordID
+            loadCaptureViewerArtifacts()
+        }
+    }
+
+    private func trashCaptureViewerRecord(_ artifact: CaptureRecordArtifact) {
+        let preferredRecordID = resolvePreferredRecordIDAfterDeletingArtifact(artifact)
+        Task {
+            let didTrashRecord = await appState.trashCaptureViewerRecord(artifact)
+            guard didTrashRecord else {
+                return
+            }
+            pendingSelectionAfterReloadRecordID = preferredRecordID
+            loadCaptureViewerArtifacts()
+        }
+    }
+
+    private func resolvePreferredRecordIDAfterDeletingArtifact(_ artifact: CaptureRecordArtifact) -> UUID? {
+        guard let deletedRecordIndex = displayedArtifacts.firstIndex(where: { displayedArtifact in
+            displayedArtifact.id == artifact.id
+        }) else {
+            return selectedCaptureArtifactID
+        }
+
+        if selectedCaptureArtifactID != artifact.id {
+            return selectedCaptureArtifactID
+        }
+        if deletedRecordIndex + 1 < displayedArtifacts.count {
+            return displayedArtifacts[deletedRecordIndex + 1].id
+        }
+        if deletedRecordIndex > 0 {
+            return displayedArtifacts[deletedRecordIndex - 1].id
+        }
+        return nil
     }
 
     private func resolveCaptureImageLinkStateText(_ imageLinkState: CaptureImageLinkState) -> String {
