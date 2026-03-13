@@ -113,49 +113,44 @@ struct SettingsView: View {
 
     private var generalSettingsView: some View {
         Form {
-            Section("settings.section.permissions") {
-                HStack {
-                    Text("settings.label.permission.screen_recording")
-                    Spacer()
-                    Text(appState.hasScreenCapturePermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
-                        .foregroundStyle(appState.hasScreenCapturePermission ? .green : .orange)
-                    Button("settings.button.request_permission") {
-                        _ = appState.requestScreenCapturePermission()
-                    }
-                }
-
-                HStack {
-                    Text("settings.label.permission.text_selection")
-                    Spacer()
-                    Text(appState.hasAccessibilityPermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
-                        .foregroundStyle(appState.hasAccessibilityPermission ? .green : .orange)
-                    Button("settings.button.request_permission") {
-                        _ = appState.requestAccessibilityPermission()
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
+            Section {
+                LabeledContent("settings.label.permission.screen_recording") {
                     HStack {
-                        Text("settings.label.permission.automation")
-                        Spacer()
-                        Button("settings.button.open_system_settings") {
-                            appState.openAutomationPrivacySettings()
+                        Text(appState.hasScreenCapturePermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
+                            .foregroundStyle(appState.hasScreenCapturePermission ? .green : .orange)
+                        Button("settings.button.request_permission") {
+                            _ = appState.requestScreenCapturePermission()
                         }
                     }
-                    Text("settings.description.automation")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                }
+
+                LabeledContent("settings.label.permission.text_selection") {
+                    HStack {
+                        Text(appState.hasAccessibilityPermission ? L10n.string("settings.permission.granted") : L10n.string("settings.permission.denied"))
+                            .foregroundStyle(appState.hasAccessibilityPermission ? .green : .orange)
+                        Button("settings.button.request_permission") {
+                            _ = appState.requestAccessibilityPermission()
+                        }
+                    }
+                }
+
+                LabeledContent("settings.label.permission.automation") {
+                    Button("settings.button.open_system_settings") {
+                        appState.openAutomationPrivacySettings()
+                    }
                 }
 
                 Button("settings.button.refresh_permission") {
                     appState.refreshPermissionStatus()
                 }
+            } header: {
+                Text("settings.section.permissions")
+            } footer: {
+                Text("settings.description.automation")
             }
 
             Section {
-                HStack {
-                    Text("settings.label.capture_now_shortcut")
-                    Spacer()
+                LabeledContent("settings.label.capture_now_shortcut") {
                     CaptureNowShortcutRecorderView(
                         shortcutDisplayText: captureNowShortcutDisplayText,
                         hasShortcut: captureNowShortcutConfiguration != nil,
@@ -163,9 +158,7 @@ struct SettingsView: View {
                         onShortcutCleared: clearCaptureNowShortcut
                     )
                 }
-                HStack {
-                    Text("settings.label.rectangle_capture_shortcut")
-                    Spacer()
+                LabeledContent("settings.label.rectangle_capture_shortcut") {
                     CaptureNowShortcutRecorderView(
                         shortcutDisplayText: rectangleCaptureShortcutDisplayText,
                         hasShortcut: rectangleCaptureShortcutConfiguration != nil,
@@ -293,21 +286,13 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                if excludedApplications.isEmpty == false {
-                    List {
-                        ForEach(excludedApplications, id: \.self) { applicationName in
-                            HStack {
-                                Text(applicationName)
-                                Spacer()
-                                Button("settings.button.delete_excluded_app") {
-                                    removeExcludedApplication(named: applicationName)
-                                }
-                                .buttonStyle(.borderless)
-                            }
+                ForEach(excludedApplications, id: \.self) { applicationName in
+                    LabeledContent(applicationName) {
+                        Button("settings.button.delete_excluded_app") {
+                            removeExcludedApplication(named: applicationName)
                         }
-                        .onDelete(perform: deleteExcludedApplications)
+                        .buttonStyle(.borderless)
                     }
-                    .frame(minHeight: 120, maxHeight: 180)
                 }
             } header: {
                 Text("settings.section.excluded_apps")
@@ -331,21 +316,13 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                if excludedWindowTitles.isEmpty == false {
-                    List {
-                        ForEach(excludedWindowTitles, id: \.self) { excludedWindowTitle in
-                            HStack {
-                                Text(excludedWindowTitle)
-                                Spacer()
-                                Button("settings.button.delete_excluded_window_title") {
-                                    removeExcludedWindowTitle(containing: excludedWindowTitle)
-                                }
-                                .buttonStyle(.borderless)
-                            }
+                ForEach(excludedWindowTitles, id: \.self) { excludedWindowTitle in
+                    LabeledContent(excludedWindowTitle) {
+                        Button("settings.button.delete_excluded_window_title") {
+                            removeExcludedWindowTitle(containing: excludedWindowTitle)
                         }
-                        .onDelete(perform: deleteExcludedWindowTitles)
+                        .buttonStyle(.borderless)
                     }
-                    .frame(minHeight: 120, maxHeight: 180)
                 }
             } header: {
                 Text("settings.section.excluded_window_titles")
@@ -373,20 +350,15 @@ struct SettingsView: View {
         Form {
             Section("settings.section.ai_cli") {
                 HStack(spacing: 8) {
-                    Text("settings.cli.profile_picker_label")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $selectedCLIProfileID) {
+                    Picker("settings.cli.profile_picker_label", selection: $selectedCLIProfileID) {
                         ForEach(cliProfiles) { profile in
                             Text(profile.name).tag(Optional(profile.id))
                         }
                     }
-                    .labelsHidden()
                     .pickerStyle(.menu)
                     .onChange(of: selectedCLIProfileID) { _, updatedID in
                         AppSettingsResolver.saveSelectedReportCLIProfileID(updatedID)
                     }
-                    Spacer()
                     Button {
                         addCLIProfile()
                     } label: {
@@ -402,45 +374,21 @@ struct SettingsView: View {
                     .disabled(canDeleteCLIProfile == false)
                 }
 
-                HStack {
-                    Text("settings.cli.profile_name")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("", text: currentCLIProfileNameBinding)
-                        .textFieldStyle(.roundedBorder)
+                TextField("settings.cli.profile_name", text: currentCLIProfileNameBinding)
+
+                LabeledContent("settings.label.cli_command") {
+                    LeftAlignedTextField(
+                        placeholder: L10n.string("settings.placeholder.cli_command"),
+                        text: currentCLIProfileCommandBinding
+                    )
                 }
 
-                HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("settings.label.cli_command")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        LeftAlignedTextField(
-                            placeholder: L10n.string("settings.placeholder.cli_command"),
-                            text: currentCLIProfileCommandBinding
-                        )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    Spacer(minLength: 0)
+                LabeledContent("settings.label.additional_arguments") {
+                    LeftAlignedTextField(
+                        placeholder: L10n.string("settings.placeholder.additional_arguments"),
+                        text: currentCLIProfileArgumentsBinding
+                    )
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("settings.label.additional_arguments")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        LeftAlignedTextField(
-                            placeholder: L10n.string("settings.placeholder.additional_arguments"),
-                            text: currentCLIProfileArgumentsBinding
-                        )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Stepper(
                     L10n.format("settings.stepper.timeout_seconds", reportCLITimeoutSeconds),
@@ -519,7 +467,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("settings.section.report_output") {
+            Section {
                 LabeledContent("settings.label.report_output_directory") {
                     Text(resolveReportOutputDirectoryDisplayText())
                         .font(.caption)
@@ -539,10 +487,10 @@ struct SettingsView: View {
                         }
                     }
                 }
-
+            } header: {
+                Text("settings.section.report_output")
+            } footer: {
                 Text("settings.footer.report_output_directory")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("settings.section.manual_generation") {
@@ -619,20 +567,15 @@ struct SettingsView: View {
 
     private var promptSettingsView: some View {
         Form {
-            Section("settings.section.prompt_template") {
+            Section {
                 HStack(spacing: 8) {
-                    Text("settings.prompt.template_picker_label")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $selectedPromptTemplateID) {
+                    Picker("settings.prompt.template_picker_label", selection: $selectedPromptTemplateID) {
                         Text(L10n.string("settings.prompt.default_template_name")).tag(Optional<UUID>.none)
                         ForEach(promptTemplates) { template in
                             Text(template.name).tag(Optional(template.id))
                         }
                     }
-                    .labelsHidden()
                     .pickerStyle(.menu)
-                    Spacer()
                     Button {
                         addPromptTemplate()
                     } label: {
@@ -649,37 +592,27 @@ struct SettingsView: View {
                 }
 
                 if !isDefaultTemplateSelected {
-                    HStack {
-                        Text("settings.prompt.template_name_label")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("", text: currentTemplateNameBinding)
-                            .textFieldStyle(.roundedBorder)
-                    }
+                    TextField("settings.prompt.template_name_label", text: currentTemplateNameBinding)
                 }
-
-                Text("settings.prompt.placeholders")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 TextEditor(text: currentTemplateTextBinding)
                     .font(.system(.body, design: .monospaced))
                     .frame(minHeight: 240)
                     .disabled(isDefaultTemplateSelected)
 
-                HStack {
-                    if !isDefaultTemplateSelected {
-                        Button("settings.button.reset_default_prompt") {
-                            resetSelectedTemplateToDefault()
-                        }
+                if !isDefaultTemplateSelected {
+                    Button("settings.button.reset_default_prompt") {
+                        resetSelectedTemplateToDefault()
                     }
-                    Spacer()
+                }
+            } header: {
+                Text("settings.section.prompt_template")
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("settings.prompt.placeholders")
                     Text(isDefaultTemplateSelected
                         ? L10n.string("settings.prompt.footer_default")
                         : L10n.string("settings.prompt.footer"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
                 }
             }
         }
