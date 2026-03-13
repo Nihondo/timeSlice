@@ -24,6 +24,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
     public let comments: String?
     public let browserURL: String?
     public let documentPath: String?
+    public let applicationBundlePath: String?
 
     public init(
         id: UUID = UUID(),
@@ -36,7 +37,8 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         captureTrigger: CaptureTrigger = .scheduled,
         comments: String? = nil,
         browserURL: String? = nil,
-        documentPath: String? = nil
+        documentPath: String? = nil,
+        applicationBundlePath: String? = nil
     ) {
         self.id = id
         self.applicationName = applicationName
@@ -49,6 +51,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         self.comments = comments
         self.browserURL = browserURL
         self.documentPath = documentPath
+        self.applicationBundlePath = applicationBundlePath
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -63,6 +66,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         case comments
         case browserURL
         case documentPath
+        case applicationBundlePath
     }
 
     public init(from decoder: Decoder) throws {
@@ -78,6 +82,7 @@ public struct CaptureRecord: Codable, Identifiable, Equatable, Sendable {
         comments = try container.decodeIfPresent(String.self, forKey: .comments)
         browserURL = try container.decodeIfPresent(String.self, forKey: .browserURL)
         documentPath = try container.decodeIfPresent(String.self, forKey: .documentPath)
+        applicationBundlePath = try container.decodeIfPresent(String.self, forKey: .applicationBundlePath)
     }
 }
 

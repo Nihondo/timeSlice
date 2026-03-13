@@ -37,6 +37,7 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
             throw ScreenCaptureError.frontmostApplicationNotFound
         }
         let frontmostApplicationName = frontmostApplication.localizedName ?? "Unknown"
+        let frontmostApplicationBundlePath = frontmostApplication.bundleURL?.path
 
         if let bundleIdentifierToSkip, frontmostApplication.bundleIdentifier == bundleIdentifierToSkip {
             return nil
@@ -102,7 +103,8 @@ public final class ScreenCaptureManager: ScreenCapturing, @unchecked Sendable {
             windowTitle: targetWindow.title,
             capturedAt: Date(),
             browserURL: resolvedBrowserURL,
-            documentPath: resolvedDocumentPath
+            documentPath: resolvedDocumentPath,
+            applicationBundlePath: frontmostApplicationBundlePath
         )
     }
 

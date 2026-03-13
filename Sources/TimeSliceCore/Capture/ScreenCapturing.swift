@@ -9,6 +9,7 @@ public struct CapturedWindow: @unchecked Sendable {
     public let capturedAt: Date
     public let browserURL: String?
     public let documentPath: String?
+    public let applicationBundlePath: String?
 
     public init(
         image: CGImage,
@@ -16,7 +17,8 @@ public struct CapturedWindow: @unchecked Sendable {
         windowTitle: String? = nil,
         capturedAt: Date,
         browserURL: String? = nil,
-        documentPath: String? = nil
+        documentPath: String? = nil,
+        applicationBundlePath: String? = nil
     ) {
         self.image = image
         self.applicationName = applicationName
@@ -24,6 +26,7 @@ public struct CapturedWindow: @unchecked Sendable {
         self.capturedAt = capturedAt
         self.browserURL = browserURL
         self.documentPath = documentPath
+        self.applicationBundlePath = applicationBundlePath
     }
 }
 

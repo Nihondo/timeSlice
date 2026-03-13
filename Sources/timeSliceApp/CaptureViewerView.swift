@@ -499,14 +499,14 @@ struct CaptureViewerView: View {
                         fieldName: L10n.string("viewer.field.application_name"),
                         value: artifact.record.applicationName,
                         action: {
-                            launchApplication(named: artifact.record.applicationName)
+                            launchApplication(record: artifact.record)
                         }
                     ) {
                         Button("viewer.menu.launch_application") {
-                            launchApplication(named: artifact.record.applicationName)
+                            launchApplication(record: artifact.record)
                         }
                         Button("viewer.menu.reveal_application") {
-                            revealApplicationInFinder(named: artifact.record.applicationName)
+                            revealApplicationInFinder(record: artifact.record)
                         }
                     }
                     captureViewerTextRow(
@@ -886,7 +886,10 @@ struct CaptureViewerView: View {
 
     // MARK: - Application Launch
 
-    private func resolveApplicationURL(for applicationName: String) -> URL? {
+    private func resolveApplicationURL(for applicationName: String, bundlePath: String? = nil) -> URL? {
+        if let bundlePath, FileManager.default.fileExists(atPath: bundlePath) {
+            return URL(fileURLWithPath: bundlePath)
+        }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == applicationName }),
            let url = running.bundleURL
         {
@@ -906,13 +909,19 @@ struct CaptureViewerView: View {
         return nil
     }
 
-    private func launchApplication(named applicationName: String) {
-        guard let appURL = resolveApplicationURL(for: applicationName) else { return }
+    private func launchApplication(record: CaptureRecord) {
+        guard let appURL = resolveApplicationURL(
+            for: record.applicationName,
+            bundlePath: record.applicationBundlePath
+        ) else { return }
         NSWorkspace.shared.open(appURL)
     }
 
-    private func revealApplicationInFinder(named applicationName: String) {
-        guard let appURL = resolveApplicationURL(for: applicationName) else { return }
+    private func revealApplicationInFinder(record: CaptureRecord) {
+        guard let appURL = resolveApplicationURL(
+            for: record.applicationName,
+            bundlePath: record.applicationBundlePath
+        ) else { return }
         NSWorkspace.shared.activateFileViewerSelecting([appURL])
     }
 
@@ -985,20 +994,35 @@ struct CaptureViewerView: View {
     }
 
     private func buildAppIconCache(for artifacts: [CaptureRecordArtifact]) {
+        var bundlePathByAppName: [String: String] = [:]
+        for artifact in artifacts {
+            let appName = artifact.record.applicationName
+            if bundlePathByAppName[appName] == nil, let path = artifact.record.applicationBundlePath {
+                bundlePathByAppName[appName] = path
+            }
+        }
         let uniqueAppNames = Set(artifacts.map(\.record.applicationName))
         var newCache: [String: NSImage] = [:]
         for appName in uniqueAppNames {
             if let existing = appIconCache[appName] {
                 newCache[appName] = existing
             } else {
-                newCache[appName] = findApplicationIcon(for: appName)
+                newCache[appName] = findApplicationIcon(
+                    for: appName,
+                    bundlePath: bundlePathByAppName[appName]
+                )
             }
         }
         appIconCache = newCache
     }
 
-    private func findApplicationIcon(for applicationName: String) -> NSImage {
-        // 1. 実行中のアプリから localizedName でマッチ
+    private func findApplicationIcon(for applicationName: String, bundlePath: String? = nil) -> NSImage {
+        // 1. 記録済みバンドルパスから取得
+        if let bundlePath, FileManager.default.fileExists(atPath: bundlePath) {
+            return NSWorkspace.shared.icon(forFile: bundlePath)
+        }
+
+        // 2. 実行中のアプリから localizedName でマッチ
         let runningApps = NSWorkspace.shared.runningApplications
         if let matchedApp = runningApps.first(where: { $0.localizedName == applicationName }),
            let bundleURL = matchedApp.bundleURL
@@ -1006,7 +1030,7 @@ struct CaptureViewerView: View {
             return NSWorkspace.shared.icon(forFile: bundleURL.path)
         }
 
-        // 2. パスベースで検索
+        // 3. パスベースで検索
         let searchPaths = [
             "/Applications/\(applicationName).app",
             "/System/Applications/\(applicationName).app",
@@ -1019,7 +1043,7 @@ struct CaptureViewerView: View {
             }
         }
 
-        // 3. フォールバック: 汎用アプリアイコン
+        // 4. フォールバック: 汎用アプリアイコン
         return NSWorkspace.shared.icon(for: .application)
     }
 }

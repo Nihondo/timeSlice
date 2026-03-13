@@ -50,6 +50,7 @@ public struct ManualCaptureDraft: Sendable {
     public let imageData: Data?
     public let browserURL: String?
     public let documentPath: String?
+    public let applicationBundlePath: String?
 
     public init(
         applicationName: String,
@@ -58,7 +59,8 @@ public struct ManualCaptureDraft: Sendable {
         ocrText: String,
         imageData: Data?,
         browserURL: String? = nil,
-        documentPath: String? = nil
+        documentPath: String? = nil,
+        applicationBundlePath: String? = nil
     ) {
         self.applicationName = applicationName
         self.windowTitle = windowTitle
@@ -67,6 +69,7 @@ public struct ManualCaptureDraft: Sendable {
         self.imageData = imageData
         self.browserURL = browserURL
         self.documentPath = documentPath
+        self.applicationBundlePath = applicationBundlePath
     }
 }
 
@@ -169,7 +172,8 @@ public actor CaptureScheduler {
                     ocrText: "",
                     imageData: nil,
                     browserURL: capturedWindow.browserURL,
-                    documentPath: capturedWindow.documentPath
+                    documentPath: capturedWindow.documentPath,
+                    applicationBundlePath: capturedWindow.applicationBundlePath
                 )
                 lastErrorDescription = nil
                 return .prepared(manualCaptureDraft)
@@ -198,7 +202,8 @@ public actor CaptureScheduler {
                 ocrText: normalizedText,
                 imageData: encodedImageData,
                 browserURL: capturedWindow.browserURL,
-                documentPath: capturedWindow.documentPath
+                documentPath: capturedWindow.documentPath,
+                applicationBundlePath: capturedWindow.applicationBundlePath
             )
             lastErrorDescription = nil
             return .prepared(manualCaptureDraft)
@@ -231,7 +236,8 @@ public actor CaptureScheduler {
                 captureTrigger: captureTrigger,
                 comments: normalizedManualComment,
                 browserURL: manualCaptureDraft.browserURL,
-                documentPath: manualCaptureDraft.documentPath
+                documentPath: manualCaptureDraft.documentPath,
+                applicationBundlePath: manualCaptureDraft.applicationBundlePath
             )
             try dataStore.saveRecord(captureRecord)
             if let imageData = manualCaptureDraft.imageData {
@@ -297,7 +303,8 @@ public actor CaptureScheduler {
                 captureTrigger: captureTrigger,
                 comments: normalizedManualComment,
                 browserURL: capturedWindow.browserURL,
-                documentPath: capturedWindow.documentPath
+                documentPath: capturedWindow.documentPath,
+                applicationBundlePath: capturedWindow.applicationBundlePath
             )
             try dataStore.saveRecord(captureRecord)
             try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
@@ -331,7 +338,8 @@ public actor CaptureScheduler {
                     captureTrigger: captureTrigger,
                     comments: normalizedManualComment,
                     browserURL: capturedWindow.browserURL,
-                    documentPath: capturedWindow.documentPath
+                    documentPath: capturedWindow.documentPath,
+                    applicationBundlePath: capturedWindow.applicationBundlePath
                 )
                 try dataStore.saveRecord(captureRecord)
                 try dataStore.cleanupExpiredData(referenceDate: dateProvider.now)
@@ -384,7 +392,8 @@ public actor CaptureScheduler {
             captureTrigger: captureTrigger,
             comments: normalizedManualComment,
             browserURL: capturedWindow.browserURL,
-            documentPath: capturedWindow.documentPath
+            documentPath: capturedWindow.documentPath,
+            applicationBundlePath: capturedWindow.applicationBundlePath
         )
         try dataStore.saveRecord(captureRecord)
 
