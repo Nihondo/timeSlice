@@ -79,6 +79,7 @@ final class AppState {
     var captureViewerStatusMessage = ""
     var captureViewerSearchQuery = ""
     var captureViewerSearchRequestSequence: UInt64 = 0
+    var captureViewerOpenRequestSequence: UInt64 = 0
     var captureViewerSelectionRequestRecordID: UUID?
     var captureViewerSelectionRequestCapturedAt: Date?
     var captureViewerSelectionRequestSequence: UInt64 = 0
@@ -451,6 +452,10 @@ final class AppState {
         captureViewerSelectionRequestSequence &+= 1
     }
 
+    func requestCaptureViewerOpen() {
+        captureViewerOpenRequestSequence &+= 1
+    }
+
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {
         do {
             try LaunchAtLoginManager.updateRegistration(isEnabled: isEnabled)
@@ -777,6 +782,14 @@ final class AppState {
                 self.startRectangleCaptureFlow()
             }
         }
+        globalHotKeyManager.onOpenViewerHotKeyPressed = { [weak self] in
+            guard let self else {
+                return
+            }
+            Task { @MainActor in
+                self.requestCaptureViewerOpen()
+            }
+        }
         refreshCaptureNowGlobalHotKeyRegistration()
         startUserDefaultsObservationForSettingsChanges()
     }
@@ -878,6 +891,8 @@ final class AppState {
         globalHotKeyManager.updateRegistration(captureNowShortcut)
         let rectangleCaptureShortcut = AppSettingsResolver.resolveRectangleCaptureShortcutConfiguration(userDefaults: userDefaults)
         globalHotKeyManager.updateRectangleCaptureRegistration(rectangleCaptureShortcut)
+        let openViewerShortcut = AppSettingsResolver.resolveOpenViewerShortcutConfiguration(userDefaults: userDefaults)
+        globalHotKeyManager.updateOpenViewerRegistration(openViewerShortcut)
     }
 
     @discardableResult

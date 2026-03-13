@@ -7,12 +7,15 @@ import Carbon
 final class GlobalHotKeyManager {
     var onHotKeyPressed: (() -> Void)?
     var onRectangleCaptureHotKeyPressed: (() -> Void)?
+    var onOpenViewerHotKeyPressed: (() -> Void)?
 
     private var eventHandlerRef: EventHandlerRef?
     private var registeredHotKeyRef: EventHotKeyRef?
     private var registeredRectangleCaptureHotKeyRef: EventHotKeyRef?
+    private var registeredOpenViewerHotKeyRef: EventHotKeyRef?
     private let hotKeyID = EventHotKeyID(signature: 0x5453484B, id: 1)
     private let rectangleCaptureHotKeyID = EventHotKeyID(signature: 0x5453484B, id: 2)
+    private let openViewerHotKeyID = EventHotKeyID(signature: 0x5453484B, id: 3)
 
     init() {
         installHotKeyEventHandlerIfNeeded()
@@ -21,6 +24,7 @@ final class GlobalHotKeyManager {
     deinit {
         unregisterHotKeyIfNeeded()
         unregisterRectangleCaptureHotKeyIfNeeded()
+        unregisterOpenViewerHotKeyIfNeeded()
         removeHotKeyEventHandlerIfNeeded()
     }
 
@@ -84,6 +88,36 @@ final class GlobalHotKeyManager {
         registeredRectangleCaptureHotKeyRef = createdHotKeyRef
     }
 
+    func updateOpenViewerRegistration(_ shortcutConfiguration: CaptureNowShortcutConfiguration?) {
+        unregisterOpenViewerHotKeyIfNeeded()
+
+        guard
+            let shortcutConfiguration,
+            let keyCode = shortcutConfiguration.keyCode
+        else {
+            return
+        }
+
+        let carbonModifiers = resolveCarbonModifiers(shortcutConfiguration.modifiersRawValue)
+        guard keyCode >= 0 else {
+            return
+        }
+
+        var createdHotKeyRef: EventHotKeyRef?
+        let registrationStatus = RegisterEventHotKey(
+            UInt32(keyCode),
+            carbonModifiers,
+            openViewerHotKeyID,
+            GetEventDispatcherTarget(),
+            0,
+            &createdHotKeyRef
+        )
+        guard registrationStatus == noErr else {
+            return
+        }
+        registeredOpenViewerHotKeyRef = createdHotKeyRef
+    }
+
     fileprivate func handleHotKeyPressedEvent(_ eventRef: EventRef?) -> OSStatus {
         guard let eventRef else {
             return OSStatus(eventNotHandledErr)
@@ -111,6 +145,9 @@ final class GlobalHotKeyManager {
             return noErr
         } else if pressedHotKeyID.id == rectangleCaptureHotKeyID.id {
             onRectangleCaptureHotKeyPressed?()
+            return noErr
+        } else if pressedHotKeyID.id == openViewerHotKeyID.id {
+            onOpenViewerHotKeyPressed?()
             return noErr
         }
         return OSStatus(eventNotHandledErr)
@@ -161,6 +198,14 @@ final class GlobalHotKeyManager {
         }
         UnregisterEventHotKey(registeredRectangleCaptureHotKeyRef)
         self.registeredRectangleCaptureHotKeyRef = nil
+    }
+
+    private func unregisterOpenViewerHotKeyIfNeeded() {
+        guard let registeredOpenViewerHotKeyRef else {
+            return
+        }
+        UnregisterEventHotKey(registeredOpenViewerHotKeyRef)
+        self.registeredOpenViewerHotKeyRef = nil
     }
 
     private func resolveCarbonModifiers(_ shortcutModifiersRawValue: Int) -> UInt32 {

@@ -43,6 +43,7 @@
 "settings.section.keyboard_shortcut" = "Keyboard Shortcut";
 "settings.label.capture_now_shortcut" = "Capture Now";
 "settings.label.rectangle_capture_shortcut" = "Capture Selected Area";
+"settings.label.open_viewer_shortcut" = "Open Viewer";
 "settings.button.record_shortcut" = "Set Shortcut";
 "settings.button.shortcut_recording" = "Waiting for key...";
 "settings.button.clear_shortcut" = "Clear";

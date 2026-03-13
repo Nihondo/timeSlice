@@ -96,6 +96,13 @@ private struct MenuBarStatusLabelView: View {
             NSApp.activate(ignoringOtherApps: true)
             openWindow(id: SettingsWindowIdentifier.viewer)
         }
+        .onChange(of: appState.captureViewerOpenRequestSequence) { _, _ in
+            guard appState.captureViewerOpenRequestSequence > 0 else {
+                return
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: SettingsWindowIdentifier.viewer)
+        }
     }
 }
 
@@ -108,6 +115,9 @@ private struct MenuBarMenuContentView: View {
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
+    @AppStorage(AppSettingsKey.openViewerShortcutKey) private var openViewerShortcutKey = ""
+    @AppStorage(AppSettingsKey.openViewerShortcutModifiers) private var openViewerShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.openViewerShortcutKeyCode) private var openViewerShortcutKeyCode = 0
     @AppStorage(AppSettingsKey.reportTimeSlotsJSON) private var reportTimeSlotsJSON: String = ""
 
     private var enabledReportSlots: [ReportTimeSlot] {
@@ -147,11 +157,7 @@ private struct MenuBarMenuContentView: View {
 
         reportGenerateButton
 
-        Button {
-            openWindowBringingAppToFront(id: SettingsWindowIdentifier.viewer)
-        } label: {
-            Label("menu.viewer.open", systemImage: "photo.on.rectangle")
-        }
+        openViewerButton
 
         Divider()
 
@@ -259,6 +265,30 @@ private struct MenuBarMenuContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var openViewerButton: some View {
+        if
+            let openViewerShortcutConfiguration,
+            let shortcutCharacter = openViewerShortcutConfiguration.key.first
+        {
+            Button {
+                openWindowBringingAppToFront(id: SettingsWindowIdentifier.viewer)
+            } label: {
+                Label("menu.viewer.open", systemImage: "photo.on.rectangle")
+            }
+            .keyboardShortcut(
+                KeyEquivalent(shortcutCharacter),
+                modifiers: openViewerShortcutConfiguration.eventModifiers
+            )
+        } else {
+            Button {
+                openWindowBringingAppToFront(id: SettingsWindowIdentifier.viewer)
+            } label: {
+                Label("menu.viewer.open", systemImage: "photo.on.rectangle")
+            }
+        }
+    }
+
     private var captureNowShortcutConfiguration: CaptureNowShortcutConfiguration? {
         CaptureNowShortcutResolver.resolveConfiguration(
             shortcutKey: captureNowShortcutKey,
@@ -276,6 +306,16 @@ private struct MenuBarMenuContentView: View {
             hasStoredModifiers: UserDefaults.standard.object(forKey: AppSettingsKey.rectangleCaptureShortcutModifiers) != nil,
             storedKeyCode: rectangleCaptureShortcutKeyCode,
             hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.rectangleCaptureShortcutKeyCode) != nil
+        )
+    }
+
+    private var openViewerShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        CaptureNowShortcutResolver.resolveConfiguration(
+            shortcutKey: openViewerShortcutKey,
+            storedModifiersRawValue: openViewerShortcutModifiersRawValue,
+            hasStoredModifiers: UserDefaults.standard.object(forKey: AppSettingsKey.openViewerShortcutModifiers) != nil,
+            storedKeyCode: openViewerShortcutKeyCode,
+            hasStoredKeyCode: UserDefaults.standard.object(forKey: AppSettingsKey.openViewerShortcutKeyCode) != nil
         )
     }
 

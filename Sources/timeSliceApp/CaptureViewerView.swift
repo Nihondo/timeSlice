@@ -59,6 +59,7 @@ struct CaptureViewerView: View {
     @State private var pendingSelectionAfterReloadRecordID: UUID?
     @State private var appIconCache: [String: NSImage] = [:]
     @State private var displayedHourSections: [CaptureViewerHourSection] = []
+    @State private var lastHourIndexScrolledArtifactID: UUID?
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
@@ -176,6 +177,7 @@ struct CaptureViewerView: View {
                             Section {
                                 ForEach(section.artifacts) { artifact in
                                     captureViewerRowView(artifact: artifact)
+                                        .id(artifact.id)
                                         .tag(artifact.id)
                                 }
                             } header: {
@@ -933,25 +935,116 @@ struct CaptureViewerView: View {
         scrollProxy: ScrollViewProxy
     ) -> some View {
         if sections.count > 1 {
-            VStack(spacing: 1) {
-                ForEach(sections) { section in
-                    Text(String(format: "%02d", section.hour))
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .frame(maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation {
-                                scrollProxy.scrollTo(section.hour, anchor: .top)
-                            }
-                        }
+            GeometryReader { geometry in
+                VStack(spacing: 1) {
+                    ForEach(sections) { section in
+                        Text(String(format: "%02d", section.hour))
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                        .onChanged { value in
+                            scrollCaptureListFromHourIndex(
+                                locationY: value.location.y,
+                                barHeight: geometry.size.height,
+                                sections: sections,
+                                scrollProxy: scrollProxy
+                            )
+                        }
+                        .onEnded { _ in
+                            lastHourIndexScrolledArtifactID = nil
+                        }
+                )
             }
+            .frame(width: 28)
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
             .background(.clear)
             .padding(.trailing, 14)
         }
+    }
+
+    private func scrollCaptureListFromHourIndex(
+        locationY: CGFloat,
+        barHeight: CGFloat,
+        sections: [CaptureViewerHourSection],
+        scrollProxy: ScrollViewProxy
+    ) {
+        guard
+            let targetDate = resolveHourIndexTargetDate(
+                locationY: locationY,
+                barHeight: barHeight,
+                sections: sections
+            ),
+            let targetArtifactID = resolveNearestArtifactID(to: targetDate)
+        else {
+            return
+        }
+        guard lastHourIndexScrolledArtifactID != targetArtifactID else {
+            return
+        }
+        lastHourIndexScrolledArtifactID = targetArtifactID
+        scrollProxy.scrollTo(targetArtifactID, anchor: .top)
+    }
+
+    private func resolveHourIndexTargetDate(
+        locationY: CGFloat,
+        barHeight: CGFloat,
+        sections: [CaptureViewerHourSection]
+    ) -> Date? {
+        guard sections.isEmpty == false, barHeight > 0 else {
+            return nil
+        }
+
+        if sections.count == 1 {
+            return Self.captureViewerDayCalendar.date(
+                bySettingHour: sections[0].hour,
+                minute: 0,
+                second: 0,
+                of: captureViewerDate
+            )
+        }
+
+        let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
+        let rawSectionPosition = (normalizedLocationY * CGFloat(sections.count)) - 0.5
+        let clampedSectionPosition = min(
+            max(rawSectionPosition, 0),
+            CGFloat(sections.count - 1)
+        )
+        let lowerSectionIndex = Int(clampedSectionPosition.rounded(.down))
+        let upperSectionIndex = min(lowerSectionIndex + 1, sections.count - 1)
+        let interpolationProgress = Double(clampedSectionPosition - CGFloat(lowerSectionIndex))
+        let lowerHour = Double(sections[lowerSectionIndex].hour)
+        let upperHour = Double(sections[upperSectionIndex].hour)
+        let interpolatedHour = lowerHour + ((upperHour - lowerHour) * interpolationProgress)
+        let interpolatedSeconds = Int((interpolatedHour * 3600).rounded())
+        let startOfDay = Self.captureViewerDayCalendar.startOfDay(for: captureViewerDate)
+        return Self.captureViewerDayCalendar.date(
+            byAdding: .second,
+            value: interpolatedSeconds,
+            to: startOfDay
+        )
+    }
+
+    private func resolveNearestArtifactID(to targetDate: Date) -> UUID? {
+        guard let firstArtifact = displayedArtifacts.first else {
+            return nil
+        }
+
+        var nearestArtifact = firstArtifact
+        var smallestTimeDistance = abs(firstArtifact.record.capturedAt.timeIntervalSince(targetDate))
+        for artifact in displayedArtifacts.dropFirst() {
+            let timeDistance = abs(artifact.record.capturedAt.timeIntervalSince(targetDate))
+            if timeDistance < smallestTimeDistance {
+                nearestArtifact = artifact
+                smallestTimeDistance = timeDistance
+            }
+        }
+        return nearestArtifact.id
     }
 
     // MARK: - Hour Section

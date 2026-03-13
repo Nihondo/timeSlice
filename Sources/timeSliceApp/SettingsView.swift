@@ -47,6 +47,9 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKey) private var rectangleCaptureShortcutKey = ""
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutModifiers) private var rectangleCaptureShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.rectangleCaptureShortcutKeyCode) private var rectangleCaptureShortcutKeyCode = 0
+    @AppStorage(AppSettingsKey.openViewerShortcutKey) private var openViewerShortcutKey = ""
+    @AppStorage(AppSettingsKey.openViewerShortcutModifiers) private var openViewerShortcutModifiersRawValue = 0
+    @AppStorage(AppSettingsKey.openViewerShortcutKeyCode) private var openViewerShortcutKeyCode = 0
     @State private var cliProfiles: [ReportCLIProfile] = []
     @State private var selectedCLIProfileID: UUID? = nil
     @State private var hasInitializedCLIProfiles = false
@@ -166,6 +169,14 @@ struct SettingsView: View {
                         onShortcutCleared: clearRectangleCaptureShortcut
                     )
                 }
+                LabeledContent("settings.label.open_viewer_shortcut") {
+                    CaptureNowShortcutRecorderView(
+                        shortcutDisplayText: openViewerShortcutDisplayText,
+                        hasShortcut: openViewerShortcutConfiguration != nil,
+                        onShortcutCaptured: updateOpenViewerShortcut(key:keyCode:modifiers:),
+                        onShortcutCleared: clearOpenViewerShortcut
+                    )
+                }
             } header: {
                 Text("settings.section.keyboard_shortcut")
             } footer: {
@@ -230,6 +241,29 @@ struct SettingsView: View {
         rectangleCaptureShortcutKey = ""
         rectangleCaptureShortcutKeyCode = 0
         rectangleCaptureShortcutModifiersRawValue = 0
+    }
+
+    private var openViewerShortcutConfiguration: CaptureNowShortcutConfiguration? {
+        AppSettingsResolver.resolveOpenViewerShortcutConfiguration()
+    }
+
+    private var openViewerShortcutDisplayText: String {
+        guard let openViewerShortcutConfiguration else {
+            return L10n.string("settings.button.record_shortcut")
+        }
+        return openViewerShortcutConfiguration.displayText
+    }
+
+    private func updateOpenViewerShortcut(key: String, keyCode: Int, modifiers: EventModifiers) {
+        openViewerShortcutKey = key
+        openViewerShortcutKeyCode = keyCode
+        openViewerShortcutModifiersRawValue = Int(modifiers.intersection(CaptureNowShortcutResolver.allowedModifiers).rawValue)
+    }
+
+    private func clearOpenViewerShortcut() {
+        openViewerShortcutKey = ""
+        openViewerShortcutKeyCode = 0
+        openViewerShortcutModifiersRawValue = 0
     }
 
     private var launchAtLoginBinding: Binding<Bool> {

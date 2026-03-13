@@ -43,6 +43,7 @@
 "settings.section.keyboard_shortcut" = "キーボードショートカット";
 "settings.label.capture_now_shortcut" = "今すぐ記録";
 "settings.label.rectangle_capture_shortcut" = "選択範囲をキャプチャ";
+"settings.label.open_viewer_shortcut" = "ビューアを開く";
 "settings.button.record_shortcut" = "ショートカットを設定";
 "settings.button.shortcut_recording" = "キー入力待ち...";
 "settings.button.clear_shortcut" = "クリア";

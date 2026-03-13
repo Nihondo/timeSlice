@@ -31,6 +31,9 @@ enum AppSettingsKey {
     static let rectangleCaptureShortcutKey = "shortcut.rectangleCaptureKey"
     static let rectangleCaptureShortcutModifiers = "shortcut.rectangleCaptureModifiers"
     static let rectangleCaptureShortcutKeyCode = "shortcut.rectangleCaptureKeyCode"
+    static let openViewerShortcutKey = "shortcut.openViewerKey"
+    static let openViewerShortcutModifiers = "shortcut.openViewerModifiers"
+    static let openViewerShortcutKeyCode = "shortcut.openViewerKeyCode"
 }
 
 struct CaptureNowShortcutConfiguration: Equatable {
@@ -226,6 +229,16 @@ enum AppSettingsResolver {
             hasStoredModifiers: userDefaults.object(forKey: AppSettingsKey.rectangleCaptureShortcutModifiers) != nil,
             storedKeyCode: userDefaults.integer(forKey: AppSettingsKey.rectangleCaptureShortcutKeyCode),
             hasStoredKeyCode: userDefaults.object(forKey: AppSettingsKey.rectangleCaptureShortcutKeyCode) != nil
+        )
+    }
+
+    static func resolveOpenViewerShortcutConfiguration(userDefaults: UserDefaults = .standard) -> CaptureNowShortcutConfiguration? {
+        CaptureNowShortcutResolver.resolveConfiguration(
+            shortcutKey: userDefaults.string(forKey: AppSettingsKey.openViewerShortcutKey) ?? "",
+            storedModifiersRawValue: userDefaults.integer(forKey: AppSettingsKey.openViewerShortcutModifiers),
+            hasStoredModifiers: userDefaults.object(forKey: AppSettingsKey.openViewerShortcutModifiers) != nil,
+            storedKeyCode: userDefaults.integer(forKey: AppSettingsKey.openViewerShortcutKeyCode),
+            hasStoredKeyCode: userDefaults.object(forKey: AppSettingsKey.openViewerShortcutKeyCode) != nil
         )
     }
 
