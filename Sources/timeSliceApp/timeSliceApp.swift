@@ -22,7 +22,7 @@ struct TimeSliceApp: App {
         Window(L10n.string("window.settings.title"), id: SettingsWindowIdentifier.main) {
             SettingsView(appState: appState)
         }
-        .defaultSize(width: 700, height: 640)
+        .defaultSize(width: 800, height: 640)
         .windowResizability(.contentSize)
 
         Window(L10n.string("window.viewer.title"), id: SettingsWindowIdentifier.viewer) {

@@ -3,16 +3,36 @@ import Observation
 import SwiftUI
 
 struct SettingsView: View {
-    private enum SettingsTab: Hashable {
+    private enum SettingsTab: Hashable, CaseIterable {
         case general
         case capture
         case cli
         case report
         case prompt
+
+        var title: LocalizedStringKey {
+            switch self {
+            case .general: "settings.tab.general"
+            case .capture: "settings.tab.capture"
+            case .cli: "settings.tab.cli"
+            case .report: "settings.tab.report"
+            case .prompt: "settings.tab.prompt"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .general: "gear"
+            case .capture: "record.circle"
+            case .cli: "terminal"
+            case .report: "doc.text"
+            case .prompt: "text.page"
+            }
+        }
     }
 
     @Bindable var appState: AppState
-    @State private var selectedTab: SettingsTab = .general
+    @State private var selectedTab: SettingsTab? = .general
 
     @AppStorage(AppSettingsKey.captureIntervalSeconds) private var captureIntervalSeconds = 60.0
     @AppStorage(AppSettingsKey.captureMinimumTextLength) private var minimumTextLength = 10
@@ -44,40 +64,18 @@ struct SettingsView: View {
     @State private var manualReportTargetDate = Date()
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            generalSettingsView
-                .tabItem {
-                    Label("settings.tab.general", systemImage: "gear")
-                }
-                .tag(SettingsTab.general)
-
-            captureSettingsView
-                .tabItem {
-                    Label("settings.tab.capture", systemImage: "record.circle")
-                }
-                .tag(SettingsTab.capture)
-
-            cliSettingsView
-                .tabItem {
-                    Label("settings.tab.cli", systemImage: "terminal")
-                }
-                .tag(SettingsTab.cli)
-
-            reportSettingsView
-                .tabItem {
-                    Label("settings.tab.report", systemImage: "doc.text")
-                }
-                .tag(SettingsTab.report)
-
-            promptSettingsView
-                .tabItem {
-                    Label("settings.tab.prompt", systemImage: "text.page")
-                }
-                .tag(SettingsTab.prompt)
+        NavigationSplitView {
+            List(SettingsTab.allCases, id: \.self, selection: $selectedTab) { tab in
+                Label(tab.title, systemImage: tab.systemImage)
+            }
+            .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
+        } detail: {
+            detailView
         }
+        .toolbar(removing: .sidebarToggle)
         .frame(
-            minWidth: 580,
-            idealWidth: 700,
+            minWidth: 680,
+            idealWidth: 800,
             maxWidth: 1200,
             minHeight: 420,
             idealHeight: 640,
@@ -92,6 +90,24 @@ struct SettingsView: View {
         }
         .onChange(of: isReportAutoGenerationEnabled) { _, _ in
             appState.updateReportSchedule()
+        }
+    }
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selectedTab {
+        case .general:
+            generalSettingsView
+        case .capture:
+            captureSettingsView
+        case .cli:
+            cliSettingsView
+        case .report:
+            reportSettingsView
+        case .prompt:
+            promptSettingsView
+        case .none:
+            generalSettingsView
         }
     }
 
