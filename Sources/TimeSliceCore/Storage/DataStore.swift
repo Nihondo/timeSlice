@@ -56,7 +56,28 @@ public struct DataStore: @unchecked Sendable {
 
     /// Loads one-day viewer artifacts that include JSON path and linked image status.
     public func loadRecordArtifacts(on date: Date) throws -> [CaptureRecordArtifact] {
-        let recordEntries = try loadRecordEntries(on: date)
+        try loadRecordArtifacts(from: date, through: date)
+    }
+
+    /// Loads viewer artifacts for a continuous day range, sorted by capture timestamp.
+    public func loadRecordArtifacts(from startDate: Date, through endDate: Date) throws -> [CaptureRecordArtifact] {
+        let normalizedStartDate = calendar.startOfDay(for: startDate)
+        let normalizedEndDate = calendar.startOfDay(for: endDate)
+        guard normalizedStartDate <= normalizedEndDate else {
+            return []
+        }
+
+        var recordEntries: [(jsonURL: URL, record: CaptureRecord)] = []
+        var currentDate = normalizedStartDate
+        while currentDate <= normalizedEndDate {
+            let dayEntries = try loadRecordEntries(on: currentDate)
+            recordEntries.append(contentsOf: dayEntries)
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
+                break
+            }
+            currentDate = nextDate
+        }
+
         var artifacts: [CaptureRecordArtifact] = []
         artifacts.reserveCapacity(recordEntries.count)
 
@@ -66,6 +87,18 @@ public struct DataStore: @unchecked Sendable {
         }
 
         return artifacts.sorted { $0.record.capturedAt < $1.record.capturedAt }
+    }
+
+    /// Resolves the oldest calendar day that still has saved capture records.
+    public func resolveOldestRecordDate() throws -> Date? {
+        let dataRootDirectoryURL = pathResolver.rootDirectoryURL
+            .appendingPathComponent("data", isDirectory: true)
+        let dayDates = try StorageMaintenance.collectDayDates(
+            in: dataRootDirectoryURL,
+            fileManager: fileManager,
+            calendar: calendar
+        )
+        return dayDates.min()
     }
 
     /// Moves one viewer artifact's JSON and linked image file to Trash.

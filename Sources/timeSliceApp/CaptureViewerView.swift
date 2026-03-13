@@ -26,17 +26,63 @@ private enum CaptureViewerCaptureTriggerFilter: String, CaseIterable, Identifiab
     }
 }
 
+private enum CaptureViewerDateRangePreset: String, CaseIterable, Identifiable {
+    case today
+    case yesterday
+    case last3Days
+    case last7Days
+    case last30Days
+    case allTime
+
+    var id: String {
+        rawValue
+    }
+
+    var localizedTitle: LocalizedStringKey {
+        switch self {
+        case .today:
+            "viewer.preset.today"
+        case .yesterday:
+            "viewer.preset.yesterday"
+        case .last3Days:
+            "viewer.preset.last_3_days"
+        case .last7Days:
+            "viewer.preset.last_7_days"
+        case .last30Days:
+            "viewer.preset.last_30_days"
+        case .allTime:
+            "viewer.preset.all_time"
+        }
+    }
+}
+
 private enum CaptureViewerFocusTarget: Hashable {
     case searchInput
     case captureList
 }
 
-private struct CaptureViewerHourSection: Identifiable {
-    let hour: Int
+private enum CaptureViewerListSectionKind: Hashable {
+    case hour(Int)
+    case day(Date)
+}
+
+private struct CaptureViewerListSection: Identifiable {
+    let kind: CaptureViewerListSectionKind
     let label: String
+    let indexLabel: String
+    let targetDate: Date
+    let scrollTargetID: UUID
     let artifacts: [CaptureRecordArtifact]
 
-    var id: Int { hour }
+    var id: String {
+        switch kind {
+        case let .hour(hour):
+            return "hour-\(hour)"
+        case let .day(date):
+            let normalizedDate = Calendar.autoupdatingCurrent.startOfDay(for: date)
+            return "day-\(Int(normalizedDate.timeIntervalSinceReferenceDate))"
+        }
+    }
 }
 
 struct CaptureViewerView: View {
@@ -44,7 +90,9 @@ struct CaptureViewerView: View {
 
     @AppStorage(AppSettingsKey.captureViewerTimeSortOrder)
     private var selectedTimeSortOrderRawValue = CaptureViewerTimeSortOrder.ascending.rawValue
-    @State private var captureViewerDate = Date()
+    @State private var captureViewerStartDate = Self.captureViewerDayCalendar.startOfDay(for: Date())
+    @State private var captureViewerEndDate = Self.captureViewerDayCalendar.startOfDay(for: Date())
+    @State private var selectedDateRangePreset: CaptureViewerDateRangePreset? = .today
     @State private var selectedCaptureArtifactID: UUID?
     @State private var displayedArtifacts: [CaptureRecordArtifact] = []
     @State private var displayedArtifactsByID: [UUID: CaptureRecordArtifact] = [:]
@@ -58,12 +106,16 @@ struct CaptureViewerView: View {
     @State private var pendingExternalSelectionRecordID: UUID?
     @State private var pendingSelectionAfterReloadRecordID: UUID?
     @State private var appIconCache: [String: NSImage] = [:]
-    @State private var displayedHourSections: [CaptureViewerHourSection] = []
+    @State private var displayedSections: [CaptureViewerListSection] = []
     @State private var lastHourIndexScrolledArtifactID: UUID?
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
         confirmedSearchQueryText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isSingleDaySelection: Bool {
+        Self.captureViewerDayCalendar.isDate(captureViewerStartDate, inSameDayAs: captureViewerEndDate)
     }
 
     private var selectedTimeSortOrder: CaptureViewerTimeSortOrder {
@@ -86,18 +138,83 @@ struct CaptureViewerView: View {
         )
     }
 
+    private var captureViewerStartDateBinding: Binding<Date> {
+        Binding(
+            get: {
+                captureViewerStartDate
+            },
+            set: { updatedStartDate in
+                setCaptureViewerDateRange(
+                    startDate: updatedStartDate,
+                    endDate: captureViewerEndDate,
+                    preset: nil
+                )
+            }
+        )
+    }
+
+    private var captureViewerEndDateBinding: Binding<Date> {
+        Binding(
+            get: {
+                captureViewerEndDate
+            },
+            set: { updatedEndDate in
+                setCaptureViewerDateRange(
+                    startDate: captureViewerStartDate,
+                    endDate: updatedEndDate,
+                    preset: nil
+                )
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 DatePicker(
-                    L10n.string("viewer.label.target_date"),
-                    selection: $captureViewerDate,
+                    L10n.string("viewer.label.start_date"),
+                    selection: captureViewerStartDateBinding,
                     in: ...Date(),
                     displayedComponents: .date
                 )
-                .onChange(of: captureViewerDate) { _, _ in
+
+                DatePicker(
+                    L10n.string("viewer.label.end_date"),
+                    selection: captureViewerEndDateBinding,
+                    in: ...Date(),
+                    displayedComponents: .date
+                )
+
+                Menu {
+                    ForEach(CaptureViewerDateRangePreset.allCases) { preset in
+                        Button {
+                            applyDateRangePreset(preset)
+                        } label: {
+                            Text(preset.localizedTitle)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(L10n.string("viewer.label.date_preset"))
+                        Text(resolveSelectedDateRangePresetTitle())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .menuStyle(.borderlessButton)
+
+                Button("viewer.button.reload") {
                     loadCaptureViewerArtifacts()
                 }
+                .disabled(appState.isLoadingCaptureViewerArtifacts)
+
+                Spacer()
+
+                Text(L10n.format("viewer.label.record_count", displayedArtifacts.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 12) {
 
                 Picker("viewer.label.sort_order", selection: selectedTimeSortOrderBinding) {
                     Text("viewer.value.sort_ascending")
@@ -146,21 +263,12 @@ struct CaptureViewerView: View {
                         applyCaptureViewerSearchQuery()
                     }
 
-                Button("viewer.button.reload") {
-                    loadCaptureViewerArtifacts()
-                }
-                .disabled(appState.isLoadingCaptureViewerArtifacts)
-
                 if appState.isLoadingCaptureViewerArtifacts {
                     ProgressView()
                         .controlSize(.small)
                 }
 
                 Spacer()
-
-                Text(L10n.format("viewer.label.record_count", displayedArtifacts.count))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             if appState.captureViewerStatusMessage.isEmpty == false {
@@ -173,7 +281,7 @@ struct CaptureViewerView: View {
             HSplitView {
                 ScrollViewReader { scrollProxy in
                     List(selection: $selectedCaptureArtifactID) {
-                        ForEach(displayedHourSections) { section in
+                        ForEach(displayedSections) { section in
                             Section {
                                 ForEach(section.artifacts) { artifact in
                                     captureViewerRowView(artifact: artifact)
@@ -185,13 +293,13 @@ struct CaptureViewerView: View {
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             }
-                            .id(section.hour)
+                            .id(section.id)
                         }
                     }
                     .focused($focusedControl, equals: .captureList)
                     .listStyle(.inset)
                     .overlay(alignment: .trailing) {
-                        captureViewerHourIndexBar(sections: displayedHourSections, scrollProxy: scrollProxy)
+                        captureViewerIndexBar(sections: displayedSections, scrollProxy: scrollProxy)
                     }
                 }
                 .frame(minWidth: 320, idealWidth: 370, maxWidth: 440)
@@ -211,17 +319,11 @@ struct CaptureViewerView: View {
         .padding(12)
         .onAppear {
             let didApplyExternalSelectionRequest = applyExternalSelectionRequestIfNeeded()
-            let didApplyExternalSearchRequest = applyExternalSearchRequestIfNeeded()
-            guard appState.captureViewerArtifacts.isEmpty else {
-                synchronizeApplicationFilterIfNeeded()
-                refreshDisplayedArtifacts()
-                if didApplyExternalSelectionRequest == false && didApplyExternalSearchRequest == false {
-                    focusCaptureList()
-                }
-                return
+            _ = applyExternalSearchRequestIfNeeded()
+            if didApplyExternalSelectionRequest == false {
+                loadCaptureViewerArtifacts()
             }
-            loadCaptureViewerArtifacts()
-            if didApplyExternalSelectionRequest == false && didApplyExternalSearchRequest == false {
+            if didApplyExternalSelectionRequest == false {
                 focusCaptureList()
             }
         }
@@ -351,10 +453,87 @@ struct CaptureViewerView: View {
         }
     }
 
+    private func normalizeCaptureViewerDate(_ date: Date) -> Date {
+        let normalizedDate = Self.captureViewerDayCalendar.startOfDay(for: date)
+        let today = Self.captureViewerDayCalendar.startOfDay(for: Date())
+        return min(normalizedDate, today)
+    }
+
+    private func setCaptureViewerDateRange(
+        startDate: Date,
+        endDate: Date,
+        preset: CaptureViewerDateRangePreset?
+    ) {
+        let normalizedStartDate = normalizeCaptureViewerDate(startDate)
+        let normalizedEndDate = normalizeCaptureViewerDate(endDate)
+        let resolvedStartDate = min(normalizedStartDate, normalizedEndDate)
+        let resolvedEndDate = max(normalizedStartDate, normalizedEndDate)
+        let hasDateRangeChanged =
+            resolvedStartDate != captureViewerStartDate || resolvedEndDate != captureViewerEndDate
+
+        captureViewerStartDate = resolvedStartDate
+        captureViewerEndDate = resolvedEndDate
+        selectedDateRangePreset = preset
+
+        guard hasDateRangeChanged else {
+            return
+        }
+        loadCaptureViewerArtifacts()
+    }
+
+    private func resolveSelectedDateRangePresetTitle() -> String {
+        guard let selectedDateRangePreset else {
+            return L10n.string("viewer.value.custom_range")
+        }
+
+        switch selectedDateRangePreset {
+        case .today:
+            return L10n.string("viewer.preset.today")
+        case .yesterday:
+            return L10n.string("viewer.preset.yesterday")
+        case .last3Days:
+            return L10n.string("viewer.preset.last_3_days")
+        case .last7Days:
+            return L10n.string("viewer.preset.last_7_days")
+        case .last30Days:
+            return L10n.string("viewer.preset.last_30_days")
+        case .allTime:
+            return L10n.string("viewer.preset.all_time")
+        }
+    }
+
+    private func applyDateRangePreset(_ preset: CaptureViewerDateRangePreset) {
+        let today = Self.captureViewerDayCalendar.startOfDay(for: Date())
+
+        switch preset {
+        case .today:
+            setCaptureViewerDateRange(startDate: today, endDate: today, preset: preset)
+        case .yesterday:
+            let yesterday = Self.captureViewerDayCalendar.date(byAdding: .day, value: -1, to: today) ?? today
+            setCaptureViewerDateRange(startDate: yesterday, endDate: yesterday, preset: preset)
+        case .last3Days:
+            let startDate = Self.captureViewerDayCalendar.date(byAdding: .day, value: -2, to: today) ?? today
+            setCaptureViewerDateRange(startDate: startDate, endDate: today, preset: preset)
+        case .last7Days:
+            let startDate = Self.captureViewerDayCalendar.date(byAdding: .day, value: -6, to: today) ?? today
+            setCaptureViewerDateRange(startDate: startDate, endDate: today, preset: preset)
+        case .last30Days:
+            let startDate = Self.captureViewerDayCalendar.date(byAdding: .day, value: -29, to: today) ?? today
+            setCaptureViewerDateRange(startDate: startDate, endDate: today, preset: preset)
+        case .allTime:
+            Task { @MainActor in
+                let oldestRecordDate = await appState.resolveCaptureViewerOldestRecordDate()
+                let startDate = oldestRecordDate.map(normalizeCaptureViewerDate) ?? today
+                setCaptureViewerDateRange(startDate: startDate, endDate: today, preset: preset)
+            }
+        }
+    }
+
     private func loadCaptureViewerArtifacts() {
-        let targetDate = captureViewerDate
+        let startDate = captureViewerStartDate
+        let endDate = captureViewerEndDate
         Task { @MainActor in
-            await appState.loadCaptureViewerArtifacts(on: targetDate)
+            await appState.loadCaptureViewerArtifacts(from: startDate, through: endDate)
             synchronizeApplicationFilterIfNeeded()
             refreshDisplayedArtifacts()
         }
@@ -369,7 +548,7 @@ struct CaptureViewerView: View {
             }
         )
         buildAppIconCache(for: appState.captureViewerArtifacts)
-        displayedHourSections = buildHourSections(from: refreshedArtifacts)
+        displayedSections = buildListSections(from: refreshedArtifacts)
         let didApplyPendingSelection = applyPendingSelectionAfterReloadIfNeeded()
         if didApplyPendingSelection == false {
             synchronizeSelectedCaptureArtifactIfNeeded()
@@ -656,11 +835,12 @@ struct CaptureViewerView: View {
         resetFiltersForExternalSelection()
 
         let targetDate = Self.captureViewerDayCalendar.startOfDay(for: requestedCapturedAt)
-        let currentDate = Self.captureViewerDayCalendar.startOfDay(for: captureViewerDate)
-        if targetDate != currentDate {
-            captureViewerDate = targetDate
-        } else {
+        let isTargetDateInCurrentRange =
+            targetDate >= captureViewerStartDate && targetDate <= captureViewerEndDate
+        if isTargetDateInCurrentRange {
             loadCaptureViewerArtifacts()
+        } else {
+            setCaptureViewerDateRange(startDate: targetDate, endDate: targetDate, preset: nil)
         }
         focusCaptureList()
         return true
@@ -886,6 +1066,20 @@ struct CaptureViewerView: View {
         return formatter
     }()
 
+    private static let captureViewerSectionDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy/MM/dd (EEE)"
+        return formatter
+    }()
+
+    private static let captureViewerIndexDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateFormat = "MM/dd"
+        return formatter
+    }()
+
     // MARK: - Application Launch
 
     private func resolveApplicationURL(for applicationName: String, bundlePath: String? = nil) -> URL? {
@@ -927,20 +1121,22 @@ struct CaptureViewerView: View {
         NSWorkspace.shared.activateFileViewerSelecting([appURL])
     }
 
-    // MARK: - Hour Index Bar
+    // MARK: - Index Bar
 
     @ViewBuilder
-    private func captureViewerHourIndexBar(
-        sections: [CaptureViewerHourSection],
+    private func captureViewerIndexBar(
+        sections: [CaptureViewerListSection],
         scrollProxy: ScrollViewProxy
     ) -> some View {
         if sections.count > 1 {
             GeometryReader { geometry in
                 VStack(spacing: 1) {
                     ForEach(sections) { section in
-                        Text(String(format: "%02d", section.hour))
+                        Text(section.indexLabel)
                             .font(.system(size: 9, weight: .medium, design: .monospaced))
                             .foregroundStyle(.secondary)
+                            .minimumScaleFactor(0.55)
+                            .lineLimit(1)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
@@ -948,7 +1144,7 @@ struct CaptureViewerView: View {
                 .gesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .onChanged { value in
-                            scrollCaptureListFromHourIndex(
+                            scrollCaptureListFromIndex(
                                 locationY: value.location.y,
                                 barHeight: geometry.size.height,
                                 sections: sections,
@@ -960,7 +1156,7 @@ struct CaptureViewerView: View {
                         }
                 )
             }
-            .frame(width: 28)
+            .frame(width: isSingleDaySelection ? 28 : 40)
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
             .background(.clear)
@@ -968,18 +1164,18 @@ struct CaptureViewerView: View {
         }
     }
 
-    private func scrollCaptureListFromHourIndex(
+    private func scrollCaptureListFromIndex(
         locationY: CGFloat,
         barHeight: CGFloat,
-        sections: [CaptureViewerHourSection],
+        sections: [CaptureViewerListSection],
         scrollProxy: ScrollViewProxy
     ) {
         guard
-            let targetDate = resolveHourIndexTargetDate(
-                locationY: locationY,
-                barHeight: barHeight,
-                sections: sections
-            ),
+            let targetDate = resolveIndexTargetDate(
+            locationY: locationY,
+            barHeight: barHeight,
+            sections: sections
+        ),
             let targetArtifactID = resolveNearestArtifactID(to: targetDate)
         else {
             return
@@ -991,22 +1187,21 @@ struct CaptureViewerView: View {
         scrollProxy.scrollTo(targetArtifactID, anchor: .top)
     }
 
-    private func resolveHourIndexTargetDate(
+    private func resolveIndexTargetDate(
         locationY: CGFloat,
         barHeight: CGFloat,
-        sections: [CaptureViewerHourSection]
+        sections: [CaptureViewerListSection]
     ) -> Date? {
         guard sections.isEmpty == false, barHeight > 0 else {
             return nil
         }
 
+        if isSingleDaySelection == false {
+            return resolveMultiDayIndexTargetDate(locationY: locationY, barHeight: barHeight)
+        }
+
         if sections.count == 1 {
-            return Self.captureViewerDayCalendar.date(
-                bySettingHour: sections[0].hour,
-                minute: 0,
-                second: 0,
-                of: captureViewerDate
-            )
+            return sections[0].targetDate
         }
 
         let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
@@ -1018,16 +1213,43 @@ struct CaptureViewerView: View {
         let lowerSectionIndex = Int(clampedSectionPosition.rounded(.down))
         let upperSectionIndex = min(lowerSectionIndex + 1, sections.count - 1)
         let interpolationProgress = Double(clampedSectionPosition - CGFloat(lowerSectionIndex))
-        let lowerHour = Double(sections[lowerSectionIndex].hour)
-        let upperHour = Double(sections[upperSectionIndex].hour)
-        let interpolatedHour = lowerHour + ((upperHour - lowerHour) * interpolationProgress)
-        let interpolatedSeconds = Int((interpolatedHour * 3600).rounded())
-        let startOfDay = Self.captureViewerDayCalendar.startOfDay(for: captureViewerDate)
-        return Self.captureViewerDayCalendar.date(
-            byAdding: .second,
-            value: interpolatedSeconds,
-            to: startOfDay
-        )
+        let lowerSeconds = sections[lowerSectionIndex].targetDate.timeIntervalSinceReferenceDate
+        let upperSeconds = sections[upperSectionIndex].targetDate.timeIntervalSinceReferenceDate
+        let interpolatedSeconds = lowerSeconds + ((upperSeconds - lowerSeconds) * interpolationProgress)
+        return Date(timeIntervalSinceReferenceDate: interpolatedSeconds)
+    }
+
+    private func resolveMultiDayIndexTargetDate(
+        locationY: CGFloat,
+        barHeight: CGFloat
+    ) -> Date? {
+        guard barHeight > 0 else {
+            return nil
+        }
+
+        let rangeStartDate = Self.captureViewerDayCalendar.startOfDay(for: captureViewerStartDate)
+        let rangeEndExclusiveDate = Self.captureViewerDayCalendar.date(
+            byAdding: .day,
+            value: 1,
+            to: Self.captureViewerDayCalendar.startOfDay(for: captureViewerEndDate)
+        ) ?? captureViewerEndDate
+        let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
+
+        let topDate: Date
+        let bottomDate: Date
+        switch selectedTimeSortOrder {
+        case .ascending:
+            topDate = rangeStartDate
+            bottomDate = rangeEndExclusiveDate
+        case .descending:
+            topDate = rangeEndExclusiveDate
+            bottomDate = rangeStartDate
+        }
+
+        let topSeconds = topDate.timeIntervalSinceReferenceDate
+        let bottomSeconds = bottomDate.timeIntervalSinceReferenceDate
+        let interpolatedSeconds = topSeconds + ((bottomSeconds - topSeconds) * normalizedLocationY)
+        return Date(timeIntervalSinceReferenceDate: interpolatedSeconds)
     }
 
     private func resolveNearestArtifactID(to targetDate: Date) -> UUID? {
@@ -1047,26 +1269,70 @@ struct CaptureViewerView: View {
         return nearestArtifact.id
     }
 
-    // MARK: - Hour Section
+    // MARK: - List Section
 
-    private func buildHourSections(from artifacts: [CaptureRecordArtifact]) -> [CaptureViewerHourSection] {
+    private func buildListSections(from artifacts: [CaptureRecordArtifact]) -> [CaptureViewerListSection] {
         let calendar = Self.captureViewerDayCalendar
-        let grouped = Dictionary(grouping: artifacts) { artifact in
-            calendar.component(.hour, from: artifact.record.capturedAt)
+
+        if isSingleDaySelection {
+            let groupedArtifacts = Dictionary(grouping: artifacts) { artifact in
+                calendar.component(.hour, from: artifact.record.capturedAt)
+            }
+            let sortedHours = sortSectionKeys(Array(groupedArtifacts.keys))
+            return sortedHours.compactMap { hour in
+                guard
+                    let sectionArtifacts = groupedArtifacts[hour],
+                    let firstArtifact = sectionArtifacts.first,
+                    let targetDate = calendar.date(
+                        bySettingHour: hour,
+                        minute: 0,
+                        second: 0,
+                        of: firstArtifact.record.capturedAt
+                    )
+                else {
+                    return nil
+                }
+
+                return CaptureViewerListSection(
+                    kind: .hour(hour),
+                    label: L10n.format("viewer.section.hour_format", hour),
+                    indexLabel: String(format: "%02d", hour),
+                    targetDate: targetDate,
+                    scrollTargetID: firstArtifact.id,
+                    artifacts: sectionArtifacts
+                )
+            }
         }
-        let sortedHours: [Int]
+
+        let groupedArtifacts = Dictionary(grouping: artifacts) { artifact in
+            calendar.startOfDay(for: artifact.record.capturedAt)
+        }
+        let sortedDates = sortSectionKeys(Array(groupedArtifacts.keys))
+        return sortedDates.compactMap { date in
+            guard
+                let sectionArtifacts = groupedArtifacts[date],
+                let firstArtifact = sectionArtifacts.first
+            else {
+                return nil
+            }
+
+            return CaptureViewerListSection(
+                kind: .day(date),
+                label: Self.captureViewerSectionDateFormatter.string(from: date),
+                indexLabel: Self.captureViewerIndexDateFormatter.string(from: date),
+                targetDate: date,
+                scrollTargetID: firstArtifact.id,
+                artifacts: sectionArtifacts
+            )
+        }
+    }
+
+    private func sortSectionKeys<Key: Comparable>(_ keys: [Key]) -> [Key] {
         switch selectedTimeSortOrder {
         case .ascending:
-            sortedHours = grouped.keys.sorted()
+            keys.sorted()
         case .descending:
-            sortedHours = grouped.keys.sorted(by: >)
-        }
-        return sortedHours.map { hour in
-            CaptureViewerHourSection(
-                hour: hour,
-                label: L10n.format("viewer.section.hour_format", hour),
-                artifacts: grouped[hour] ?? []
-            )
+            keys.sorted(by: >)
         }
     }
 

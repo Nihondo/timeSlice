@@ -119,6 +119,9 @@
 "settings.button.generating_report" = "Generating Report...";
 
 "viewer.label.target_date" = "Target date";
+"viewer.label.start_date" = "Start";
+"viewer.label.end_date" = "End";
+"viewer.label.date_preset" = "Range";
 "viewer.label.sort_order" = "Sort";
 "viewer.label.application_filter" = "Application";
 "viewer.label.capture_trigger_filter" = "Trigger";
@@ -151,6 +154,7 @@
 "viewer.menu.reveal_image" = "Reveal in Finder";
 "viewer.menu.delete_image" = "Delete";
 "viewer.message.empty" = "No records exist for the selected date.";
+"viewer.message.empty_range" = "No records exist for the selected range.";
 "viewer.message.load_failed" = "Failed to load viewer data: %@";
 "viewer.message.image_not_captured" = "No image was saved for this record.";
 "viewer.message.image_missing_or_expired" = "Image file is missing (expired or deleted).";
@@ -171,7 +175,14 @@
 "viewer.value.image_missing_or_expired" = "Missing/Expired";
 "viewer.value.no_comment" = "(No comment)";
 "viewer.value.empty_comment" = "(Empty comment)";
+"viewer.value.custom_range" = "Custom";
 "viewer.section.hour_format" = "%d:00";
+"viewer.preset.today" = "Today";
+"viewer.preset.yesterday" = "Yesterday";
+"viewer.preset.last_3_days" = "Last 3 Days";
+"viewer.preset.last_7_days" = "Last 7 Days";
+"viewer.preset.last_30_days" = "Last 30 Days";
+"viewer.preset.all_time" = "All Time";
 "viewer.menu.launch_application" = "Launch Application";
 "viewer.menu.reveal_application" = "Reveal in Finder";
 

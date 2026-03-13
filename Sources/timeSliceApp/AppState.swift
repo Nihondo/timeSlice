@@ -384,7 +384,7 @@ final class AppState {
         }
     }
 
-    func loadCaptureViewerArtifacts(on targetDate: Date) async {
+    func loadCaptureViewerArtifacts(from startDate: Date, through endDate: Date) async {
         isLoadingCaptureViewerArtifacts = true
         captureViewerStatusMessage = ""
         defer {
@@ -394,15 +394,30 @@ final class AppState {
         do {
             let localDataStore = dataStore
             let artifacts = try await Task.detached(priority: .userInitiated) {
-                try localDataStore.loadRecordArtifacts(on: targetDate)
+                try localDataStore.loadRecordArtifacts(from: startDate, through: endDate)
             }.value
             captureViewerArtifacts = artifacts
             if artifacts.isEmpty {
-                captureViewerStatusMessage = L10n.string("viewer.message.empty")
+                captureViewerStatusMessage = L10n.string("viewer.message.empty_range")
             }
         } catch {
             captureViewerArtifacts = []
             captureViewerStatusMessage = L10n.format("viewer.message.load_failed", error.localizedDescription)
+        }
+    }
+
+    func loadCaptureViewerArtifacts(on targetDate: Date) async {
+        await loadCaptureViewerArtifacts(from: targetDate, through: targetDate)
+    }
+
+    func resolveCaptureViewerOldestRecordDate() async -> Date? {
+        let localDataStore = dataStore
+        do {
+            return try await Task.detached(priority: .userInitiated) {
+                try localDataStore.resolveOldestRecordDate()
+            }.value
+        } catch {
+            return nil
         }
     }
 

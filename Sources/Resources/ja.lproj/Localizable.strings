@@ -119,6 +119,9 @@
 "settings.button.generating_report" = "日報生成中...";
 
 "viewer.label.target_date" = "対象日";
+"viewer.label.start_date" = "開始日";
+"viewer.label.end_date" = "終了日";
+"viewer.label.date_preset" = "期間";
 "viewer.label.sort_order" = "並び順";
 "viewer.label.application_filter" = "アプリ";
 "viewer.label.capture_trigger_filter" = "記録種別";
@@ -151,6 +154,7 @@
 "viewer.menu.reveal_image" = "Finderで表示";
 "viewer.menu.delete_image" = "削除";
 "viewer.message.empty" = "対象日のレコードがありません。";
+"viewer.message.empty_range" = "選択期間のレコードがありません。";
 "viewer.message.load_failed" = "ビューアの読み込みに失敗: %@";
 "viewer.message.image_not_captured" = "このレコードでは画像を保存していません。";
 "viewer.message.image_missing_or_expired" = "画像ファイルが見つかりません（保持期限切れまたは削除）。";
@@ -171,7 +175,14 @@
 "viewer.value.image_missing_or_expired" = "欠損/期限切れ";
 "viewer.value.no_comment" = "（コメントなし）";
 "viewer.value.empty_comment" = "（空コメント）";
+"viewer.value.custom_range" = "カスタム";
 "viewer.section.hour_format" = "%d時台";
+"viewer.preset.today" = "今日";
+"viewer.preset.yesterday" = "昨日";
+"viewer.preset.last_3_days" = "直近3日";
+"viewer.preset.last_7_days" = "直近7日";
+"viewer.preset.last_30_days" = "直近30日";
+"viewer.preset.all_time" = "全期間";
 "viewer.menu.launch_application" = "アプリを起動";
 "viewer.menu.reveal_application" = "Finderで表示";
 

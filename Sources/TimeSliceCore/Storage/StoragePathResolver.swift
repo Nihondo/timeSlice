@@ -119,6 +119,21 @@ enum StorageMaintenance {
         return removedDirectoryURLs
     }
 
+    static func collectDayDates(
+        in baseDirectoryURL: URL,
+        fileManager: FileManager,
+        calendar: Calendar
+    ) throws -> [Date] {
+        let dayDirectoryURLs = try collectDayDirectoryURLs(
+            in: baseDirectoryURL,
+            fileManager: fileManager,
+            calendar: calendar
+        )
+        return dayDirectoryURLs.compactMap { dayDirectoryURL in
+            parseDayDate(from: dayDirectoryURL, calendar: calendar)
+        }
+    }
+
     private static func collectDayDirectoryURLs(
         in baseDirectoryURL: URL,
         fileManager: FileManager,
