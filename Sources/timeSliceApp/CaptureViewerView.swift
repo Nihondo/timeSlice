@@ -1,6 +1,7 @@
 import AppKit
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
 
 private enum CaptureViewerTimeSortOrder: String, CaseIterable, Identifiable {
     case ascending
@@ -30,6 +31,14 @@ private enum CaptureViewerFocusTarget: Hashable {
     case captureList
 }
 
+private struct CaptureViewerHourSection: Identifiable {
+    let hour: Int
+    let label: String
+    let artifacts: [CaptureRecordArtifact]
+
+    var id: Int { hour }
+}
+
 struct CaptureViewerView: View {
     @Bindable var appState: AppState
 
@@ -48,6 +57,8 @@ struct CaptureViewerView: View {
     @State private var lastAppliedExternalSelectionRequestSequence: UInt64 = 0
     @State private var pendingExternalSelectionRecordID: UUID?
     @State private var pendingSelectionAfterReloadRecordID: UUID?
+    @State private var appIconCache: [String: NSImage] = [:]
+    @State private var displayedHourSections: [CaptureViewerHourSection] = []
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
@@ -102,8 +113,12 @@ struct CaptureViewerView: View {
                     Text("viewer.value.filter_all_applications")
                         .tag(CaptureViewerApplicationFilter.all)
                     ForEach(availableApplicationNames, id: \.self) { applicationName in
-                        Text(applicationName)
-                            .tag(CaptureViewerApplicationFilter.application(applicationName))
+                        Label {
+                            Text(applicationName)
+                        } icon: {
+                            Image(nsImage: resolveApplicationIconForMenu(for: applicationName))
+                        }
+                        .tag(CaptureViewerApplicationFilter.application(applicationName))
                     }
                 }
                 .pickerStyle(.menu)
@@ -155,15 +170,29 @@ struct CaptureViewerView: View {
             }
 
             HSplitView {
-                List(selection: $selectedCaptureArtifactID) {
-                    ForEach(displayedArtifacts) { artifact in
-                        captureViewerRowView(artifact: artifact)
-                            .tag(artifact.id)
+                ScrollViewReader { scrollProxy in
+                    List(selection: $selectedCaptureArtifactID) {
+                        ForEach(displayedHourSections) { section in
+                            Section {
+                                ForEach(section.artifacts) { artifact in
+                                    captureViewerRowView(artifact: artifact)
+                                        .tag(artifact.id)
+                                }
+                            } header: {
+                                Text(section.label)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .id(section.hour)
+                        }
+                    }
+                    .focused($focusedControl, equals: .captureList)
+                    .listStyle(.inset)
+                    .overlay(alignment: .trailing) {
+                        captureViewerHourIndexBar(sections: displayedHourSections, scrollProxy: scrollProxy)
                     }
                 }
-                .focused($focusedControl, equals: .captureList)
-                .listStyle(.inset)
-                .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
+                .frame(minWidth: 320, idealWidth: 370, maxWidth: 440)
 
                 Group {
                     if let selectedCaptureArtifact {
@@ -337,6 +366,8 @@ struct CaptureViewerView: View {
                 (artifact.id, artifact)
             }
         )
+        buildAppIconCache(for: appState.captureViewerArtifacts)
+        displayedHourSections = buildHourSections(from: refreshedArtifacts)
         let didApplyPendingSelection = applyPendingSelectionAfterReloadIfNeeded()
         if didApplyPendingSelection == false {
             synchronizeSelectedCaptureArtifactIfNeeded()
@@ -402,32 +433,40 @@ struct CaptureViewerView: View {
             ? artifact.record.windowTitle ?? ""
             : L10n.string("viewer.value.no_window_title")
 
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(Self.captureViewerTimeFormatter.string(from: artifact.record.capturedAt))
-                    .font(.system(.body, design: .monospaced))
+        HStack(spacing: 8) {
+            Image(nsImage: resolveApplicationIcon(for: artifact.record.applicationName))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 48, height: 48)
 
-                captureViewerManualIndicatorView(for: artifact.record.captureTrigger)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(Self.captureViewerTimeFormatter.string(from: artifact.record.capturedAt))
+                        .font(.system(.body, design: .monospaced))
 
-                Spacer()
+                    captureViewerManualIndicatorView(for: artifact.record.captureTrigger)
 
-                Label(
-                    resolveCaptureImageLinkStateText(artifact.imageLinkState),
-                    systemImage: resolveCaptureImageLinkStateIconName(artifact.imageLinkState)
-                )
-                .labelStyle(.iconOnly)
-                .foregroundStyle(resolveCaptureImageLinkStateColor(artifact.imageLinkState))
+                    Spacer()
+
+                    Label(
+                        resolveCaptureImageLinkStateText(artifact.imageLinkState),
+                        systemImage: resolveCaptureImageLinkStateIconName(artifact.imageLinkState)
+                    )
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(resolveCaptureImageLinkStateColor(artifact.imageLinkState))
+                }
+
+                Text(artifact.record.applicationName)
+                    .lineLimit(1)
+
+                resolveDisplayText(windowTitleText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-
-            Text(artifact.record.applicationName)
-                .lineLimit(1)
-
-            resolveDisplayText(windowTitleText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .padding(.vertical, 2)
+        .padding(.trailing, 20)
         .contextMenu {
             Button("viewer.menu.reveal_json") {
                 appState.revealCaptureViewerFile(artifact.jsonFileURL)
@@ -456,10 +495,20 @@ struct CaptureViewerView: View {
                 captureViewerSectionSeparator
 
                 Group {
-                    captureViewerTextRow(
+                    captureViewerLinkRow(
                         fieldName: L10n.string("viewer.field.application_name"),
-                        value: artifact.record.applicationName
-                    )
+                        value: artifact.record.applicationName,
+                        action: {
+                            launchApplication(named: artifact.record.applicationName)
+                        }
+                    ) {
+                        Button("viewer.menu.launch_application") {
+                            launchApplication(named: artifact.record.applicationName)
+                        }
+                        Button("viewer.menu.reveal_application") {
+                            revealApplicationInFinder(named: artifact.record.applicationName)
+                        }
+                    }
                     captureViewerTextRow(
                         fieldName: L10n.string("viewer.field.window_title"),
                         value: windowTitleText
@@ -834,4 +883,143 @@ struct CaptureViewerView: View {
         formatter.timeStyle = .medium
         return formatter
     }()
+
+    // MARK: - Application Launch
+
+    private func resolveApplicationURL(for applicationName: String) -> URL? {
+        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == applicationName }),
+           let url = running.bundleURL
+        {
+            return url
+        }
+        let searchPaths = [
+            "/Applications/\(applicationName).app",
+            "/System/Applications/\(applicationName).app",
+            "/Applications/Utilities/\(applicationName).app",
+            "/System/Applications/Utilities/\(applicationName).app",
+        ]
+        for path in searchPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
+        }
+        return nil
+    }
+
+    private func launchApplication(named applicationName: String) {
+        guard let appURL = resolveApplicationURL(for: applicationName) else { return }
+        NSWorkspace.shared.open(appURL)
+    }
+
+    private func revealApplicationInFinder(named applicationName: String) {
+        guard let appURL = resolveApplicationURL(for: applicationName) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([appURL])
+    }
+
+    // MARK: - Hour Index Bar
+
+    @ViewBuilder
+    private func captureViewerHourIndexBar(
+        sections: [CaptureViewerHourSection],
+        scrollProxy: ScrollViewProxy
+    ) -> some View {
+        if sections.count > 1 {
+            VStack(spacing: 1) {
+                ForEach(sections) { section in
+                    Text(String(format: "%02d", section.hour))
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation {
+                                scrollProxy.scrollTo(section.hour, anchor: .top)
+                            }
+                        }
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 8)
+            .background(.clear)
+            .padding(.trailing, 14)
+        }
+    }
+
+    // MARK: - Hour Section
+
+    private func buildHourSections(from artifacts: [CaptureRecordArtifact]) -> [CaptureViewerHourSection] {
+        let calendar = Self.captureViewerDayCalendar
+        let grouped = Dictionary(grouping: artifacts) { artifact in
+            calendar.component(.hour, from: artifact.record.capturedAt)
+        }
+        let sortedHours: [Int]
+        switch selectedTimeSortOrder {
+        case .ascending:
+            sortedHours = grouped.keys.sorted()
+        case .descending:
+            sortedHours = grouped.keys.sorted(by: >)
+        }
+        return sortedHours.map { hour in
+            CaptureViewerHourSection(
+                hour: hour,
+                label: L10n.format("viewer.section.hour_format", hour),
+                artifacts: grouped[hour] ?? []
+            )
+        }
+    }
+
+    // MARK: - App Icon
+
+    private func resolveApplicationIcon(for applicationName: String) -> NSImage {
+        if let cachedIcon = appIconCache[applicationName] {
+            return cachedIcon
+        }
+        return NSWorkspace.shared.icon(for: .application)
+    }
+
+    private func resolveApplicationIconForMenu(for applicationName: String) -> NSImage {
+        let icon = resolveApplicationIcon(for: applicationName)
+        let menuIcon = icon.copy() as! NSImage
+        menuIcon.size = NSSize(width: 16, height: 16)
+        return menuIcon
+    }
+
+    private func buildAppIconCache(for artifacts: [CaptureRecordArtifact]) {
+        let uniqueAppNames = Set(artifacts.map(\.record.applicationName))
+        var newCache: [String: NSImage] = [:]
+        for appName in uniqueAppNames {
+            if let existing = appIconCache[appName] {
+                newCache[appName] = existing
+            } else {
+                newCache[appName] = findApplicationIcon(for: appName)
+            }
+        }
+        appIconCache = newCache
+    }
+
+    private func findApplicationIcon(for applicationName: String) -> NSImage {
+        // 1. 実行中のアプリから localizedName でマッチ
+        let runningApps = NSWorkspace.shared.runningApplications
+        if let matchedApp = runningApps.first(where: { $0.localizedName == applicationName }),
+           let bundleURL = matchedApp.bundleURL
+        {
+            return NSWorkspace.shared.icon(forFile: bundleURL.path)
+        }
+
+        // 2. パスベースで検索
+        let searchPaths = [
+            "/Applications/\(applicationName).app",
+            "/System/Applications/\(applicationName).app",
+            "/Applications/Utilities/\(applicationName).app",
+            "/System/Applications/Utilities/\(applicationName).app",
+        ]
+        for path in searchPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                return NSWorkspace.shared.icon(forFile: path)
+            }
+        }
+
+        // 3. フォールバック: 汎用アプリアイコン
+        return NSWorkspace.shared.icon(for: .application)
+    }
 }

@@ -170,6 +170,9 @@
 "viewer.value.image_missing_or_expired" = "Missing/Expired";
 "viewer.value.no_comment" = "(No comment)";
 "viewer.value.empty_comment" = "(Empty comment)";
+"viewer.section.hour_format" = "%d:00";
+"viewer.menu.launch_application" = "Launch Application";
+"viewer.menu.reveal_application" = "Reveal in Finder";
 
 "state.stopped" = "Stopped";
 "state.capturing" = "Capturing";

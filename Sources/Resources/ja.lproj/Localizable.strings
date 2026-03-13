@@ -170,6 +170,9 @@
 "viewer.value.image_missing_or_expired" = "欠損/期限切れ";
 "viewer.value.no_comment" = "（コメントなし）";
 "viewer.value.empty_comment" = "（空コメント）";
+"viewer.section.hour_format" = "%d時台";
+"viewer.menu.launch_application" = "アプリを起動";
+"viewer.menu.reveal_application" = "Finderで表示";
 
 "state.stopped" = "停止中";
 "state.capturing" = "キャプチャ中";
