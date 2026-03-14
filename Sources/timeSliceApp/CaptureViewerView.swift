@@ -1235,7 +1235,7 @@ struct CaptureViewerView: View {
         }
         lastIndexScrolledArtifactID = targetArtifactID
         selectedCaptureArtifactID = targetArtifactID
-        scrollProxy.scrollTo(targetArtifactID, anchor: .top)
+        scrollProxy.scrollTo(targetArtifactID, anchor: .center)
     }
 
     private func resolveIndexTargetDate(
