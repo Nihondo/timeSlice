@@ -257,7 +257,7 @@ struct CaptureViewerView: View {
 
                 TextField("viewer.placeholder.search_text", text: $searchInputText)
                     .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 220, idealWidth: 300, maxWidth: 360)
+                    .frame(minWidth: 220, maxWidth: .infinity)
                     .focused($focusedControl, equals: .searchInput)
                     .onSubmit {
                         applyCaptureViewerSearchQuery()
@@ -267,8 +267,6 @@ struct CaptureViewerView: View {
                     ProgressView()
                         .controlSize(.small)
                 }
-
-                Spacer()
             }
 
             if appState.captureViewerStatusMessage.isEmpty == false {
@@ -625,16 +623,13 @@ struct CaptureViewerView: View {
                     Text(Self.captureViewerTimeFormatter.string(from: artifact.record.capturedAt))
                         .font(.system(.body, design: .monospaced))
 
+                    Image(systemName: resolveCaptureImageLinkStateIconName(artifact.imageLinkState))
+                        .foregroundStyle(resolveCaptureImageLinkStateColor(artifact.imageLinkState))
+                        .accessibilityLabel(resolveCaptureImageLinkStateText(artifact.imageLinkState))
+
                     captureViewerManualIndicatorView(for: artifact.record.captureTrigger)
 
                     Spacer()
-
-                    Label(
-                        resolveCaptureImageLinkStateText(artifact.imageLinkState),
-                        systemImage: resolveCaptureImageLinkStateIconName(artifact.imageLinkState)
-                    )
-                    .labelStyle(.iconOnly)
-                    .foregroundStyle(resolveCaptureImageLinkStateColor(artifact.imageLinkState))
                 }
 
                 Text(artifact.record.applicationName)
@@ -677,7 +672,8 @@ struct CaptureViewerView: View {
 
                 Group {
                     captureViewerLinkRow(
-                        fieldName: L10n.string("viewer.field.application_name"),
+                        iconName: "desktopcomputer",
+                        accessibilityLabel: L10n.string("viewer.field.application_name"),
                         value: artifact.record.applicationName,
                         action: {
                             launchApplication(record: artifact.record)
@@ -691,12 +687,14 @@ struct CaptureViewerView: View {
                         }
                     }
                     captureViewerTextRow(
-                        fieldName: L10n.string("viewer.field.window_title"),
+                        iconName: "macwindow",
+                        accessibilityLabel: L10n.string("viewer.field.window_title"),
                         value: windowTitleText
                     )
                     if let browserURL = artifact.record.browserURL, browserURL.isEmpty == false {
                         captureViewerLinkRow(
-                            fieldName: L10n.string("viewer.field.browser_url"),
+                            iconName: "link",
+                            accessibilityLabel: L10n.string("viewer.field.browser_url"),
                             value: browserURL,
                             action: {
                                 appState.openCaptureViewerURL(browserURL)
@@ -713,7 +711,8 @@ struct CaptureViewerView: View {
                     if let documentPath = artifact.record.documentPath, documentPath.isEmpty == false {
                         let documentFileURL = URL(fileURLWithPath: documentPath)
                         captureViewerLinkRow(
-                            fieldName: L10n.string("viewer.field.document_path"),
+                            iconName: "folder",
+                            accessibilityLabel: L10n.string("viewer.field.document_path"),
                             value: documentPath,
                             action: {
                                 appState.openCaptureViewerFile(documentFileURL)
@@ -934,9 +933,17 @@ struct CaptureViewerView: View {
         }
     }
 
-    private func captureViewerTextRow(fieldName: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("\(fieldName):")
+    private func captureViewerTextRow(
+        iconName: String,
+        accessibilityLabel: String,
+        value: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: iconName)
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+                .offset(y: 2)
+                .accessibilityLabel(accessibilityLabel)
             resolveDisplayText(value)
                 .textSelection(.enabled)
         }
@@ -944,13 +951,18 @@ struct CaptureViewerView: View {
     }
 
     private func captureViewerLinkRow<MenuContent: View>(
-        fieldName: String,
+        iconName: String,
+        accessibilityLabel: String,
         value: String,
         action: @escaping () -> Void,
         @ViewBuilder menuContent: () -> MenuContent
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("\(fieldName):")
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: iconName)
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+                .offset(y: 2)
+                .accessibilityLabel(accessibilityLabel)
             Button(action: action) {
                 resolveDisplayText(value)
                     .underline()
