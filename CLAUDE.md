@@ -103,14 +103,16 @@ ReportScheduler (actor, time-slot-based auto-generation)
 
 ### Global Keyboard Shortcuts
 
-- **`GlobalHotKeyManager`** (in AppStateSupport.swift): manages two system-wide hotkeys using Carbon `RegisterEventHotKey` API
+- **`GlobalHotKeyManager`** (in AppStateSupport.swift): manages three system-wide hotkeys using Carbon `RegisterEventHotKey` API
   - `id: 1` — Capture Now (`onHotKeyPressed` callback → comment popup → manual capture)
   - `id: 2` — Rectangle Capture (`onRectangleCaptureHotKeyPressed` callback → `screencapture -i` → comment popup → save)
-- `updateRegistration(_:)` / `updateRectangleCaptureRegistration(_:)` — separate registration methods per hotkey slot
+  - `id: 3` — Open Viewer (`onOpenViewerHotKeyPressed` callback → opens Capture Viewer window)
+- `updateRegistration(_:)` / `updateRectangleCaptureRegistration(_:)` / `updateOpenViewerRegistration(_:)` — separate registration methods per hotkey slot
 - User records shortcuts in Settings → General tab via `CaptureNowShortcutRecorderView` (uses `NSEvent.addLocalMonitorForEvents`)
 - Modifier key required (⌘/⌥/⌃/⇧). Esc cancels, Delete clears
 - Settings keys for Capture Now: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`
 - Settings keys for Rectangle Capture: `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`
+- Settings keys for Open Viewer: `openViewerShortcutKey`, `openViewerShortcutModifiers`, `openViewerShortcutKeyCode`
 - Capture Now triggers Spotlight-like comment popup (`NSPanel`) first
 - Rectangle Capture runs `screencapture -i` (interactive selection) first; comment popup appears after selection completes
 - In popup: `Enter` executes capture + text recognition + save (blank input persists as `comments: ""`)
@@ -153,7 +155,7 @@ Stored structure:
   - Capture settings: `captureIntervalSeconds`, `captureMinimumTextLength`, `captureShouldSaveImages`, `captureImageFormat`, `captureExcludedApplications`, `captureExcludedWindowTitles`
   - Report settings: `reportAutoGenerationEnabled`, `reportOutputDirectoryPath`, `reportPromptTemplate` (legacy), `reportPromptTemplatesJSON`, `reportTimeSlotsJSON`, `reportCLIProfilesJSON`, `reportSelectedCLIProfileID`
   - Viewer settings: `captureViewerTimeSortOrder`
-  - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`, `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`
+  - Shortcut settings: `captureNowShortcutKey`, `captureNowShortcutModifiers`, `captureNowShortcutKeyCode`, `rectangleCaptureShortcutKey`, `rectangleCaptureShortcutModifiers`, `rectangleCaptureShortcutKeyCode`, `openViewerShortcutKey`, `openViewerShortcutModifiers`, `openViewerShortcutKeyCode`
   - Startup settings: `startCaptureOnAppLaunchEnabled`, `launchAtLoginEnabled`
 - Loaded time slots are normalized in `resolveReportTimeSlots` (`startHour: 0...23`, `endHour: 1...30`, minutes `0...59`) and persisted back when needed
 - Time-slot editor in Settings uses a single 10-minute-step control per time value (minute rollover increments/decrements hour); each row also includes a prompt template Picker (inline in the same HStack row)
@@ -168,8 +170,8 @@ Stored structure:
 - General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
 - CLI tab: Picker to select active CLI profile, +/- buttons to add/delete sets, editable set name/command/arguments fields, and shared timeout Stepper. Changes auto-saved via `saveCLIProfiles()`
 - Prompt tab: Picker to select active template (Default + custom templates), +/- buttons to add/delete, name `TextField` for rename, `TextEditor` for content editing (computed `Binding<String>`). Default template is read-only and cannot be deleted. Changes auto-saved via `savePromptTemplates()`
-- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports date switch, sort (asc/desc, persisted), application filter (with app icons in menu), trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes. List rows display app icons (48x48) resolved from `applicationBundlePath` (priority) → running apps → path guessing → generic fallback, with icon cache keyed by app name. Hour-based section headers with a side index bar overlay for quick time navigation. Application name in detail pane is clickable (launches app) with context menu (launch / reveal in Finder). It also accepts external selection requests (notification click), resets filters/search as needed, and selects the target record by ID.
-- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer, about, quit). Opening settings/viewer activates `timeSlice` to front.
+- **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports start/end date range selection plus presets (`today`, `yesterday`, `last 3/7/30 days`, `all time`), sort (asc/desc, persisted), application filter (with app icons in menu), trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes. List rows display app icons (48x48) resolved from `applicationBundlePath` (priority) → running apps → path guessing → generic fallback, with icon cache keyed by app name. Single-day ranges keep hour-based section headers with a time side index bar; multi-day ranges switch to date-based section headers with a date side index bar. `browserURL` and `documentPath` in the detail pane are clickable and expose right-click actions (open/copy, plus Finder reveal for file paths). Application name in detail pane is clickable (launches app) with context menu (launch / reveal in Finder). Image previews expose right-click actions to open, reveal in Finder, or move the image to Trash. Left-pane rows expose right-click actions to reveal the backing JSON in Finder or move the entire record (JSON + linked image) to Trash. It also accepts external selection requests (notification click), resets filters/search as needed, and selects the target record by ID.
+- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer with optional keyboard shortcut, about, quit). Opening settings/viewer activates `timeSlice` to front.
   - "Generate report" (`reportGenerateButton` `@ViewBuilder` in `MenuBarMenuContentView`) adapts to enabled time slots: 1 slot → `Button` calling `generateReportForTimeSlot(isSoleEnabledSlot: true)`; 2+ slots → `Menu` submenu with one entry per enabled slot (label = `slot.timeRangeLabel`); 0 slots → fallback `generateDailyReport()` (full-day). Slot list is reactive via `@AppStorage(reportTimeSlotsJSON)`.
 
 ### Key Design Patterns
