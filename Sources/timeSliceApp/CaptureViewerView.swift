@@ -91,6 +91,17 @@ private struct CaptureViewerIndexLabelPlacement: Identifiable {
     let positionRatio: CGFloat
 }
 
+private struct CaptureViewerIndexTrackMetrics {
+    let minimumCenterY: CGFloat
+    let travelHeight: CGFloat
+}
+
+private struct CaptureViewerIndexSectionRange {
+    let section: CaptureViewerListSection
+    let startDate: Date
+    let endDateExclusive: Date
+}
+
 struct CaptureViewerView: View {
     @Bindable var appState: AppState
 
@@ -670,6 +681,9 @@ struct CaptureViewerView: View {
         let windowTitleText = artifact.record.windowTitle?.isEmpty == false
             ? artifact.record.windowTitle ?? ""
             : L10n.string("viewer.value.no_window_title")
+        let commentText = artifact.record.comments?.isEmpty == false
+            ? artifact.record.comments ?? ""
+            : resolveCaptureCommentText(artifact.record.comments)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -702,6 +716,11 @@ struct CaptureViewerView: View {
                         iconName: "macwindow",
                         accessibilityLabel: L10n.string("viewer.field.window_title"),
                         value: windowTitleText
+                    )
+                    captureViewerTextRow(
+                        iconName: "text.bubble",
+                        accessibilityLabel: L10n.string("viewer.section.comments"),
+                        value: commentText
                     )
                     if let browserURL = artifact.record.browserURL, browserURL.isEmpty == false {
                         captureViewerLinkRow(
@@ -750,16 +769,6 @@ struct CaptureViewerView: View {
                     Text("viewer.section.image")
                         .font(.headline)
                     captureViewerImagePreview(artifact: artifact)
-                }
-
-                captureViewerSectionSeparator
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("viewer.section.comments")
-                        .font(.headline)
-                    captureViewerCommentTextView(comment: artifact.record.comments)
-                        .font(.body)
-                        .textSelection(.enabled)
                 }
 
                 captureViewerSectionSeparator
@@ -867,15 +876,6 @@ struct CaptureViewerView: View {
     private func focusCaptureList() {
         Task { @MainActor in
             focusedControl = .captureList
-        }
-    }
-
-    @ViewBuilder
-    private func captureViewerCommentTextView(comment: String?) -> some View {
-        if let comment, comment.isEmpty == false {
-            resolveDisplayText(comment)
-        } else {
-            Text(resolveCaptureCommentText(comment))
         }
     }
 
@@ -1194,6 +1194,7 @@ struct CaptureViewerView: View {
                             scrollCaptureListFromIndex(
                                 locationY: value.location.y,
                                 barHeight: geometry.size.height,
+                                sections: sections,
                                 scrollProxy: scrollProxy
                             )
                         }
@@ -1214,6 +1215,7 @@ struct CaptureViewerView: View {
     private func scrollCaptureListFromIndex(
         locationY: CGFloat,
         barHeight: CGFloat,
+        sections: [CaptureViewerListSection],
         scrollProxy: ScrollViewProxy
     ) {
         guard
@@ -1221,7 +1223,10 @@ struct CaptureViewerView: View {
                 locationY: locationY,
                 barHeight: barHeight
             ),
-            let targetArtifactID = resolveNearestArtifactID(to: targetDate)
+            let targetArtifactID = resolveIndexArtifactID(
+                for: targetDate,
+                sections: sections
+            )
         else {
             return
         }
@@ -1229,6 +1234,7 @@ struct CaptureViewerView: View {
             return
         }
         lastIndexScrolledArtifactID = targetArtifactID
+        selectedCaptureArtifactID = targetArtifactID
         scrollProxy.scrollTo(targetArtifactID, anchor: .top)
     }
 
@@ -1237,17 +1243,51 @@ struct CaptureViewerView: View {
         barHeight: CGFloat
     ) -> Date? {
         guard
-            barHeight > 0,
+            let normalizedProgress = resolveNormalizedIndexProgress(
+                locationY: locationY,
+                barHeight: barHeight
+            ),
             let indexRangeDates = resolveIndexRangeDates()
         else {
             return nil
         }
 
-        let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
         let topSeconds = indexRangeDates.topDate.timeIntervalSinceReferenceDate
         let bottomSeconds = indexRangeDates.bottomDate.timeIntervalSinceReferenceDate
-        let interpolatedSeconds = topSeconds + ((bottomSeconds - topSeconds) * normalizedLocationY)
+        let interpolatedSeconds = topSeconds + ((bottomSeconds - topSeconds) * normalizedProgress)
         return Date(timeIntervalSinceReferenceDate: interpolatedSeconds)
+    }
+
+    private func resolveNormalizedIndexProgress(
+        locationY: CGFloat,
+        barHeight: CGFloat
+    ) -> Double? {
+        guard let trackMetrics = resolveIndexTrackMetrics(barHeight: barHeight) else {
+            return nil
+        }
+        guard trackMetrics.travelHeight > 0 else {
+            return 0
+        }
+
+        let rawProgress = (locationY - trackMetrics.minimumCenterY) / trackMetrics.travelHeight
+        return Double(min(max(rawProgress, 0), 1))
+    }
+
+    private func resolveIndexTrackMetrics(barHeight: CGFloat) -> CaptureViewerIndexTrackMetrics? {
+        guard barHeight > 0 else {
+            return nil
+        }
+
+        let verticalInset = Self.captureViewerIndexLabelVerticalMargin
+        let minimumCenterY = verticalInset + (Self.captureViewerIndexLabelHeight / 2)
+        let travelHeight = max(
+            barHeight - Self.captureViewerIndexLabelHeight - (verticalInset * 2),
+            0
+        )
+        return CaptureViewerIndexTrackMetrics(
+            minimumCenterY: minimumCenterY,
+            travelHeight: travelHeight
+        )
     }
 
     private func resolveIndexRangeDates() -> (
@@ -1319,25 +1359,146 @@ struct CaptureViewerView: View {
         positionRatio: CGFloat,
         barHeight: CGFloat
     ) -> CGFloat {
-        let verticalInset = Self.captureViewerIndexLabelVerticalMargin
-        let travelHeight = max(
-            barHeight - Self.captureViewerIndexLabelHeight - (verticalInset * 2),
-            0
-        )
+        guard let trackMetrics = resolveIndexTrackMetrics(barHeight: barHeight) else {
+            return Self.captureViewerIndexLabelHeight / 2
+        }
         let clampedPositionRatio = min(max(positionRatio, 0), 1)
-        return verticalInset
-            + (travelHeight * clampedPositionRatio)
-            + (Self.captureViewerIndexLabelHeight / 2)
+        return trackMetrics.minimumCenterY
+            + (trackMetrics.travelHeight * clampedPositionRatio)
     }
 
-    private func resolveNearestArtifactID(to targetDate: Date) -> UUID? {
-        guard let firstArtifact = displayedArtifacts.first else {
+    private func resolveIndexArtifactID(
+        for targetDate: Date,
+        sections: [CaptureViewerListSection]
+    ) -> UUID? {
+        let sectionRanges = resolveIndexSectionRanges(for: sections)
+        guard sectionRanges.isEmpty == false else {
+            return nil
+        }
+
+        if let containingSectionRange = sectionRanges.first(where: { sectionRange in
+            targetDate >= sectionRange.startDate && targetDate < sectionRange.endDateExclusive
+        }) {
+            return resolveArtifactID(
+                closestTo: targetDate,
+                artifacts: containingSectionRange.section.artifacts
+            )
+        }
+
+        guard let fallbackSectionRange = resolveFallbackSectionRange(
+            for: targetDate,
+            sectionRanges: sectionRanges
+        ) else {
+            return nil
+        }
+        return resolveArtifactID(
+            closestTo: targetDate,
+            artifacts: fallbackSectionRange.section.artifacts
+        )
+    }
+
+    private func resolveIndexSectionRanges(
+        for sections: [CaptureViewerListSection]
+    ) -> [CaptureViewerIndexSectionRange] {
+        let calendar = Self.captureViewerDayCalendar
+        return sections.compactMap { section in
+            let endDateExclusive: Date?
+            switch section.kind {
+            case .hour:
+                endDateExclusive = calendar.date(byAdding: .hour, value: 1, to: section.targetDate)
+            case .day:
+                endDateExclusive = calendar.date(byAdding: .day, value: 1, to: section.targetDate)
+            }
+
+            guard let endDateExclusive else {
+                return nil
+            }
+            return CaptureViewerIndexSectionRange(
+                section: section,
+                startDate: section.targetDate,
+                endDateExclusive: endDateExclusive
+            )
+        }
+    }
+
+    private func resolveFallbackSectionRange(
+        for targetDate: Date,
+        sectionRanges: [CaptureViewerIndexSectionRange]
+    ) -> CaptureViewerIndexSectionRange? {
+        guard sectionRanges.isEmpty == false else {
+            return nil
+        }
+
+        let preferredIndices: [Int]
+        switch selectedTimeSortOrder {
+        case .ascending:
+            let insertionIndex = sectionRanges.firstIndex(where: { $0.startDate > targetDate })
+                ?? sectionRanges.count
+            preferredIndices = resolveFallbackSectionIndices(
+                preferredIndex: insertionIndex < sectionRanges.count ? insertionIndex : sectionRanges.count - 1,
+                secondaryIndex: insertionIndex > 0 ? insertionIndex - 1 : nil,
+                count: sectionRanges.count
+            )
+        case .descending:
+            let insertionIndex = sectionRanges.firstIndex(where: { $0.startDate < targetDate })
+                ?? sectionRanges.count
+            let preferredIndex: Int
+            if insertionIndex == 0 {
+                preferredIndex = 0
+            } else if insertionIndex >= sectionRanges.count {
+                preferredIndex = sectionRanges.count - 1
+            } else {
+                preferredIndex = insertionIndex - 1
+            }
+            preferredIndices = resolveFallbackSectionIndices(
+                preferredIndex: preferredIndex,
+                secondaryIndex: insertionIndex < sectionRanges.count ? insertionIndex : nil,
+                count: sectionRanges.count
+            )
+        }
+
+        for sectionIndex in preferredIndices {
+            let sectionRange = sectionRanges[sectionIndex]
+            if sectionRange.section.artifacts.isEmpty == false {
+                return sectionRange
+            }
+        }
+        return nil
+    }
+
+    private func resolveFallbackSectionIndices(
+        preferredIndex: Int,
+        secondaryIndex: Int?,
+        count: Int
+    ) -> [Int] {
+        guard count > 0 else {
+            return []
+        }
+
+        var indices: [Int] = []
+        let clampedPreferredIndex = min(max(preferredIndex, 0), count - 1)
+        indices.append(clampedPreferredIndex)
+
+        if let secondaryIndex {
+            let clampedSecondaryIndex = min(max(secondaryIndex, 0), count - 1)
+            if indices.contains(clampedSecondaryIndex) == false {
+                indices.append(clampedSecondaryIndex)
+            }
+        }
+        return indices
+    }
+
+    private func resolveArtifactID(
+        closestTo targetDate: Date,
+        artifacts: [CaptureRecordArtifact]
+    ) -> UUID? {
+        guard let firstArtifact = artifacts.first else {
             return nil
         }
 
         var nearestArtifact = firstArtifact
         var smallestTimeDistance = abs(firstArtifact.record.capturedAt.timeIntervalSince(targetDate))
-        for artifact in displayedArtifacts.dropFirst() {
+        for artifact in artifacts.dropFirst() {
             let timeDistance = abs(artifact.record.capturedAt.timeIntervalSince(targetDate))
             if timeDistance < smallestTimeDistance {
                 nearestArtifact = artifact
