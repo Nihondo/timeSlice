@@ -85,6 +85,12 @@ private struct CaptureViewerListSection: Identifiable {
     }
 }
 
+private struct CaptureViewerIndexLabelPlacement: Identifiable {
+    let id: String
+    let text: String
+    let positionRatio: CGFloat
+}
+
 struct CaptureViewerView: View {
     @Bindable var appState: AppState
 
@@ -107,7 +113,9 @@ struct CaptureViewerView: View {
     @State private var pendingSelectionAfterReloadRecordID: UUID?
     @State private var appIconCache: [String: NSImage] = [:]
     @State private var displayedSections: [CaptureViewerListSection] = []
-    @State private var lastHourIndexScrolledArtifactID: UUID?
+    @State private var lastIndexScrolledArtifactID: UUID?
+    @State private var isIndexBarHovered = false
+    @State private var isIndexBarDragging = false
     @FocusState private var focusedControl: CaptureViewerFocusTarget?
 
     private var normalizedSearchQueryText: String {
@@ -116,6 +124,10 @@ struct CaptureViewerView: View {
 
     private var isSingleDaySelection: Bool {
         Self.captureViewerDayCalendar.isDate(captureViewerStartDate, inSameDayAs: captureViewerEndDate)
+    }
+
+    private var isIndexBarActive: Bool {
+        isIndexBarHovered || isIndexBarDragging
     }
 
     private var selectedTimeSortOrder: CaptureViewerTimeSortOrder {
@@ -1092,6 +1104,10 @@ struct CaptureViewerView: View {
         return formatter
     }()
 
+    private static let captureViewerIndexLabelHeight: CGFloat = 12
+    private static let captureViewerIndexLabelVerticalMargin: CGFloat = 3
+    private static let captureViewerIndexBackgroundCornerRadius: CGFloat = 8
+
     // MARK: - Application Launch
 
     private func resolveApplicationURL(for applicationName: String, bundlePath: String? = nil) -> URL? {
@@ -1142,110 +1158,112 @@ struct CaptureViewerView: View {
     ) -> some View {
         if sections.count > 1 {
             GeometryReader { geometry in
-                VStack(spacing: 1) {
-                    ForEach(sections) { section in
-                        Text(section.indexLabel)
+                let labelPlacements = resolveIndexLabelPlacements(for: sections)
+                ZStack {
+                    RoundedRectangle(cornerRadius: Self.captureViewerIndexBackgroundCornerRadius)
+                        .fill(Color.gray.opacity(isIndexBarActive ? 0.22 : 0))
+
+                    ForEach(labelPlacements) { placement in
+                        Text(placement.text)
                             .font(.system(size: 9, weight: .medium, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .minimumScaleFactor(0.55)
                             .lineLimit(1)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .frame(
+                                width: geometry.size.width,
+                                height: Self.captureViewerIndexLabelHeight
+                            )
+                            .position(
+                                x: geometry.size.width / 2,
+                                y: resolveIndexLabelCenterY(
+                                    positionRatio: placement.positionRatio,
+                                    barHeight: geometry.size.height
+                                )
+                            )
+                            .allowsHitTesting(false)
                     }
                 }
                 .contentShape(Rectangle())
+                .onHover { isHovered in
+                    isIndexBarHovered = isHovered
+                }
                 .gesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .onChanged { value in
+                            isIndexBarDragging = true
                             scrollCaptureListFromIndex(
                                 locationY: value.location.y,
                                 barHeight: geometry.size.height,
-                                sections: sections,
                                 scrollProxy: scrollProxy
                             )
                         }
                         .onEnded { _ in
-                            lastHourIndexScrolledArtifactID = nil
+                            isIndexBarDragging = false
+                            lastIndexScrolledArtifactID = nil
                         }
                 )
             }
             .frame(width: isSingleDaySelection ? 28 : 40)
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
-            .background(.clear)
             .padding(.trailing, 14)
+            .animation(.easeInOut(duration: 0.12), value: isIndexBarActive)
         }
     }
 
     private func scrollCaptureListFromIndex(
         locationY: CGFloat,
         barHeight: CGFloat,
-        sections: [CaptureViewerListSection],
         scrollProxy: ScrollViewProxy
     ) {
         guard
             let targetDate = resolveIndexTargetDate(
-            locationY: locationY,
-            barHeight: barHeight,
-            sections: sections
-        ),
+                locationY: locationY,
+                barHeight: barHeight
+            ),
             let targetArtifactID = resolveNearestArtifactID(to: targetDate)
         else {
             return
         }
-        guard lastHourIndexScrolledArtifactID != targetArtifactID else {
+        guard lastIndexScrolledArtifactID != targetArtifactID else {
             return
         }
-        lastHourIndexScrolledArtifactID = targetArtifactID
+        lastIndexScrolledArtifactID = targetArtifactID
         scrollProxy.scrollTo(targetArtifactID, anchor: .top)
     }
 
     private func resolveIndexTargetDate(
         locationY: CGFloat,
-        barHeight: CGFloat,
-        sections: [CaptureViewerListSection]
+        barHeight: CGFloat
     ) -> Date? {
-        guard sections.isEmpty == false, barHeight > 0 else {
+        guard
+            barHeight > 0,
+            let indexRangeDates = resolveIndexRangeDates()
+        else {
             return nil
         }
 
-        if isSingleDaySelection == false {
-            return resolveMultiDayIndexTargetDate(locationY: locationY, barHeight: barHeight)
-        }
-
-        if sections.count == 1 {
-            return sections[0].targetDate
-        }
-
         let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
-        let rawSectionPosition = (normalizedLocationY * CGFloat(sections.count)) - 0.5
-        let clampedSectionPosition = min(
-            max(rawSectionPosition, 0),
-            CGFloat(sections.count - 1)
-        )
-        let lowerSectionIndex = Int(clampedSectionPosition.rounded(.down))
-        let upperSectionIndex = min(lowerSectionIndex + 1, sections.count - 1)
-        let interpolationProgress = Double(clampedSectionPosition - CGFloat(lowerSectionIndex))
-        let lowerSeconds = sections[lowerSectionIndex].targetDate.timeIntervalSinceReferenceDate
-        let upperSeconds = sections[upperSectionIndex].targetDate.timeIntervalSinceReferenceDate
-        let interpolatedSeconds = lowerSeconds + ((upperSeconds - lowerSeconds) * interpolationProgress)
+        let topSeconds = indexRangeDates.topDate.timeIntervalSinceReferenceDate
+        let bottomSeconds = indexRangeDates.bottomDate.timeIntervalSinceReferenceDate
+        let interpolatedSeconds = topSeconds + ((bottomSeconds - topSeconds) * normalizedLocationY)
         return Date(timeIntervalSinceReferenceDate: interpolatedSeconds)
     }
 
-    private func resolveMultiDayIndexTargetDate(
-        locationY: CGFloat,
-        barHeight: CGFloat
-    ) -> Date? {
-        guard barHeight > 0 else {
-            return nil
-        }
-
+    private func resolveIndexRangeDates() -> (
+        rangeStartDate: Date,
+        rangeEndExclusiveDate: Date,
+        topDate: Date,
+        bottomDate: Date
+    )? {
         let rangeStartDate = Self.captureViewerDayCalendar.startOfDay(for: captureViewerStartDate)
-        let rangeEndExclusiveDate = Self.captureViewerDayCalendar.date(
+        guard let rangeEndExclusiveDate = Self.captureViewerDayCalendar.date(
             byAdding: .day,
             value: 1,
             to: Self.captureViewerDayCalendar.startOfDay(for: captureViewerEndDate)
-        ) ?? captureViewerEndDate
-        let normalizedLocationY = min(max(locationY / barHeight, 0), 1)
+        ) else {
+            return nil
+        }
 
         let topDate: Date
         let bottomDate: Date
@@ -1258,10 +1276,58 @@ struct CaptureViewerView: View {
             bottomDate = rangeStartDate
         }
 
-        let topSeconds = topDate.timeIntervalSinceReferenceDate
-        let bottomSeconds = bottomDate.timeIntervalSinceReferenceDate
-        let interpolatedSeconds = topSeconds + ((bottomSeconds - topSeconds) * normalizedLocationY)
-        return Date(timeIntervalSinceReferenceDate: interpolatedSeconds)
+        return (rangeStartDate, rangeEndExclusiveDate, topDate, bottomDate)
+    }
+
+    private func resolveIndexLabelPlacements(
+        for sections: [CaptureViewerListSection]
+    ) -> [CaptureViewerIndexLabelPlacement] {
+        guard let indexRangeDates = resolveIndexRangeDates() else {
+            return []
+        }
+
+        let totalRangeSeconds = indexRangeDates.rangeEndExclusiveDate.timeIntervalSince(
+            indexRangeDates.rangeStartDate
+        )
+        guard totalRangeSeconds > 0 else {
+            return []
+        }
+
+        return sections.map { section in
+            let distanceFromTopSeconds: TimeInterval
+            switch selectedTimeSortOrder {
+            case .ascending:
+                distanceFromTopSeconds = section.targetDate.timeIntervalSince(
+                    indexRangeDates.rangeStartDate
+                )
+            case .descending:
+                distanceFromTopSeconds = indexRangeDates.rangeEndExclusiveDate.timeIntervalSince(
+                    section.targetDate
+                )
+            }
+
+            let positionRatio = min(max(distanceFromTopSeconds / totalRangeSeconds, 0), 1)
+            return CaptureViewerIndexLabelPlacement(
+                id: section.id,
+                text: section.indexLabel,
+                positionRatio: positionRatio
+            )
+        }
+    }
+
+    private func resolveIndexLabelCenterY(
+        positionRatio: CGFloat,
+        barHeight: CGFloat
+    ) -> CGFloat {
+        let verticalInset = Self.captureViewerIndexLabelVerticalMargin
+        let travelHeight = max(
+            barHeight - Self.captureViewerIndexLabelHeight - (verticalInset * 2),
+            0
+        )
+        let clampedPositionRatio = min(max(positionRatio, 0), 1)
+        return verticalInset
+            + (travelHeight * clampedPositionRatio)
+            + (Self.captureViewerIndexLabelHeight / 2)
     }
 
     private func resolveNearestArtifactID(to targetDate: Date) -> UUID? {
