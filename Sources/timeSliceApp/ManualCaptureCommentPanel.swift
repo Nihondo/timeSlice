@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+private let manualCapturePanelCornerRadius: CGFloat = 16
+
 @MainActor
 final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
     private let closeAnimationDuration: TimeInterval = 0.12
@@ -78,13 +80,17 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
                 self?.cancelAndClosePanel()
             }
         )
-        panel.contentView = NSHostingView(rootView: commentView)
+        let hostingView = NSHostingView(rootView: commentView)
+        panel.contentView = hostingView
+        configurePanelShape(panel)
 
         activePanel = panel
         installKeyDownMonitorIfNeeded()
         NSApp.activate(ignoringOtherApps: true)
         panel.center()
         panel.makeKeyAndOrderFront(nil)
+        configurePanelShape(panel)
+        panel.invalidateShadow()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -186,6 +192,28 @@ final class ManualCaptureCommentPanelPresenter: NSObject, NSWindowDelegate {
         }
         return keyEvent.keyCode == 36 || keyEvent.keyCode == 76
     }
+
+    private func configurePanelShape(_ panel: NSPanel) {
+        guard let contentView = panel.contentView else {
+            return
+        }
+
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = NSColor.clear.cgColor
+        contentView.layer?.cornerRadius = manualCapturePanelCornerRadius
+        contentView.layer?.cornerCurve = .continuous
+        contentView.layer?.masksToBounds = true
+
+        guard let frameView = contentView.superview else {
+            return
+        }
+
+        frameView.wantsLayer = true
+        frameView.layer?.backgroundColor = NSColor.clear.cgColor
+        frameView.layer?.cornerRadius = manualCapturePanelCornerRadius
+        frameView.layer?.cornerCurve = .continuous
+        frameView.layer?.masksToBounds = true
+    }
 }
 
 private final class ManualCaptureCommentPanel: NSPanel {
@@ -281,9 +309,9 @@ private struct ManualCaptureCommentView: View {
         .frame(width: 560)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: manualCapturePanelCornerRadius, style: .continuous)
                     .fill(.regularMaterial)
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: manualCapturePanelCornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
@@ -296,13 +324,14 @@ private struct ManualCaptureCommentView: View {
                     )
             }
         )
+        .clipShape(RoundedRectangle(cornerRadius: manualCapturePanelCornerRadius, style: .continuous))
         .overlay(
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.30), lineWidth: 2.2)
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: manualCapturePanelCornerRadius, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 2.2)
+                RoundedRectangle(cornerRadius: manualCapturePanelCornerRadius, style: .continuous)
                     .inset(by: 1.8)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 0.9)
+                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.9)
             }
         )
         .shadow(color: Color.black.opacity(0.24), radius: 20, x: 0, y: 10)
