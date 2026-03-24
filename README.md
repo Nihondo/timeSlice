@@ -1,475 +1,472 @@
 # timeSlice
 
-**開発中**
+**Under Development**
 
-timeSlice は macOS Sonoma 以降で動作するメニューバーアプリです。作業中に最前面のウィンドウを定期的にキャプチャし、Vision Framework でテキスト認識して保存します。蓄積されたデータを AI エージェント CLI に渡すことで、その日の作業内容をまとめた日報を自動生成できます。
+timeSlice is a macOS Sonoma+ menu bar app that periodically captures the frontmost window, performs text recognition using the Vision Framework, and stores the results locally. By feeding the accumulated data to an AI agent CLI, you can automatically generate a daily work report.
 
-## できること
-- フロントウィンドウの定期キャプチャ（デフォルト: 60 秒ごと）
-- フロントウィンドウの手動キャプチャ（コメント入力ポップアップ付き）
-- 選択範囲を指定してキャプチャ（コメント入力ポップアップ付き）
-- ウィンドウタイトル・ドキュメントパス・ブラウザのアクティブタブ URL 取得
-- キャプチャ画像からのテキスト認識（Vision Framework）
-- AI CLI を使った日報生成（定時自動生成・手動生成）
-- 保存データのビューアウィンドウ
+## Features
+- Periodic capture of the frontmost window (default: every 60 seconds)
+- Manual capture of the frontmost window (with a comment input popup)
+- Region capture by selecting an area (with a comment input popup)
+- Retrieval of window title, document path, and active browser tab URL
+- Text recognition from captured images (Vision Framework)
+- Daily report generation using an AI CLI (scheduled and manual)
+- Viewer window for browsing saved data
 
-テキスト認識処理はすべてデバイス上で完結し、外部サーバーへのデータ送信は行いません。AI 利用部分については、ローカル LLM を利用しない限りは外部の AI サービスにプロンプトと認識テキストが送信される点にご注意ください。
-
----
-
-## 目次
-
-1. [ダウンロード](#ダウンロード)
-2. [はじめての起動](#はじめての起動)
-3. [メニューバーの操作](#メニューバーの操作)
-4. [キャプチャの仕組み](#キャプチャの仕組み)
-5. [日報の生成](#日報の生成)
-6. [設定ガイド](#設定ガイド)
-   - [一般タブ](#一般タブ)
-   - [キャプチャタブ](#キャプチャタブ)
-   - [CLI タブ](#cli-タブ)
-   - [日報タブ](#日報タブ)
-   - [プロンプトタブ](#プロンプトタブ)
-7. [ビューアウィンドウ](#ビューアウィンドウ)
-8. [データの保存先](#データの保存先)
-9. [権限の設定](#権限の設定)
-10. [トラブルシューティング](#トラブルシューティング)
-11. [ソースからビルド](#ソースからビルド)
+All text recognition is performed on-device; no data is sent to external servers. Note that when using AI for report generation, your prompt and recognized text will be sent to an external AI service unless you use a local LLM.
 
 ---
 
-## ダウンロード
+## Table of Contents
 
-最新版はこちらからダウンロードしてください: [ダウンロード](https://github.com/Nihondo/timeSlice/releases/latest/download/timeSlice.zip)
+1. [Download](#download)
+2. [First Launch](#first-launch)
+3. [Menu Bar Operations](#menu-bar-operations)
+4. [How Capture Works](#how-capture-works)
+5. [Report Generation](#report-generation)
+6. [Settings Guide](#settings-guide)
+   - [General Tab](#general-tab)
+   - [Capture Tab](#capture-tab)
+   - [CLI Tab](#cli-tab)
+   - [Report Tab](#report-tab)
+   - [Prompt Tab](#prompt-tab)
+7. [Viewer Window](#viewer-window)
+8. [Data Storage Location](#data-storage-location)
+9. [Permissions](#permissions)
+10. [Troubleshooting](#troubleshooting)
+11. [Building from Source](#building-from-source)
 
 ---
 
-## はじめての起動
+## Download
 
-1. ダウンロードした zip を展開し、`timeSlice.app` をアプリケーションフォルダに移動します。
-2. アプリを起動すると、初回は **画面収録権限** の許可ダイアログが表示されます。「OK」を押して許可してください（権限がないとキャプチャできません）。
-3. メニューバーにアイコンが表示されたら起動成功です。アイコンをクリックして「**記録開始**」を選べば、作業の記録が始まります。
-4. 日報を生成したい場合は、CLI タブで AI エージェント CLI の設定を行ってから「**日報を生成**」を実行してください。
+Download the latest release here: [Download](https://github.com/Nihondo/timeSlice/releases/latest/download/timeSlice.zip)
 
 ---
 
-## メニューバーの操作
+## First Launch
 
-メニューバーのアイコンは記録状態に応じて外観が変わります。記録していないときは白丸のアイコン、記録中は赤丸のアイコンになります。
+1. Unzip the downloaded file and move `timeSlice.app` to your Applications folder.
+2. On first launch, a **Screen Recording** permission dialog will appear. Click "OK" to allow it (capture will not work without this permission).
+3. Once the icon appears in the menu bar, the app is running. Click the icon and select **"Start Recording"** to begin capturing your work.
+4. To generate reports, configure your AI agent CLI in the CLI tab first, then click **"Generate Report"**.
 
-アイコンをクリックすると以下のメニューが表示されます。
+---
 
-| メニュー項目 | 説明 |
+## Menu Bar Operations
+
+The menu bar icon changes appearance based on the recording state: a white circle when idle, a red circle when recording.
+
+Clicking the icon shows the following menu:
+
+| Menu Item | Description |
 |---|---|
-| **timeSlice 設定...** (⌘,) | 設定ウィンドウを開きます |
-| **記録開始 / 記録終了** | キャプチャの開始・停止を切り替えます |
-| **今すぐ記録** | コメント入力ポップアップを開き、Enterで記録・⌘ + ENTERでビューア検索を実行します |
-| **選択範囲をキャプチャ** | 画面上で矩形を選択してキャプチャし、コメント入力ポップアップを表示します |
-| **日報を生成** | 有効なタイムスロットに基づいて日報を生成します。有効スロットが 1 つの場合はそのスロット、複数の場合はサブメニューで対象スロットを選択します |
-| **ビューアを開く** | キャプチャビューアを別ウィンドウで開きます（グローバルショートカット設定可） |
-| **timeSlice について...** | アプリのバージョン情報を表示します |
-| **終了** (⌘Q) | アプリを終了します |
+| **timeSlice Settings...** (⌘,) | Opens the settings window |
+| **Start / Stop Recording** | Toggles capture on or off |
+| **Capture Now** | Opens the comment input popup; press Enter to record, ⌘ + Enter to search in Viewer |
+| **Capture Rectangle** | Select a rectangular region on screen to capture, then shows the comment input popup |
+| **Generate Report** | Generates a report based on enabled time slots. If one slot is enabled, generates for that slot; if multiple, a submenu lets you choose |
+| **Open Viewer** | Opens the Capture Viewer in a separate window (configurable global shortcut) |
+| **About timeSlice...** | Shows app version information |
+| **Quit** (⌘Q) | Quits the app |
 
-### 「今すぐ記録」について
+### About "Capture Now"
 
 ![](./images/timeSlice_popup.png)
 
-「今すぐ記録」を実行すると、Spotlight に似たコメント入力ポップアップが表示されます。コメントを入力して Enter を押すと、すぐにウィンドウキャプチャ・テキスト認識・保存が実行されます。コメントは省略可能です。
+Triggering "Capture Now" opens a Spotlight-like comment input popup. Enter a comment and press Enter to immediately capture, perform text recognition, and save. The comment is optional.
 
-⌘ + ENTER を押すとコメントは保存せず、入力内容をキーワードとしてキャプチャビューア検索を実行します。Esc を押すとキャンセルになり、保存は行われません。
+Press ⌘ + Enter to skip saving and instead open the Capture Viewer with your input as a search query. Press Esc to cancel without saving.
 
-ポップアップ上部には、記録対象のアプリ名とウィンドウタイトルがラベルなしで2行表示されます（タイトルが取得できない場合は「（タイトルなし）」を表示）。
+The top of the popup shows the target app name and window title on two lines without labels (displays "(No Title)" if unavailable).
 
-ポップアップが開いたとき、前面アプリで選択中のテキストがあれば自動的にコメント欄に入力されます（アクセシビリティ権限が必要です）。
+When the popup opens, any text currently selected in the frontmost app is automatically filled into the comment field (requires Accessibility permission).
 
-グローバルショートカットキーを設定しておくと、どのアプリを操作中でも「今すぐ記録」を呼び出せます。ショートカットの設定は[一般タブ](#一般タブ)をご覧ください。
+Setting a global shortcut key allows you to trigger "Capture Now" from any app. See [General Tab](#general-tab) for shortcut configuration.
 
-### 「選択範囲をキャプチャ」について
+### About "Capture Rectangle"
 
-「選択範囲をキャプチャ」を実行すると、macOS の `screencapture` コマンドを使って画面上で任意の矩形領域を選択できます。
+Triggering "Capture Rectangle" uses macOS's `screencapture` command to let you select any rectangular region on screen.
 
-選択後にキャプチャ画像のテキスト認識が行われ、「今すぐ記録」と同様のコメント入力ポップアップが表示されます。コメントを入力して Enter を押すと記録が保存されます。Esc を押すとキャプチャ自体がキャンセルされ、保存は行われません。
+After selection, text recognition is performed on the captured image, and a comment input popup (same as "Capture Now") is displayed. Press Enter to save the record, or Esc to cancel — the capture itself is discarded and nothing is saved.
 
-定期キャプチャとは独立して動作するため、記録中・停止中を問わずいつでも実行できます。記録データの `captureTrigger` は `rectangleCapture` となります。
+This feature works independently of periodic capture, so it can be used at any time regardless of whether recording is active. The `captureTrigger` in the saved data will be `rectangleCapture`.
 
-グローバルショートカットキーを設定しておくと、どのアプリを操作中でも「選択範囲をキャプチャ」を呼び出せます。ショートカットの設定は[一般タブ](#一般タブ)をご覧ください。
+Setting a global shortcut key allows you to trigger "Capture Rectangle" from any app. See [General Tab](#general-tab) for shortcut configuration.
 
 ---
 
-## キャプチャの仕組み
+## How Capture Works
 
-記録中、timeSlice は設定した間隔（デフォルト 60 秒）ごとに最前面のウィンドウを自動キャプチャします。キャプチャごとに以下の処理が行われます。
+While recording, timeSlice automatically captures the frontmost window at the configured interval (default: 60 seconds). Each capture goes through the following steps:
 
-まず、フロントアプリ名またはウィンドウタイトルが除外設定に部分一致するか確認します。一致した場合は、認識したテキストと画像保存をスキップし、アプリ名・ウィンドウタイトル等のメタデータのみを記録します。プライベートなウィンドウや機密情報を扱うアプリを除外するのに使います。
+First, it checks whether the frontmost app name or window title partially matches any exclusion keyword. If matched, text recognition and image saving are skipped, and only metadata (app name, window title, etc.) is stored. Use this to exclude windows with private or sensitive information.
 
-除外対象でない場合は、Vision Framework を使ってウィンドウ内のテキストを抽出します。直前の記録と内容が同じ（ハッシュが一致）場合は重複としてスキップし、内容が変化したときだけ新しいレコードとして保存します。
+If not excluded, the Vision Framework extracts text from the window. If the content matches the previous record (same hash), it is skipped as a duplicate; a new record is only saved when the content changes.
 
-保存されるデータは JSON レコード（常時）と画像ファイル（設定で有効にした場合）です。画像形式は `PNG` / `JPG` から選択できます。JSON には記録日時・アプリ名・ウィンドウタイトル・認識テキスト・記録トリガー（定期 or 手動）・コメント・ブラウザURL・ドキュメントファイルパス（取得可能な場合）・アプリバンドルパス（アイコン解決用）が含まれます。
+Saved data includes a JSON record (always) and an image file (if enabled in settings). Image format can be set to `PNG` or `JPG`. The JSON contains: timestamp, app name, window title, recognized text, capture trigger (scheduled or manual), comment, browser URL, document file path (if available), and app bundle path (for icon resolution).
 
-### ブラウザURL取得
+### Browser URL Capture
 
-フロントアプリがブラウザの場合、アクティブタブの URL を AppleScript 経由で自動取得し、記録に含めます。対応ブラウザは以下の通りです。
+When the frontmost app is a supported browser, timeSlice automatically retrieves the active tab URL via AppleScript and includes it in the record. Supported browsers:
 
-| ブラウザ | 対応状況 |
+| Browser | Support |
 |---|---|
-| Safari（Technology Preview を含む） | ✅ |
-| Google Chrome（Beta / Dev / Canary を含む） | ✅ |
-| Microsoft Edge（Beta / Dev / Canary を含む） | ✅ |
-| Brave Browser（Beta / Nightly を含む） | ✅ |
+| Safari (including Technology Preview) | ✅ |
+| Google Chrome (including Beta / Dev / Canary) | ✅ |
+| Microsoft Edge (including Beta / Dev / Canary) | ✅ |
+| Brave Browser (including Beta / Nightly) | ✅ |
 | Arc | ✅ |
 | Vivaldi | ✅ |
-| Firefox | ❌（AppleScript 非対応） |
+| Firefox | ❌ (No AppleScript support) |
 
-初めてブラウザの URL を取得するとき、macOS がオートメーション権限の確認ダイアログを表示します。「OK」を押して許可してください。許可はブラウザごとに個別に必要です。拒否した場合でも URL が `null` になるだけでキャプチャ自体は正常に続行されます。
-
-
+On the first URL retrieval for each browser, macOS will show an Automation permission dialog. Click "OK" to allow. Permission must be granted separately for each browser. If denied, the URL will simply be `null` and capture continues normally.
 
 ---
 
-## 日報の生成
+## Report Generation
 
-timeSlice は外部の AI エージェント CLI（`opencode`、`codex`、`claude`、`gemini` など）を呼び出して日報を生成します。AIにローカル LLM と連携できる `opencode` のような CLI の利用を検討してください。
+timeSlice calls an external AI agent CLI (such as `opencode`, `codex`, `claude`, `gemini`, etc.) to generate daily reports. Consider using a CLI like `opencode` that supports local LLMs.
 
-### 出力サンプル
+### Sample Output
 
 ![](./images/timeSlice_sample.png)
 
-上記は以下のプロンプトで生成した日報の例です。プロンプトは自由にカスタマイズできます。
+The above is an example report generated with the following prompt. You can freely customize the prompt.
 
 ```
-以下は{{DATE}} ({{TIME_RANGE}}) の作業記録データです。
-いまの作業ディレクトリは `timeSlice/data` です。
-次のファイルを読み込んで、内容を要約して日報を作成してください:
+The following is work record data for {{DATE}} ({{TIME_RANGE}}).
+The current working directory is `timeSlice/data`.
+Please read the following files and create a daily report summarizing the content:
 {{JSON_FILE_LIST}}
 
-期待レコード件数の目安: {{RECORD_COUNT}} 件
+Approximate expected record count: {{RECORD_COUNT}}
 
-各 JSON の構造:
-- `applicationName`: フロントアプリ名
-- `windowTitle`: ウィンドウタイトル（null の場合あり）
-- `capturedAt`: ISO 8601 の記録時刻
-- `recognizedText`: 認識テキスト
-- `hasImage`: 画像保存フラグ
-- `captureTrigger`: 記録トリガー（`manual` = 今すぐ記録、`scheduled` = 定期キャプチャ、`rectangleCapture` = 選択範囲キャプチャ）
-- `comments`: 手動記録コメント（空文字の場合あり）
-- `browserURL`: ブラウザのアクティブタブURL（null の場合あり、ブラウザアプリのみ）
-- `documentPath`: ドキュメントのファイルパス（null の場合あり、対応アプリのみ）
-- `applicationBundlePath`: アプリバンドルのパス（null の場合あり、アイコン解決用）
+JSON structure:
+- `applicationName`: Frontmost app name
+- `windowTitle`: Window title (may be null)
+- `capturedAt`: ISO 8601 timestamp of the record
+- `recognizedText`: Recognized text
+- `hasImage`: Image save flag
+- `captureTrigger`: Record trigger (`manual` = Capture Now, `scheduled` = periodic capture, `rectangleCapture` = region capture)
+- `comments`: Manual record comment (may be empty string)
+- `browserURL`: Active browser tab URL (may be null, browser apps only)
+- `documentPath`: Document file path (may be null, supported apps only)
+- `applicationBundlePath`: App bundle path (may be null, for icon resolution)
 
-重要:
-- 対象時間帯は {{TIME_RANGE}} です。`capturedAt` の時刻がこの範囲に含まれるレコードのみを対象にしてください。
-- `captureTrigger` が `manual` または `rectangleCapture` の記録は、ユーザーが意図的に残した重要ログとして優先的に扱ってください。
-- `comments` が空でない記録は、意図付きの重要メモとして最優先で要約に反映してください。
-- 概要・作業タイムライン・成果物/進捗には、`manual` / `rectangleCapture` の記録に基づく内容を必ず含めてください。
+Important:
+- The target time range is {{TIME_RANGE}}. Only include records where `capturedAt` falls within this range.
+- Records with `captureTrigger` of `manual` or `rectangleCapture` are intentional logs by the user — treat them as high priority.
+- Records with non-empty `comments` are intentional memos — give them the highest priority in the summary.
+- The overview, work timeline, and deliverables/progress must include content based on `manual` / `rectangleCapture` records.
 
-日報を Markdown で作成してください。次の構成を厳守してください:
-1. 概要（2-3文）
-2. 作業タイムライン（時間帯ごと）
-3. 使用アプリケーション一覧と使用時間
-4. 成果物・進捗
-5. 所感（任意）
+Write the report in Markdown with the following structure:
+1. Overview (2–3 sentences)
+2. Work Timeline (by time period)
+3. Applications Used and Time Spent
+4. Deliverables / Progress
+5. Impressions (optional)
 ```
 
-### 生成の流れ
+### Generation Flow
 
-日報生成を実行すると、timeSlice はプロンプトテンプレートを展開し、`data/` ディレクトリをカレントディレクトリとして AI CLI を起動します。AI CLI はプロンプトに記載されたパスから直接 JSON ファイルを読み込み、日報を生成して標準出力に返します。timeSlice はその出力を受け取り、Markdown ファイルとして保存します。
+When you trigger report generation, timeSlice expands the prompt template and launches the AI CLI with the `data/` directory as the working directory. The AI CLI reads the JSON files directly from the paths in the prompt and outputs the report to stdout. timeSlice captures the output and saves it as a Markdown file.
 
-### タイムスロットと保存ファイル名
+### Time Slots and Output File Names
 
-有効なタイムスロットが 1 つだけの場合は `report.md` として保存されます。複数のスロットが有効な場合は `report-0800-1200.md` のように時刻をファイル名に含めて区別します。
+If only one time slot is enabled, the report is saved as `report.md`. If multiple slots are enabled, each report includes the time in its filename (e.g., `report-0800-1200.md`).
 
-同じ日に日報を再生成すると、上書き前のファイルは `report-YYYY-MM-DD-HHmmss.md` という名前でバックアップされます。
+If a report is regenerated on the same day, the existing file is backed up as `report-YYYY-MM-DD-HHmmss.md` before being overwritten.
 
-定時自動生成は、各タイムスロットの終了時刻ごとに 1 回だけ実行される想定です。  
-`report-1800-2410-YYYY-MM-DD-HHmmss.md` のようなバックアップが同一スロットで複数残っている場合は、その時刻帯で同じ出力ファイルが複数回上書きされたことを意味します。
+Scheduled auto-generation runs once per time slot at the slot's end time.
+If multiple backup files like `report-1800-2410-YYYY-MM-DD-HHmmss.md` exist for the same slot, it means the output file was overwritten multiple times during that time period.
 
-### 翌日をまたぐスロット
+### Cross-Midnight Slots
 
-`18:00-25:00` のように終了時刻が 24:00 を超えるスロットは、翌日の早朝に実行され、前日分のレコードを対象に日報を生成します。たとえば `25:00`（翌 1:00）に実行すると、前日 18:00 以降のレコードをまとめた日報が作られます。
+Slots with an end time past 24:00 (e.g., `18:00–25:00`) execute in the early hours of the next day and generate a report for the previous day's records. For example, a slot ending at `25:00` (1:00 AM the next day) creates a report covering records from 18:00 onward of the previous day.
 
-### 通知
+### Notifications
 
-日報の生成が成功すると通知センターに通知が届きます。通知をクリックすると保存済みのレポートファイルが開きます。生成に失敗した場合もエラー内容を示す通知が届きます。
+A notification is sent to Notification Center when report generation succeeds. Clicking the notification opens the saved report file. If generation fails, a notification showing the error is also sent.
 
-「今すぐ記録」または「選択範囲をキャプチャ」の完了通知をクリックすると、キャプチャビューアが開き、該当レコードが選択された状態で表示されます。
+Clicking the completion notification for "Capture Now" or "Capture Rectangle" opens the Capture Viewer with the corresponding record selected.
 
-直近の実行結果（コマンド・プロンプト・出力・成否・エラー内容）は `logs/report-last-run.json` に保存されるので、うまくいかないときの確認に使えます。
-
----
-
-## 設定ガイド
-
-メニューバーから「**timeSlice 設定...**」（⌘,）を選ぶと設定ウィンドウが開きます。
-
-### 一般タブ
-
-**権限（画面収録 / アクセシビリティ / オートメーション）**
-
-一般タブでは次の3種類の権限を確認できます。
-
-- 画面収録（キャプチャ実行に必要）
-- アクセシビリティ（「今すぐ記録」ポップアップへの選択テキスト自動入力と、ドキュメントパス取得に必要）
-- オートメーション（ブラウザURL取得に必要）
-
-画面収録とアクセシビリティは各行の「要求」ボタンで権限ダイアログ表示を試行できます。「権限状態を更新」ボタンを押すと最新の状態を再確認できます。
-
-オートメーション権限はブラウザごとに個別管理されるため、一括での状態確認はできません。「システム設定を開く」ボタンからプライバシー設定のオートメーション画面を直接開けます。初回のブラウザURL取得時にmacOSが自動で確認ダイアログを表示するため、事前設定は不要です。
-
-**キーボードショートカット**
-
-「今すぐ記録」「選択範囲をキャプチャ」「ビューアを開く」の 3 つのグローバルショートカットをそれぞれ設定できます。ショートカット欄をクリックして入力待ち状態にし、⌘ / ⌥ / ⇧ / ⌃ のいずれかの修飾キーと組み合わせてキーを押すと登録されます。Esc を押すと入力をキャンセル、Delete を押すとショートカットを解除します。
-
-設定したショートカットは、他のアプリを操作中でもシステム全体で有効です。「今すぐ記録」のショートカットを押すとコメント入力ポップアップが表示され、前面アプリで選択中のテキストがあれば自動的に入力されます（アクセシビリティ権限が必要です。未許可の場合、初回実行時に許可を促すダイアログが表示されます）。
-
-「選択範囲をキャプチャ」のショートカットを押すと画面選択モードに入り、選択後にコメント入力ポップアップが表示されます。ポップアップが表示されている間に同じショートカットをもう一度押すと、ポップアップが閉じてキャンセルになります。
-
-「ビューアを開く」のショートカットを押すと、キャプチャビューアウィンドウを開きます。
-
-**起動設定**
-
-「アプリ起動と同時に記録を開始」をオンにすると、timeSlice を起動した直後から自動的に記録が始まります。「ログイン時起動」をオンにすると、macOS にログインするたびに timeSlice が自動起動します。
+The most recent execution details (command, prompt, output, success/failure, error message) are saved to `logs/report-last-run.json` for debugging.
 
 ---
 
-### キャプチャタブ
+## Settings Guide
 
-**キャプチャ間隔**
+Open the settings window by selecting **"timeSlice Settings..."** (⌘,) from the menu bar.
 
-スライダーで定期キャプチャの間隔を設定します（10〜600 秒、デフォルト 60 秒）。間隔を短くするほど細かい記録が残りますが、ストレージ消費も増えます。
+### General Tab
 
-**最小テキスト長**
+**Permissions (Screen Recording / Accessibility / Automation)**
 
-定期キャプチャでは、OCR結果の各行のうちこの文字数未満の行を除外します（デフォルト 10 文字）。除外後に有効な行が残らない場合は記録をスキップします。空白画面や短い情報しかないウィンドウを無視するための設定です。
+The General tab shows the status of three permission types:
 
-**テキスト認識除外アプリ / テキスト認識除外キーワード**
+- Screen Recording (required for capture)
+- Accessibility (required for auto-filling selected text into the "Capture Now" popup and for retrieving document paths)
+- Automation (required for browser URL retrieval)
 
-キーワードを追加すると、フロントアプリ名またはウィンドウタイトルがそのキーワードに部分一致するときにテキスト認識をスキップします。また定期キャプチャでは、テキスト認識結果にキーワードが部分一致した場合も同様にスキップします。
+You can try requesting Screen Recording and Accessibility permissions using the "Request" button in each row. Click "Refresh Permission Status" to re-check the current state.
 
-いずれの場合もテキストや画像は保存されず、アプリ名・ウィンドウタイトル等のメタデータのみ保存されます。パスワードマネージャーや個人的なメッセージアプリなど、キャプチャしたくないアプリを登録しておくと便利です。
+Automation permissions are managed per browser and cannot be checked in bulk. Use the "Open System Settings" button to go directly to the Automation screen in Privacy settings. macOS will automatically show a permission dialog on the first browser URL retrieval, so no pre-configuration is needed.
 
-また、`apikey` のように特定の文字列（変数名など）をキーワードにしておくと、APIキーなどの機密情報が含まれる可能性のあるキャプチャを除外できます。
+**Keyboard Shortcuts**
 
-**画像も保存する**
+You can configure three global shortcuts: "Capture Now", "Capture Rectangle", and "Open Viewer". Click a shortcut field to enter input mode, then press a key combined with one of ⌘ / ⌥ / ⇧ / ⌃ to register it. Press Esc to cancel, or Delete to clear the shortcut.
 
-このトグルをオンにすると、認識テキストに加えてキャプチャ画像も保存されます。画像保存形式は `PNG` / `JPG` から選択できます（デフォルト: `PNG`）。画像は 3 日間保持されます。
+Configured shortcuts are system-wide and work even when other apps are in focus. Pressing the "Capture Now" shortcut shows the comment input popup and auto-fills any text selected in the frontmost app (Accessibility permission required; a permission dialog will appear on first use if not yet granted).
 
----
+Pressing the "Capture Rectangle" shortcut enters screen selection mode, and the comment popup appears after you make a selection. Pressing the same shortcut again while the popup is visible dismisses the popup and cancels the action.
 
-### CLI タブ
+Pressing the "Open Viewer" shortcut opens the Capture Viewer window.
 
-日報生成に使う AI エージェント CLI の設定を行います。
+**Startup Settings**
 
-**保存セット（コマンド + 引数）**
-
-CLI の設定は「セット」として複数保存できます。上部のプルダウンからセットを選択し、`+` で追加、`-` で削除できます。
-
-各セットには次の項目があります。
-- セット名
-- CLI コマンド名（例: `codex`、`claude`、`gemini`、`opencode`）
-- 追加引数
-
-追加引数には `-p` や `--prompt` を指定してください。プロンプト文字列は、ここで指定した引数の後に続けて渡されます。
-- 例1: codex `exec --skip-git-repo-check` {{PROMPT}}
-- 例2: claude `-p` {{PROMPT}}
-- 例3: gemini `-p` {{PROMPT}}
-- 例4: opencode `--prompt` {{PROMPT}}
-
-手動生成・定時生成のどちらでも、現在選択中のセットが使われます。
-
-**タイムアウト**
-
-CLI の実行タイムアウトを設定します（30〜3600 秒、デフォルト 300 秒）。AI の処理に時間がかかる場合は長めに設定してください。
+Enable "Start recording on app launch" to automatically begin recording when timeSlice starts. Enable "Launch at login" to have timeSlice start automatically when you log into macOS.
 
 ---
 
-### 日報タブ
+### Capture Tab
 
-**定時自動生成とタイムスロット**
+**Capture Interval**
 
-「定時自動生成」を有効にすると、設定したタイムスロットの終了時刻に自動で日報が生成されます。
+Use the slider to set the periodic capture interval (10–600 seconds, default: 60 seconds). Shorter intervals produce more detailed records but increase storage usage.
 
-タイムスロットは各行で開始時刻・終了時刻・有効 / 無効・使用するプロンプトを設定できます。時刻の増減は 10 分単位で、分が `50 → 00` になると時が 1 増え、`00 → 50` になると時が 1 減ります。
+**Minimum Text Length**
 
-各行のプロンプト欄でプルダウンを選ぶと、そのスロットの日報生成に使うテンプレートを個別に指定できます（「デフォルト」を選ぶとデフォルトテンプレートを使用）。
+For periodic captures, lines in the OCR result shorter than this character count are excluded (default: 10 characters). If no valid lines remain after filtering, the capture is skipped. This avoids recording blank screens or windows with very little content.
 
-初期状態では次の 4 つのスロットが登録されています。
+**Excluded Apps / Excluded Keywords**
 
-| スロット | 状態 |
+Adding a keyword will skip text recognition when the frontmost app name or window title partially matches it. For periodic captures, text recognition results are also checked — if the recognized text partially matches a keyword, the capture is similarly skipped.
+
+In either case, no text or image is saved — only metadata (app name, window title, etc.) is stored. Useful for password managers, personal messaging apps, or any app you don't want captured.
+
+You can also use specific strings like `apikey` as keywords to exclude captures that may contain sensitive information such as API keys.
+
+**Save Images**
+
+When this toggle is enabled, captured images are saved in addition to recognized text. Image format can be set to `PNG` or `JPG` (default: `PNG`). Images are retained for 3 days.
+
+---
+
+### CLI Tab
+
+Configure the AI agent CLI used for report generation.
+
+**Saved Sets (Command + Arguments)**
+
+CLI configurations are saved as "sets". Select a set from the top dropdown, use `+` to add a new one, or `-` to delete the current one.
+
+Each set includes:
+- Set name
+- CLI command name (e.g., `codex`, `claude`, `gemini`, `opencode`)
+- Additional arguments
+
+Specify `-p` or `--prompt` in the additional arguments. The prompt string is appended after the specified argument flag.
+- Example 1: codex `exec --skip-git-repo-check` {{PROMPT}}
+- Example 2: claude `-p` {{PROMPT}}
+- Example 3: gemini `-p` {{PROMPT}}
+- Example 4: opencode `--prompt` {{PROMPT}}
+
+The currently selected set is used for both manual and scheduled generation.
+
+**Timeout**
+
+Set the CLI execution timeout (30–3600 seconds, default: 300 seconds). Increase this if AI processing takes a long time.
+
+---
+
+### Report Tab
+
+**Scheduled Auto-Generation and Time Slots**
+
+Enabling "Scheduled Auto-Generation" causes reports to be automatically generated at the end time of each configured time slot.
+
+Each time slot row lets you configure: start time, end time, enabled/disabled status, and the prompt template to use. Times increment/decrement in 10-minute steps; rolling past 50 minutes increments the hour, and rolling before 0 minutes decrements it.
+
+The prompt dropdown in each row lets you assign a specific template to that slot's report generation (select "Default" to use the default template).
+
+The following four slots are registered by default:
+
+| Slot | Status |
 |---|---|
-| 08:00 〜 25:00（全日） | 有効 |
-| 08:00 〜 12:00（午前） | 無効 |
-| 12:00 〜 18:00（午後） | 無効 |
-| 18:00 〜 25:00（夜） | 無効 |
+| 08:00 – 25:00 (Full Day) | Enabled |
+| 08:00 – 12:00 (Morning) | Disabled |
+| 12:00 – 18:00 (Afternoon) | Disabled |
+| 18:00 – 25:00 (Evening) | Disabled |
 
-複数のスロットを有効にすると時間帯別の日報が生成されます。有効なスロットが 1 つだけの場合は `report.md` として、複数の場合は `report-0800-1200.md` のように時刻付きのファイル名で保存されます。
+Enabling multiple slots generates separate reports per time period. If only one slot is enabled, the file is saved as `report.md`; if multiple are enabled, files are named with times (e.g., `report-0800-1200.md`).
 
-「次回」の表示は有効なスロットから自動計算されます。有効なスロットがない場合は「有効なスロットがありません」と表示されます。
+The "Next" time shown is automatically calculated from enabled slots. If no slots are enabled, "No enabled slots" is displayed.
 
-**日報の保存先**
+**Report Output Directory**
 
-保存先ディレクトリを変更したい場合はここで指定します。未指定の場合は `~/Library/Application Support/timeSlice/reports/` に保存されます。
+If you want to change the save location, specify a directory here. If not set, reports are saved to `~/Library/Application Support/timeSlice/reports/`.
 
-**手動生成**
+**Manual Generation**
 
-「対象日」を選択して「今すぐ日報生成」ボタンを押すと、選んだ日付の日報を即座に生成します。また、各タイムスロット行の ▶ ボタンを押すと、そのスロットのみを対象に手動生成できます。
+Select a target date and click "Generate Report Now" to immediately generate a report for that date. You can also click the ▶ button on an individual time slot row to manually generate for that slot only.
 
-メニューバーの「**日報を生成**」も同様にタイムスロット設定を反映します。有効スロットが 1 つのときはそのスロット、複数のときはサブメニューで対象スロットを選択して生成します。有効なスロットが存在しない場合は全日分の日報を生成します。
+The **"Generate Report"** menu item in the menu bar also reflects time slot settings. If one slot is enabled, it generates for that slot; if multiple, a submenu lets you choose. If no slots are enabled, it generates a full-day report.
 
 ---
 
-### プロンプトタブ
+### Prompt Tab
 
-AI CLI に渡すプロンプトのテンプレートを管理・編集します。
+Manage and edit the prompt templates passed to the AI CLI.
 
-**複数テンプレートの管理**
+**Managing Multiple Templates**
 
-プルダウンメニューでテンプレートを切り替えられます。「デフォルト」テンプレートは変更できません。「+」ボタンで新しいテンプレートを追加し、「−」ボタンで削除できます。テンプレート名は名前フィールドで直接編集できます。
+Switch between templates using the dropdown menu. The "Default" template cannot be modified. Click "+" to add a new template, or "−" to delete the selected one. Template names can be edited directly in the name field.
 
-「デフォルト内容に戻す」ボタンを押すと、現在選択中のテンプレートの内容が初期テンプレートにリセットされます。
+Click "Reset to Default Content" to reset the currently selected template's content to the initial default.
 
-編集内容は自動保存されます。
+Changes are auto-saved.
 
-**プレースホルダ**
+**Placeholders**
 
-テンプレート内で以下のプレースホルダを使うと、日報生成時に実際の値に置き換えられます。
+The following placeholders can be used in templates and are replaced with actual values at report generation time:
 
-| プレースホルダ | 内容 |
+| Placeholder | Content |
 |---|---|
-| `{{DATE}}` | 対象日（例: 2026-02-16） |
-| `{{TIME_RANGE}}` | 対象時間帯（例: "08:00-12:00"、全日は "全日"） |
-| `{{JSON_GLOB_PATH}}` | JSON ファイルの glob パス（スペース区切り） |
-| `{{JSON_FILE_LIST}}` | JSON ファイルの glob パス（改行区切り） |
-| `{{RECORD_COUNT}}` | 対象レコード数の目安 |
+| `{{DATE}}` | Target date (e.g., 2026-02-16) |
+| `{{TIME_RANGE}}` | Target time range (e.g., "08:00-12:00"; full day shows "Full Day") |
+| `{{JSON_GLOB_PATH}}` | Glob paths for JSON files (space-separated) |
+| `{{JSON_FILE_LIST}}` | Glob paths for JSON files (newline-separated) |
+| `{{RECORD_COUNT}}` | Approximate number of target records |
 
 ---
 
-## ビューアウィンドウ
+## Viewer Window
 
 ![](./images/timeSlice_viewer.png)
 
-メニューバーの「**ビューアを開く**」から、保存済みキャプチャを専用ウィンドウで確認できます。
+Select **"Open Viewer"** from the menu bar to browse saved captures in a dedicated window.
 
-開始日と終了日を選択すると、その期間のレコードを JSON と画像の対応付きで表示します。`今日` `昨日` `直近3日` `直近7日` `直近30日` `全期間` のプリセットも使えます。
+Choose a start and end date to display records for that period, with JSON and image associations shown together. Presets are available: `Today`, `Yesterday`, `Last 3 Days`, `Last 7 Days`, `Last 30 Days`, `All Time`.
 
-- 左ペイン: レコード一覧（アプリアイコン・時刻・アプリ名・ウィンドウタイトル・画像状態）。単日表示では時間帯ごとにセクション分け（例: 「9時台」「10時台」）され、時間ベースのサイドインデックスでジャンプできます。複数日表示では日付ごとにセクション分けされ、日付ベースのサイドインデックスで各日にジャンプできます。
-- 右ペイン: 詳細（画像プレビュー、コメント、認識したテキスト、URL/ファイルパス）。アプリ名はクリックでアプリを起動、右クリックで「アプリを起動」「Finderで表示」を実行できます。
-- 手動起点の記録（`manual` / `rectangleCapture`）は、左ペイン/右ペインともに時刻の横にインジケータが表示されます。
-- 上部コントロール:
-  - 日付範囲（開始日 / 終了日）
-  - 期間プリセット（今日 / 昨日 / 直近3日 / 直近7日 / 直近30日 / 全期間）
-  - 時刻ソート（昇順 / 降順）
-  - アプリ名フィルタ（アイコン付きポップアップメニュー）
-  - 記録種別フィルタ（すべての記録 / 手動のみ）※「手動のみ」には `manual` と `rectangleCapture` の両方が含まれます
-  - テキスト検索（ウィンドウタイトル / 認識テキスト / URL / ファイルパス / コメント、Enterで確定）
-  - 再読み込み
-- 時刻ソートの選択状態はアプリ設定に保存され、次回起動時にも引き継がれます。
-- テキスト検索にヒットした箇所は、一覧と詳細内でハイライト表示されます。
+- Left pane: Record list (app icon, timestamp, app name, window title, image status). For single-day views, records are grouped into hourly sections (e.g., "9:xx", "10:xx") with a time-based side index for quick navigation. For multi-day views, records are grouped by date with a date-based side index.
+- Right pane: Details (image preview, comment, recognized text, URL/file path). Click the app name to launch the app; right-click for "Launch App" or "Reveal in Finder".
+- Manually triggered records (`manual` / `rectangleCapture`) show an indicator next to the timestamp in both panes.
+- Top controls:
+  - Date range (start date / end date)
+  - Period presets (Today / Yesterday / Last 3 Days / Last 7 Days / Last 30 Days / All Time)
+  - Time sort (ascending / descending)
+  - App name filter (popup menu with app icons)
+  - Record type filter (All records / Manual only) — "Manual only" includes both `manual` and `rectangleCapture`
+  - Text search (searches window title / recognized text / URL / file path / comments; press Enter to apply)
+  - Reload
+- The time sort selection is persisted in app settings and restored on next launch.
+- Text search matches are highlighted in both the list and detail views.
 
-画像状態は次の 3 種類です。
+Image status has three states:
 
-- **あり**: 画像ファイルが存在します
-- **未保存**: 記録時に画像保存が無効だったレコードです
-- **欠損/期限切れ**: JSON には `hasImage=true` だが、画像ファイルが存在しません（3日保持の期限切れなど）
+- **Present**: Image file exists
+- **Not Saved**: Record was captured when image saving was disabled
+- **Missing / Expired**: JSON has `hasImage=true` but the image file does not exist (e.g., expired after the 3-day retention period)
 
-詳細ペインの URL はクリックで開けます。ファイルパスもクリックで開け、右クリックで「開く」「Finderで表示」「ファイルパスをコピー」を実行できます。URL も右クリックで「開く」「URLをコピー」が使えます。
+URLs in the detail pane are clickable. File paths are also clickable and support right-click actions: "Open", "Reveal in Finder", and "Copy File Path". URLs also support right-click: "Open" and "Copy URL".
 
-画像プレビューは右クリックで「開く」「Finderで表示」「削除」が使えます。削除は Finder のゴミ箱へ移動します。
+Image previews support right-click: "Open", "Reveal in Finder", and "Delete" (moves to Finder Trash).
 
-左ペインのレコードを右クリックすると、対応する JSON を Finder で表示したり、レコード全体を削除できます。レコード削除では JSON と関連画像をまとめて Finder のゴミ箱へ移動します。
+Right-clicking a record in the left pane lets you reveal the associated JSON in Finder or delete the entire record (moves both JSON and linked image to Finder Trash).
 
-## データの保存先
+## Data Storage Location
 
-すべてのデータはローカルに保存されます。外部サーバーへの送信は行いません。AI を利用した日報生成の部分については、ローカル LLM を利用しない限りはプロンプトと認識テキストが外部の AI サービスに送信される点にご注意ください。
-データは次のようなディレクトリ構造で保存されます。
+All data is stored locally. No data is sent to external servers. Note that when using AI for report generation, your prompt and recognized text will be sent to an external AI service unless you use a local LLM.
+
+Data is stored in the following directory structure:
 
 ```
 ~/Library/Application Support/timeSlice/
-├── data/YYYY/MM/DD/HHMMSS_xxxx.json    # キャプチャレコード（30日間保持）
-├── images/YYYY/MM/DD/HHMMSS_xxxx.(png|jpg) # スクリーンショット（3日間保持）
-├── logs/report-last-run.json            # 直近の日報生成ログ
+├── data/YYYY/MM/DD/HHMMSS_xxxx.json         # Capture records (retained for 30 days)
+├── images/YYYY/MM/DD/HHMMSS_xxxx.(png|jpg)  # Screenshots (retained for 3 days)
+├── logs/report-last-run.json                 # Most recent report generation log
 └── reports/YYYY/MM/DD/
-    ├── report.md                        # 全日レポート（スロットが1つのとき）
-    ├── report-0800-1200.md              # 時刻付きレポート（午前の例）
-    ├── report-1200-1800.md              # 時刻付きレポート（午後の例）
-    ├── report-1800-2500.md              # 時刻付きレポート（夜の例）
-    └── report-YYYY-MM-DD-HHmmss.md      # 再生成時のバックアップ
+    ├── report.md                             # Full-day report (when one slot is enabled)
+    ├── report-0800-1200.md                   # Time-slot report (morning example)
+    ├── report-1200-1800.md                   # Time-slot report (afternoon example)
+    ├── report-1800-2500.md                   # Time-slot report (evening example)
+    └── report-YYYY-MM-DD-HHmmss.md           # Backup created on re-generation
 ```
 
+---
+
+## Permissions
+
+timeSlice uses the following permissions:
+
+### Screen Recording
+
+Required for capture. A permission dialog is shown on first launch. If it was not shown or was accidentally denied, follow these steps to grant it manually:
+
+1. Open "System Settings".
+2. Go to "Privacy & Security" → "Screen Recording".
+3. Find timeSlice in the list and enable it.
+
+### Accessibility (Selected Text / Document Path)
+
+Used for auto-filling selected text into the "Capture Now" popup and for retrieving document paths from supported apps. Capture and saving continue to work without this permission, but selected text auto-fill and document path retrieval will be disabled.
+
+If the permission dialog is not shown on first use or was accidentally denied, follow these steps:
+
+1. Open "System Settings".
+2. Go to "Privacy & Security" → "Accessibility".
+3. Find timeSlice in the list and enable it.
+
+### Automation (Browser URL)
+
+Required to retrieve the active browser tab URL via AppleScript. macOS automatically shows a permission dialog the first time a URL is retrieved from each browser.
+
+If accidentally denied, follow these steps:
+
+1. Open "System Settings".
+2. Go to "Privacy & Security" → "Automation".
+3. Under the timeSlice entry, enable the target browser.
+
+You can also access the Automation settings directly via the "Open System Settings" button in the General tab of the settings window.
 
 ---
 
-## 権限の設定
+## Troubleshooting
 
-timeSlice は以下の権限を使用します。
+**"Command not found" error during report generation**
 
-### 画面収録
+macOS GUI apps have a restricted PATH at launch, so CLI commands available in Terminal may not be found. timeSlice automatically adds `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, and similar paths to PATH, but if the command is still not found, try specifying its full path in the CLI command field (e.g., `/opt/homebrew/bin/gemini`).
 
-キャプチャのために必須です。初回起動時に許可ダイアログが表示されますが、表示されなかった場合や誤って拒否した場合は次の手順で手動設定してください。
+**Screen Recording permission dialog did not appear**
 
-1. 「システム設定」を開きます。
-2. 「プライバシーとセキュリティ」→「画面収録」に移動します。
-3. 一覧から timeSlice を見つけてチェックを入れます。
+See [Screen Recording](#screen-recording) and grant the permission manually.
 
-### アクセシビリティ（選択テキスト / ドキュメントパス取得）
+**Report content is incorrect / generation fails**
 
-「今すぐ記録」ポップアップで選択中テキストを自動入力する機能と、対応アプリからドキュメントパスを取得する機能で使用します。未許可でもキャプチャと保存は継続できますが、選択テキストの自動入力とドキュメントパス取得は無効になります。
+The most recent execution log is saved in `logs/report-last-run.json`. Check the command, prompt, CLI output, and error message to identify the cause.
+You may also need to navigate to `~/Library/Application Support/timeSlice/` and launch the CLI manually first to grant it the necessary access permissions.
 
-初回実行時に許可を求めるダイアログが表示されない場合や誤って拒否した場合は、次の手順で手動設定してください。
+**Scheduled auto-generation runs multiple times at the same time**
 
-1. 「システム設定」を開きます。
-2. 「プライバシーとセキュリティ」→「アクセシビリティ」に移動します。
-3. 一覧から timeSlice を見つけてチェックを入れます。
-
-### オートメーション（ブラウザURL取得）
-
-ブラウザのアクティブタブ URL を AppleScript で取得するために必要です。初めて各ブラウザの URL を取得する際に macOS が自動で許可ダイアログを表示します。
-
-誤って拒否した場合は次の手順で手動設定してください。
-
-1. 「システム設定」を開きます。
-2. 「プライバシーとセキュリティ」→「オートメーション」に移動します。
-3. timeSlice の項目で対象ブラウザのチェックを入れます。
-
-設定画面の一般タブにある「システム設定を開く」ボタンからも直接アクセスできます。
+First check the `runAt` field in `logs/report-last-run.json` and the output file names to confirm whether multiple executions occurred for the same slot.
+If multiple `report-<slot>-YYYY-MM-DD-HHmmss.md` backup files exist for the same slot, it means the output file was overwritten multiple times.
+The current version uses internal generation counter management to prevent duplicate executions caused by restart races during settings updates. If the issue recurs, please file an issue with the relevant `report-last-run.json` and the list of generated files.
 
 ---
 
-## トラブルシューティング
+## Building from Source
 
-**日報生成時に「コマンドが見つからない」エラーが出る**
-
-macOS の GUI アプリは起動時の PATH が制限されているため、ターミナルで使えるコマンドが見つからないことがあります。timeSlice は `/opt/homebrew/bin`、`/usr/local/bin`、`~/.local/bin` などを自動的に PATH に追加しますが、それでも見つからない場合は CLI コマンド名をフルパスで指定してみてください（例: `/opt/homebrew/bin/gemini`）。
-
-**画面収録権限ダイアログが表示されない**
-
-[画面収録権限の設定](#画面収録)を参照して手動で許可してください。
-
-**日報の内容がおかしい / 生成に失敗する**
-
-`logs/report-last-run.json` に直近の実行ログが記録されています。実行コマンド・プロンプト・CLI の出力・エラーメッセージを確認して原因を特定してください。
-事前に ~/Library/Application Support/timeSlice/ に移動してCLIを起動しておき、アクセス権限を与えておく必要があるかもしれません。
-
-**定時自動生成が同じ時刻に複数回実行される**
-
-まず `logs/report-last-run.json` の `runAt` と出力ファイル名を確認し、同一スロット時刻で連続実行されているかを確認してください。  
-`report-<slot>-YYYY-MM-DD-HHmmss.md` が複数ある場合は、同名ファイルへの連続上書きが発生した履歴です。  
-現行版ではスケジューラ内部で世代管理を行い、設定更新時の再起動レースによる重複実行を防止しています。再発する場合は該当日時の `report-last-run.json` と生成ファイル一覧を添えて issue を報告してください。
-
-
----
-
-## ソースからビルド
-
-Xcode プロジェクト形式のみ対応です。`swift build` / `swift run` は使用できません。
+Only Xcode project format is supported. `swift build` / `swift run` do not work.
 
 ```bash
-# ビルド
+# Build
 xcodebuild -project timeSlice.xcodeproj -scheme timeSlice -configuration Debug -derivedDataPath ./.xcode-derived build
 
-# 起動
+# Launch
 open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 ```
 
-画面収録権限はアプリバンドル（`.app`）に紐づいているため、ターミナルから直接バイナリを実行するのではなく、必ず `.app` として起動してください。
+Screen Recording permission is bound to the app bundle (`.app`), so always launch via `.app` rather than running the binary directly from Terminal.
 
-Release アーカイブを作成する場合は、Signing & Capabilities で Team と証明書を正しく設定し、Hardened Runtime を有効にしてビルドしてください。
+To create a Release archive, ensure the Team and certificate are correctly configured in Signing & Capabilities, enable Hardened Runtime, and build.
