@@ -100,6 +100,13 @@ public struct ReportTimeSlot: Codable, Identifiable, Equatable, Sendable {
         )
     }
 
+    /// 実行時刻から、このスロットが対象とすべき論理的な対象日を返す。
+    /// `executionIsNextDay` が真のスロットでは実行日の前日を返す。
+    public func resolveTargetDate(executedAt: Date, calendar: Calendar = .current) -> Date {
+        guard executionIsNextDay else { return executedAt }
+        return calendar.date(byAdding: .day, value: -1, to: executedAt) ?? executedAt
+    }
+
     /// Output file name like "report-0800-1200.md".
     public var outputFileName: String {
         String(format: "report-%02d%02d-%02d%02d.md", startHour, startMinute, endHour, endMinute)

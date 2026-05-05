@@ -255,12 +255,7 @@ public actor ReportScheduler {
     ) async -> ReportSchedulerResult {
         do {
             let executionDate = dateProvider.now
-            let targetDate: Date
-            if timeSlot.executionIsNextDay {
-                targetDate = calendar.date(byAdding: .day, value: -1, to: executionDate) ?? executionDate
-            } else {
-                targetDate = executionDate
-            }
+            let targetDate = timeSlot.resolveTargetDate(executedAt: executionDate, calendar: calendar)
 
             let generationConfiguration = generationConfigurationProvider(timeSlot, isSoleEnabledSlot)
             let generatedReport = try await reportGenerator.generateReport(

@@ -22,3 +22,4 @@ Configurations/DevelopmentTeam.local.xcconfig
 .*/
 docs
 handoff.md
+scan-secrets.sh

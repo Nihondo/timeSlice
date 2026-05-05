@@ -506,11 +506,12 @@ final class AppState {
         await performManualReportGeneration(for: .daily(targetDate: targetDate))
     }
 
-    func generateReportForTimeSlot(_ timeSlot: ReportTimeSlot, targetDate: Date = Date(), isSoleEnabledSlot: Bool = false) async {
+    func generateReportForTimeSlot(_ timeSlot: ReportTimeSlot, targetDate: Date? = nil, isSoleEnabledSlot: Bool = false) async {
+        let resolvedTargetDate = targetDate ?? timeSlot.resolveTargetDate(executedAt: Date())
         await performManualReportGeneration(
             for: .timeSlot(
                 timeSlot: timeSlot,
-                targetDate: targetDate,
+                targetDate: resolvedTargetDate,
                 isSoleEnabledSlot: isSoleEnabledSlot
             )
         )
