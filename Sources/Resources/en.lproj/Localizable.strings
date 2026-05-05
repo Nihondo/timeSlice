@@ -18,6 +18,7 @@
 "manual_capture.comment.value.application_unavailable" = "(Unknown app)";
 "menu.report.generate" = "Generate Report";
 "menu.report.generating" = "Generating Report...";
+"menu.check_for_updates" = "Check for Updates...";
 "menu.about" = "About timeSlice...";
 "menu.quit" = "Quit";
 
@@ -26,6 +27,7 @@
 "settings.tab.cli" = "CLI";
 "settings.tab.report" = "Report";
 "settings.tab.prompt" = "Prompt";
+"settings.tab.update" = "Update";
 
 "settings.section.permissions" = "Permissions";
 "settings.section.screen_capture" = "Screen Recording";
@@ -117,6 +119,13 @@
 "settings.section.manual_generation" = "Manual Generation";
 "settings.button.generate_report_now" = "Generate Report Now";
 "settings.button.generating_report" = "Generating Report...";
+
+"settings.update.current_version" = "Current Version";
+"settings.update.last_checked" = "Last checked";
+"settings.update.check_now" = "Check for Updates Now";
+"settings.update.automatic_checks" = "Check for updates automatically";
+"settings.update.releases_page" = "View All Releases";
+"settings.update.never_checked" = "Never";
 
 "viewer.label.target_date" = "Target date";
 "viewer.label.start_date" = "Start";

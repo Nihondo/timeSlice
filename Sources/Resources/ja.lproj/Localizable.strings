@@ -18,6 +18,7 @@
 "manual_capture.comment.value.application_unavailable" = "（アプリ不明）";
 "menu.report.generate" = "日報を生成";
 "menu.report.generating" = "日報生成中...";
+"menu.check_for_updates" = "アップデートを確認...";
 "menu.about" = "timeSliceについて...";
 "menu.quit" = "終了";
 
@@ -26,6 +27,7 @@
 "settings.tab.cli" = "CLI";
 "settings.tab.report" = "日報";
 "settings.tab.prompt" = "プロンプト";
+"settings.tab.update" = "アップデート";
 
 "settings.section.permissions" = "権限";
 "settings.section.screen_capture" = "画面収録";
@@ -117,6 +119,13 @@
 "settings.section.manual_generation" = "手動生成";
 "settings.button.generate_report_now" = "今すぐ日報生成";
 "settings.button.generating_report" = "日報生成中...";
+
+"settings.update.current_version" = "現在のバージョン";
+"settings.update.last_checked" = "最終チェック";
+"settings.update.check_now" = "今すぐ確認";
+"settings.update.automatic_checks" = "自動でアップデートを確認する";
+"settings.update.releases_page" = "すべてのリリースを表示";
+"settings.update.never_checked" = "未確認";
 
 "viewer.label.target_date" = "対象日";
 "viewer.label.start_date" = "開始日";

@@ -39,6 +39,9 @@
 		42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D800032FF4000000AA1122 /* SettingsComponents.swift */; };
 		42E2D0023001000000AA1122 /* DocumentPathResolving.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0013001000000AA1122 /* DocumentPathResolving.swift */; };
 		42E2D0043002000000AA1122 /* RectangleCaptureScreenCapturing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */; };
+		42F100012FA5000000AA1122 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 42F100082FA5000000AA1122 /* Sparkle */; };
+		42F100032FA5000000AA1122 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F100022FA5000000AA1122 /* AppUpdateController.swift */; };
+		42F100052FA5000000AA1122 /* UpdateSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F100042FA5000000AA1122 /* UpdateSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +80,9 @@
 		42D800032FF4000000AA1122 /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
 		42E2D0013001000000AA1122 /* DocumentPathResolving.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPathResolving.swift; sourceTree = "<group>"; };
 		42E2D0033002000000AA1122 /* RectangleCaptureScreenCapturing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangleCaptureScreenCapturing.swift; sourceTree = "<group>"; };
+		42F100022FA5000000AA1122 /* AppUpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateController.swift; sourceTree = "<group>"; };
+		42F100042FA5000000AA1122 /* UpdateSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateSettingsView.swift; sourceTree = "<group>"; };
+		42F100092FA5000000AA1122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				42F100012FA5000000AA1122 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +127,7 @@
 				42A760D12F433BDF00FA9E46 /* SettingsView.swift */,
 				42D800032FF4000000AA1122 /* SettingsComponents.swift */,
 				42A760D22F433BDF00FA9E46 /* timeSliceApp.swift */,
+				42F100062FA5000000AA1122 /* Update */,
 			);
 			path = timeSliceApp;
 			sourceTree = "<group>";
@@ -212,6 +220,7 @@
 		42A761142F449A3C00FA9E46 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				42F100092FA5000000AA1122 /* Info.plist */,
 				42A761072F4A156900FA9E46 /* timeSliceIcon.icon */,
 				42A761152F449A3C00FA9E46 /* Localizable.strings */,
 			);
@@ -224,6 +233,15 @@
 				42A761182F4E100000FA9E46 /* DevelopmentTeam.xcconfig */,
 			);
 			path = Configurations;
+			sourceTree = "<group>";
+		};
+		42F100062FA5000000AA1122 /* Update */ = {
+			isa = PBXGroup;
+			children = (
+				42F100022FA5000000AA1122 /* AppUpdateController.swift */,
+				42F100042FA5000000AA1122 /* UpdateSettingsView.swift */,
+			);
+			path = Update;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -243,6 +261,7 @@
 			);
 			name = timeSlice;
 			packageProductDependencies = (
+				42F100082FA5000000AA1122 /* Sparkle */,
 			);
 			productName = timeSlice;
 			productReference = 42A760902F433B8200FA9E46 /* timeSlice.app */;
@@ -273,6 +292,9 @@
 			);
 			mainGroup = 42A760872F433B8200FA9E46;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				42F100072FA5000000AA1122 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 42A760912F433B8200FA9E46 /* Products */;
 			projectDirPath = "";
@@ -313,6 +335,7 @@
 				42E2D0043002000000AA1122 /* RectangleCaptureScreenCapturing.swift in Sources */,
 				42A760FB2F433BDF00FA9E46 /* DuplicateDetector.swift in Sources */,
 				42A760FC2F433BDF00FA9E46 /* DataStore.swift in Sources */,
+				42F100032FA5000000AA1122 /* AppUpdateController.swift in Sources */,
 				42A761002F433BDF00FA9E46 /* SettingsView.swift in Sources */,
 				42A761012F433BDF00FA9E46 /* DateProvider.swift in Sources */,
 				42A761022F433BDF00FA9E46 /* OCRManager.swift in Sources */,
@@ -329,6 +352,7 @@
 				42D800042FF4000000AA1122 /* AppStateSupport.swift in Sources */,
 				42D800052FF4000000AA1122 /* CaptureViewerView.swift in Sources */,
 				42D800062FF4000000AA1122 /* SettingsComponents.swift in Sources */,
+				42F100052FA5000000AA1122 /* UpdateSettingsView.swift in Sources */,
 				42A7612A2F6A000000FA9E46 /* PromptTemplate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -493,22 +517,19 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "timeSlice needs Automation permission to capture the active browser tab URL.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.12;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -533,22 +554,19 @@
 				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "timeSlice needs Automation permission to capture the active browser tab URL.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.12;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -583,6 +601,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		42F100072FA5000000AA1122 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		42F100082FA5000000AA1122 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42F100072FA5000000AA1122 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 42A760882F433B8200FA9E46 /* Project object */;
 }

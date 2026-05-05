@@ -30,11 +30,13 @@ All text recognition is performed on-device; no data is sent to external servers
    - [CLI Tab](#cli-tab)
    - [Report Tab](#report-tab)
    - [Prompt Tab](#prompt-tab)
-7. [Viewer Window](#viewer-window)
-8. [Data Storage Location](#data-storage-location)
-9. [Permissions](#permissions)
-10. [Troubleshooting](#troubleshooting)
-11. [Building from Source](#building-from-source)
+   - [Update Tab](#update-tab)
+7. [Automatic Updates](#automatic-updates)
+8. [Viewer Window](#viewer-window)
+9. [Data Storage Location](#data-storage-location)
+10. [Permissions](#permissions)
+11. [Troubleshooting](#troubleshooting)
+12. [Building from Source](#building-from-source)
 
 ---
 
@@ -67,6 +69,7 @@ Clicking the icon shows the following menu:
 | **Capture Rectangle** | Select a rectangular region on screen to capture, then shows the comment input popup |
 | **Generate Report** | Generates a report based on enabled time slots. If one slot is enabled, generates for that slot; if multiple, a submenu lets you choose |
 | **Open Viewer** | Opens the Capture Viewer in a separate window (configurable global shortcut) |
+| **Check for Updates...** | Checks for a new version using Sparkle |
 | **About timeSlice...** | Shows app version information |
 | **Quit** (⌘Q) | Quits the app |
 
@@ -338,6 +341,28 @@ The following placeholders can be used in templates and are replaced with actual
 | `{{JSON_GLOB_PATH}}` | Glob paths for JSON files (space-separated) |
 | `{{JSON_FILE_LIST}}` | Glob paths for JSON files (newline-separated) |
 | `{{RECORD_COUNT}}` | Approximate number of target records |
+
+---
+
+### Update Tab
+
+Manage automatic updates powered by Sparkle.
+
+- Shows the current app version and the last update check date.
+- "Check for Updates Now" starts a manual update check.
+- "Check for updates automatically" controls Sparkle's startup and scheduled background checks.
+- "View All Releases" opens the GitHub Releases page.
+
+---
+
+## Automatic Updates
+
+timeSlice uses [Sparkle](https://sparkle-project.org/) for automatic updates.
+
+- **Startup check**: Checks for updates automatically when the app launches.
+- **Scheduled check**: Rechecks every 24 hours in the background.
+- **Manual check**: Open the **Update** tab in Settings or choose **Check for Updates...** from the menu bar menu.
+- Updates are downloaded and installed with one click after you confirm.
 
 ---
 

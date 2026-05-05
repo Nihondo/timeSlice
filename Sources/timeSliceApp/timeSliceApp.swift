@@ -119,6 +119,7 @@ private struct MenuBarMenuContentView: View {
     @AppStorage(AppSettingsKey.openViewerShortcutModifiers) private var openViewerShortcutModifiersRawValue = 0
     @AppStorage(AppSettingsKey.openViewerShortcutKeyCode) private var openViewerShortcutKeyCode = 0
     @AppStorage(AppSettingsKey.reportTimeSlotsJSON) private var reportTimeSlotsJSON: String = ""
+    @ObservedObject private var updateController = AppUpdateController.shared
 
     private var enabledReportSlots: [ReportTimeSlot] {
         AppSettingsResolver.resolveReportTimeSlots().filter(\.isEnabled)
@@ -162,6 +163,15 @@ private struct MenuBarMenuContentView: View {
         Divider()
 
         Button {
+            updateController.checkForUpdates()
+        } label: {
+            Label("menu.check_for_updates", systemImage: "arrow.down.circle")
+        }
+        .disabled(!updateController.canCheckForUpdates)
+
+        Divider()
+
+        Button {
             showAboutPanel()
         } label: {
             Label("menu.about", systemImage: "info.circle")
@@ -173,6 +183,9 @@ private struct MenuBarMenuContentView: View {
             NSApplication.shared.terminate(nil)
         } label: {
             Label("menu.quit", systemImage: "xmark.circle")
+        }
+        .onAppear {
+            _ = AppUpdateController.shared
         }
     }
 

@@ -9,6 +9,7 @@ struct SettingsView: View {
         case cli
         case report
         case prompt
+        case update
 
         var title: LocalizedStringKey {
             switch self {
@@ -17,6 +18,7 @@ struct SettingsView: View {
             case .cli: "settings.tab.cli"
             case .report: "settings.tab.report"
             case .prompt: "settings.tab.prompt"
+            case .update: "settings.tab.update"
             }
         }
 
@@ -27,6 +29,7 @@ struct SettingsView: View {
             case .cli: "terminal"
             case .report: "doc.text"
             case .prompt: "text.page"
+            case .update: "arrow.down.circle"
             }
         }
     }
@@ -109,6 +112,8 @@ struct SettingsView: View {
             reportSettingsView
         case .prompt:
             promptSettingsView
+        case .update:
+            UpdateSettingsView(releasesURL: URL(string: "https://github.com/Nihondo/timeSlice/releases")!)
         case .none:
             generalSettingsView
         }

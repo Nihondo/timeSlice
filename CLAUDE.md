@@ -26,9 +26,10 @@ open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 
 ## Architecture
 
-**Xcode project (swift-tools-version: 6.2, macOS 14+)** with a single app target:
+**Xcode project (swift-tools-version: 6.2, macOS 14+)** with a single app target and Sparkle Swift Package dependency:
 
 - `timeSlice` — menu bar app target containing both app-layer code (`Sources/timeSliceApp`) and core/business logic modules (`Sources/TimeSliceCore`)
+- `Sparkle` — app update framework, pinned via Xcode Swift Package resolution (`minimumVersion = 2.9.1`)
 
 ### Capture Pipeline
 
@@ -129,6 +130,16 @@ ReportScheduler (actor, time-slot-based auto-generation)
 - **`ReportNotificationManager`** (in AppStateSupport.swift): manages `UNUserNotificationCenter` authorization and posting
 - **`TimeSliceAppDelegate`** (in timeSliceApp.swift): handles notification click routing — report notifications open report file via `/usr/bin/open`; capture notifications post a selection request event consumed by `AppState`
 
+### App Updates
+
+- Sparkle is configured through `Sources/Resources/Info.plist`:
+  - `SUFeedURL`: `https://products.desireforwealth.com/appcast/timeslice/appcast.xml`
+  - `SUPublicEDKey`: currently placeholder `AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=`; replace with the timeSlice EdDSA public key before release
+  - `SUEnableAutomaticChecks = YES`, `SUScheduledCheckInterval = 86400`, `SUAutomaticallyUpdate = NO`, `SUAllowsAutomaticUpdates = YES`
+- **`AppUpdateController`** (`Sources/timeSliceApp/Update/AppUpdateController.swift`): singleton wrapper around `SPUStandardUpdaterController`, publishes `canCheckForUpdates`, `lastUpdateCheckDate`, and `automaticChecksEnabled` for SwiftUI.
+- **`UpdateSettingsView`** (`Sources/timeSliceApp/Update/UpdateSettingsView.swift`): Update tab with current version, last checked date, manual check button, automatic checks toggle, and GitHub Releases link.
+- Menu bar includes "Check for Updates..." and initializes `AppUpdateController.shared` when menu content appears.
+
 ### Localization
 
 - Full i18n with `ja.lproj/Localizable.strings` and `en.lproj/Localizable.strings` in `Sources/Resources/`
@@ -166,12 +177,13 @@ Stored structure:
 - `AppSettingsResolver.migratePromptTemplateIfNeeded()` — migrates legacy `reportPromptTemplate` to a named "カスタム" entry and assigns it to all existing slots; runs once per installation
 - `AppSettingsResolver.migrateCLIProfilesIfNeeded()` — migrates legacy single CLI command/arguments to a named profile and keeps one active selection; runs once per installation
 - `resolveReportGenerationConfigurationForSlot()` resolves prompt by looking up `slot.promptTemplateID` in the templates list; falls back to legacy `reportPromptTemplate` if `nil`
-- **`SettingsView`**: `Form` + `grouped` style with 5 tabs (General / Capture / CLI / Report / Prompt). Uses `frame` with `idealWidth: 700, idealHeight: 640`
+- **`SettingsView`**: `Form` + `grouped` style with 6 tabs (General / Capture / CLI / Report / Prompt / Update). Uses `frame` with `idealWidth: 800, idealHeight: 640`
 - General tab permission section tracks screen recording, accessibility (selected text + document path access), and Automation (browser URL) permissions with per-permission request/open-settings buttons
 - CLI tab: Picker to select active CLI profile, +/- buttons to add/delete sets, editable set name/command/arguments fields, and shared timeout Stepper. Changes auto-saved via `saveCLIProfiles()`
 - Prompt tab: Picker to select active template (Default + custom templates), +/- buttons to add/delete, name `TextField` for rename, `TextEditor` for content editing (computed `Binding<String>`). Default template is read-only and cannot be deleted. Changes auto-saved via `savePromptTemplates()`
+- Update tab: Sparkle status/settings UI using `AppUpdateController.shared`
 - **`CaptureViewerView`**: dedicated viewer window opened from menu (not embedded in Settings). Supports start/end date range selection plus presets (`today`, `yesterday`, `last 3/7/30 days`, `all time`), sort (asc/desc, persisted), application filter (with app icons in menu), trigger filter (all / manual only — manual-only includes both `.manual` and `.rectangleCapture`), and text search over `windowTitle`/`ocrText`/`browserURL`/`documentPath`/`comments` (applies on Enter). Search matches are highlighted, and non-scheduled records (`.manual`, `.rectangleCapture`) show an indicator next to timestamps in both panes. List rows display app icons (48x48) resolved from `applicationBundlePath` (priority) → running apps → path guessing → generic fallback, with icon cache keyed by app name. Single-day ranges keep hour-based section headers with a time side index bar; multi-day ranges switch to date-based section headers with a date side index bar. `browserURL` and `documentPath` in the detail pane are clickable and expose right-click actions (open/copy, plus Finder reveal for file paths). Application name in detail pane is clickable (launches app) with context menu (launch / reveal in Finder). Image previews expose right-click actions to open, reveal in Finder, or move the image to Trash. Left-pane rows expose right-click actions to reveal the backing JSON in Finder or move the entire record (JSON + linked image) to Trash. It also accepts external selection requests (notification click), resets filters/search as needed, and selects the target record by ID.
-- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer with optional keyboard shortcut, about, quit). Opening settings/viewer activates `timeSlice` to front.
+- **Menu bar**: `MenuBarExtra` with `.menu` style — standard dropdown (settings, start/stop, capture now with optional keyboard shortcut, capture rectangle with optional keyboard shortcut, generate report, open viewer with optional keyboard shortcut, check for updates, about, quit). Opening settings/viewer activates `timeSlice` to front.
   - "Generate report" (`reportGenerateButton` `@ViewBuilder` in `MenuBarMenuContentView`) adapts to enabled time slots: 1 slot → `Button` calling `generateReportForTimeSlot(isSoleEnabledSlot: true)`; 2+ slots → `Menu` submenu with one entry per enabled slot (label = `slot.timeRangeLabel`); 0 slots → fallback `generateDailyReport()` (full-day). Slot list is reactive via `@AppStorage(reportTimeSlotsJSON)`.
 
 ### Key Design Patterns
@@ -199,6 +211,36 @@ Running via terminal binds screen capture permission to Terminal/iTerm. Build an
 - Per-browser first-attempt timeout: 30s (permission dialog may appear), subsequent: 3s
 - Requires `com.apple.security.automation.apple-events` entitlement (`timeSlice.entitlements`) and `NSAppleEventsUsageDescription` in Info.plist
 - macOS prompts Automation permission per target browser on first AppleScript execution; denied → returns `nil`, capture continues normally
+
+## Release Process
+
+1. Bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in project settings
+2. Generate or restore the timeSlice Sparkle EdDSA key before the first Sparkle-enabled release
+3. Replace the placeholder `SUPublicEDKey` in `Sources/Resources/Info.plist` with the generated public key
+4. Archive → Developer ID Application signing → Notarize → create ZIP (`timeSlice.zip`)
+5. Create GitHub Release with tag `v{MARKETING_VERSION}` and attach `timeSlice.zip`
+6. In the Products repository, run the appcast generation flow for timeSlice so `appcast/timeslice/appcast.xml` is updated
+7. Review the diff, then `git commit & push` → Cloudflare Workers auto-deploys `appcast.xml`
+
+### Sparkle EdDSA Key
+
+The EdDSA private key is stored in macOS Keychain (added by `generate_keys` from the Sparkle package).
+**It is not committed to the repository.**
+
+- **Public key**: stored in `Sources/Resources/Info.plist` under `SUPublicEDKey`
+- **Private key backup**: export from Keychain and save as a secure note in Bitwarden
+
+#### Key Recovery (new Mac or re-install)
+
+1. Retrieve the private key from Bitwarden secure note
+2. Import it into Keychain with:
+   ```bash
+   security import <private_key_file> -k ~/Library/Keychains/login.keychain-db
+   ```
+3. Verify with `generate_appcast` — it should sign without prompting for a key
+
+If the private key is lost, generate a new key pair with `generate_keys`, update `SUPublicEDKey` in `Sources/Resources/Info.plist`,
+and publish a new release. Users on old builds will need to update manually once.
 
 ## Not Yet Implemented
 
