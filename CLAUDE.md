@@ -53,6 +53,19 @@ CaptureScheduler (actor, periodic loop)
 - For scheduled captures, OCR text is normalized line-by-line and lines shorter than `minimumTextLength` are excluded; if no valid lines remain, the cycle is skipped as `.shortText`
 - `normalizeManualComment` returns `nil` only for `.scheduled`; both `.manual` and `.rectangleCapture` always persist `comments`
 
+`OCRManager.recognizeText(from:)` uses synchronous `VNImageRequestHandler.perform` and reads request results after it returns. Keep a single error path: Vision can both invoke a request completion handler and throw from `perform`, so resuming a checked continuation in both paths crashes the app. OCR failures propagate to the existing scheduled/manual capture recovery paths.
+
+Standalone OCR regression checks (the shared Xcode scheme has no test target):
+
+```bash
+xcrun swiftc -swift-version 5 -enable-upcoming-feature NonisolatedNonsendingByDefault -parse-as-library Sources/TimeSliceCore/OCR/TextRecognizing.swift Sources/TimeSliceCore/OCR/OCRManager.swift Tests/OCRManagerRegression.swift -o /tmp/timeslice-ocr-regression-test
+/tmp/timeslice-ocr-regression-test
+# Optional integration checks using the actual Vision engine (requires normal macOS service access):
+/tmp/timeslice-ocr-regression-test --real-vision
+```
+
+The harness substitutes Vision's `perform` only within its own process to reproduce completion-plus-error failures, verifies repeated errors propagate normally, and checks a subsequent successful empty result. `--real-vision` additionally checks readable text and a blank image; transient E5RT failures can make those integration checks fail without crashing the app.
+
 ### Report Pipeline
 
 ```

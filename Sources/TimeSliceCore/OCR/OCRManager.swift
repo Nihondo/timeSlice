@@ -16,33 +16,22 @@ public final class OCRManager: TextRecognizing, @unchecked Sendable {
     }
 
     public func recognizeText(from image: CGImage) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = recognitionLanguages
+        request.usesLanguageCorrection = usesLanguageCorrection
 
-                let observations = request.results as? [VNRecognizedTextObservation] ?? []
-                let recognizedLines = observations.compactMap { observation in
-                    observation.topCandidates(1).first?.string
-                }
-                let normalizedLines = recognizedLines
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { $0.isEmpty == false }
-                continuation.resume(returning: normalizedLines.joined(separator: "\n"))
-            }
+        // perform waits for completion and throws on failure; no continuation is needed.
+        let imageRequestHandler = VNImageRequestHandler(cgImage: image)
+        try imageRequestHandler.perform([request])
 
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = recognitionLanguages
-            request.usesLanguageCorrection = usesLanguageCorrection
-
-            do {
-                let imageRequestHandler = VNImageRequestHandler(cgImage: image)
-                try imageRequestHandler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        let observations = request.results ?? []
+        let recognizedLines = observations.compactMap { observation in
+            observation.topCandidates(1).first?.string
         }
+        let normalizedLines = recognizedLines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.isEmpty == false }
+        return normalizedLines.joined(separator: "\n")
     }
 }
