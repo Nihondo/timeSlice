@@ -3,6 +3,14 @@
 "window.settings.title" = "timeSlice Settings";
 "window.viewer.title" = "Capture Viewer";
 
+"error.ocr.helper_unavailable" = "The OCR helper is missing. Please reinstall timeSlice.";
+"error.ocr.image_encoding_failed" = "Could not prepare the image for text recognition.";
+"error.ocr.launch_failed" = "Could not start the OCR helper.";
+"error.ocr.execution_failed" = "Text recognition failed (exit %d): %@";
+"error.ocr.timed_out" = "Text recognition timed out after %d seconds.";
+"error.ocr.invalid_output" = "The OCR helper returned invalid text.";
+"error.ocr.output_too_large" = "The OCR helper returned too much text.";
+
 "menu.settings" = "timeSlice Settings...";
 "menu.viewer.open" = "Open Viewer";
 "menu.capture.start" = "Start Capture";

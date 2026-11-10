@@ -3,6 +3,14 @@
 "window.settings.title" = "timeSlice 設定";
 "window.viewer.title" = "キャプチャビューア";
 
+"error.ocr.helper_unavailable" = "OCRヘルパーが見つかりません。timeSliceを再インストールしてください。";
+"error.ocr.image_encoding_failed" = "文字認識用の画像を準備できませんでした。";
+"error.ocr.launch_failed" = "OCRヘルパーを起動できませんでした。";
+"error.ocr.execution_failed" = "文字認識に失敗しました（終了コード %d）: %@";
+"error.ocr.timed_out" = "文字認識が%d秒でタイムアウトしました。";
+"error.ocr.invalid_output" = "OCRヘルパーから不正なテキストが返されました。";
+"error.ocr.output_too_large" = "OCRヘルパーから返されたテキストが上限を超えました。";
+
 "menu.settings" = "timeSlice 設定...";
 "menu.viewer.open" = "ビューアを開く";
 "menu.capture.start" = "記録開始";

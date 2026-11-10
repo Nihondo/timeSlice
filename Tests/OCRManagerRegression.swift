@@ -1,5 +1,5 @@
 // Standalone regression harness; it is not part of the app target.
-// Compile with TextRecognizing.swift and OCRManager.swift (see CLAUDE.md).
+// Compile with TextRecognizing.swift and VisionTextRecognizer.swift (see CLAUDE.md).
 import CoreGraphics
 import CoreText
 import Darwin
@@ -24,7 +24,7 @@ struct OCRManagerRegression {
         return context.makeImage()!
     }
 
-    static func checkFailureRecovery(manager: OCRManager, image: CGImage) async {
+    static func checkFailureRecovery(manager: VisionTextRecognizer, image: CGImage) async {
         let method = class_getInstanceMethod(VNImageRequestHandler.self, NSSelectorFromString("performRequests:error:"))!
         let failure = NSError(domain: "OCRManagerRegression", code: 13)
         typealias PerformBlock = @convention(block) (AnyObject, NSArray, UnsafeMutablePointer<NSError?>?) -> Bool
@@ -70,7 +70,7 @@ struct OCRManagerRegression {
 
     static func main() async {
         setbuf(stdout, nil)
-        let manager = OCRManager()
+        let manager = VisionTextRecognizer()
         let text = "timeSlice OCR recovery 123"
         let image = makeImage(text: text)
         await checkFailureRecovery(manager: manager, image: image)

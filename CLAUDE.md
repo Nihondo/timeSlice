@@ -26,9 +26,10 @@ open ./.xcode-derived/Build/Products/Debug/timeSlice.app
 
 ## Architecture
 
-**Xcode project (swift-tools-version: 6.2, macOS 14+)** with a single app target and Sparkle Swift Package dependency:
+**Xcode project (swift-tools-version: 6.2, macOS 14+)** with an app target, a one-shot OCR helper target, and Sparkle Swift Package dependency:
 
-- `timeSlice` — menu bar app target containing both app-layer code (`Sources/timeSliceApp`) and core/business logic modules (`Sources/TimeSliceCore`)
+- `timeSlice` — menu bar app target containing app-layer code (`Sources/timeSliceApp`) and core/business logic modules (`Sources/TimeSliceCore`), except the helper-only Vision implementation
+- `timeSliceOCR` — one-shot command-line helper (`Sources/timeSliceOCR` plus `VisionTextRecognizer.swift` and `TextRecognizing.swift`), built as an app dependency and signed/embedded at `Contents/Helpers/timeSliceOCR`
 - `Sparkle` — app update framework, pinned via Xcode Swift Package resolution (`minimumVersion = 2.9.1`)
 
 ### Capture Pipeline
@@ -39,7 +40,7 @@ CaptureScheduler (actor, periodic loop)
                              → RectangleCaptureScreenCapturing (screencapture -i)
     → CapturedWindow { image, windowTitle?, browserURL?, documentPath?, applicationBundlePath? }
   → BrowserURLResolving protocol → BrowserURLResolver (AppleScript, per-browser)
-  → TextRecognizing protocol → Vision-based recognizer implementation
+  → TextRecognizing protocol → OCRManager → fresh timeSliceOCR process → VisionTextRecognizer
   → DuplicateDetector (actor, hash-based consecutive dedup)
   → DataStore (JSON) + ImageStore (PNG/JPG selectable)
 ```
@@ -53,18 +54,34 @@ CaptureScheduler (actor, periodic loop)
 - For scheduled captures, OCR text is normalized line-by-line and lines shorter than `minimumTextLength` are excluded; if no valid lines remain, the cycle is skipped as `.shortText`
 - `normalizeManualComment` returns `nil` only for `.scheduled`; both `.manual` and `.rectangleCapture` always persist `comments`
 
-`OCRManager.recognizeText(from:)` uses synchronous `VNImageRequestHandler.perform` and reads request results after it returns. Keep a single error path: Vision can both invoke a request completion handler and throw from `perform`, so resuming a checked continuation in both paths crashes the app. OCR failures propagate to the existing scheduled/manual capture recovery paths.
+`OCRManager.recognizeText(from:)` starts a **new** bundled `timeSliceOCR` process for every call. It creates a PNG in a UUID-named private temporary directory (0700, file 0600), passes its absolute path and recognition options as separate arguments without a shell, and reads UTF-8 stdout. The helper exits after one image; there is no resident worker, warm-up, retry, or in-process OCR fallback. Empty stdout with exit 0 is valid. Nonzero/signal exits discard partial stdout and propagate a localized error with bounded stderr. Both pipes are drained concurrently; stdout is limited to 4 MiB and retained stderr to 64 KiB. Each child has a 45-second deadline; timeout/cancellation kills and reaps only that child before temporary-image cleanup. The app's existing `OCRManager` ownership/injection sites and scheduled/manual error policies are unchanged. Temporary PNGs are needed even when capture image persistence is disabled.
+
+`VisionTextRecognizer.recognizeText(from:)` runs only in the helper. It uses synchronous `VNImageRequestHandler.perform` inside an autorelease pool and reads request results afterward. Keep a single error path: Vision can both invoke a completion handler and throw, so resuming a checked continuation in both paths crashes the process. Keep `.accurate`, Japanese/English and language correction defaults; do not silently switch Japanese to `.fast` (this machine reports no Japanese support there).
+
+On macOS 27.2, sustained E5RT Code 13 failures were observed on 2026-11-10 (28/28 recent attempts); restarting only timeSlice restored nonempty scheduled OCR records without restarting the Mac or `aned`. The user chose a fresh process per call rather than a persistent helper. The internal failure trigger and long-run effectiveness of isolation remain unconfirmed. See `docs/unexpected-exit-investigation-2026-10-30.md` for evidence and the selected implementation. The existing Git ignore excludes `docs/`.
 
 Standalone OCR regression checks (the shared Xcode scheme has no test target):
 
 ```bash
-xcrun swiftc -swift-version 5 -enable-upcoming-feature NonisolatedNonsendingByDefault -parse-as-library Sources/TimeSliceCore/OCR/TextRecognizing.swift Sources/TimeSliceCore/OCR/OCRManager.swift Tests/OCRManagerRegression.swift -o /tmp/timeslice-ocr-regression-test
+xcrun swiftc -swift-version 5 -enable-upcoming-feature NonisolatedNonsendingByDefault -parse-as-library Sources/TimeSliceCore/OCR/TextRecognizing.swift Sources/TimeSliceCore/OCR/VisionTextRecognizer.swift Tests/OCRManagerRegression.swift -o /tmp/timeslice-ocr-regression-test
 /tmp/timeslice-ocr-regression-test
 # Optional integration checks using the actual Vision engine (requires normal macOS service access):
 /tmp/timeslice-ocr-regression-test --real-vision
 ```
 
 The harness substitutes Vision's `perform` only within its own process to reproduce completion-plus-error failures, verifies repeated errors propagate normally, and checks a subsequent successful empty result. `--real-vision` additionally checks readable text and a blank image; transient E5RT failures can make those integration checks fail without crashing the app.
+
+Process lifecycle regression and optional real helper integration (compile/run outside the app target):
+
+```bash
+xcrun swiftc -swift-version 5 Tests/OCRProcessFixture.swift -o /tmp/timeslice-ocr-process-fixture
+xcrun swiftc -swift-version 5 -enable-upcoming-feature NonisolatedNonsendingByDefault -parse-as-library Sources/TimeSliceCore/OCR/TextRecognizing.swift Sources/TimeSliceCore/OCR/OCRManager.swift Sources/TimeSliceCore/Utilities/PNGImageEncoder.swift Tests/OCRProcessRegression.swift -o /tmp/timeslice-ocr-process-test
+/tmp/timeslice-ocr-process-test /tmp/timeslice-ocr-process-fixture
+# After building the app, add the signed bundled helper to verify Japanese/English recognition:
+/tmp/timeslice-ocr-process-test /tmp/timeslice-ocr-process-fixture .xcode-derived/Build/Products/Debug/timeSlice.app/Contents/Helpers/timeSliceOCR
+```
+
+The fixture tests fresh PIDs, overlapping calls, paths containing spaces/Japanese, options, stderr separation, empty output, nonzero/signal exit, output larger than pipe capacity, output limits/invalid UTF-8, timeout, cancellation, launch failure and temporary-image cleanup. Real integration needs normal macOS Vision service access. Initial measurement: separate helper invocations took 17.67 s and 0.22 s; cache state affects startup cost, so these are not per-call guarantees. The helper can also be run directly as `timeSliceOCR <image-path> --languages ja-JP,en-US --language-correction true` (text on stdout, diagnostics on stderr, nonzero exit on failure).
 
 ### Report Pipeline
 

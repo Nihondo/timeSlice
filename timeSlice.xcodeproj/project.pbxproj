@@ -42,7 +42,35 @@
 		42F100012FA5000000AA1122 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 42F100082FA5000000AA1122 /* Sparkle */; };
 		42F100032FA5000000AA1122 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F100022FA5000000AA1122 /* AppUpdateController.swift */; };
 		42F100052FA5000000AA1122 /* UpdateSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F100042FA5000000AA1122 /* UpdateSettingsView.swift */; };
+		42F200052FA5000000AA1122 /* OCRHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F200032FA5000000AA1122 /* OCRHelper.swift */; };
+		42F200062FA5000000AA1122 /* VisionTextRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F200042FA5000000AA1122 /* VisionTextRecognizer.swift */; };
+		42F200072FA5000000AA1122 /* TextRecognizing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A760DC2F433BDF00FA9E46 /* TextRecognizing.swift */; };
+		42F200082FA5000000AA1122 /* timeSliceOCR in Embed OCR Helper */ = {isa = PBXBuildFile; fileRef = 42F200022FA5000000AA1122 /* timeSliceOCR */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		42F2000C2FA5000000AA1122 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42A760882F433B8200FA9E46 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42F200012FA5000000AA1122;
+			remoteInfo = timeSliceOCR;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		42F2000B2FA5000000AA1122 /* Embed OCR Helper */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Helpers;
+			dstSubfolderSpec = 1;
+			files = (
+				42F200082FA5000000AA1122 /* timeSliceOCR in Embed OCR Helper */,
+			);
+			name = "Embed OCR Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		42A760902F433B8200FA9E46 /* timeSlice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = timeSlice.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,6 +111,9 @@
 		42F100022FA5000000AA1122 /* AppUpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateController.swift; sourceTree = "<group>"; };
 		42F100042FA5000000AA1122 /* UpdateSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateSettingsView.swift; sourceTree = "<group>"; };
 		42F100092FA5000000AA1122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		42F200022FA5000000AA1122 /* timeSliceOCR */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = timeSliceOCR; sourceTree = BUILT_PRODUCTS_DIR; };
+		42F200032FA5000000AA1122 /* OCRHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRHelper.swift; sourceTree = "<group>"; };
+		42F200042FA5000000AA1122 /* VisionTextRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionTextRecognizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +122,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				42F100012FA5000000AA1122 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F2000A2FA5000000AA1122 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -110,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				42A760902F433B8200FA9E46 /* timeSlice.app */,
+				42F200022FA5000000AA1122 /* timeSliceOCR */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -159,6 +198,7 @@
 				42A760DA2F433BDF00FA9E46 /* DuplicateDetector.swift */,
 				42A760DB2F433BDF00FA9E46 /* OCRManager.swift */,
 				42A760DC2F433BDF00FA9E46 /* TextRecognizing.swift */,
+				42F200042FA5000000AA1122 /* VisionTextRecognizer.swift */,
 			);
 			path = OCR;
 			sourceTree = "<group>";
@@ -199,6 +239,7 @@
 			isa = PBXGroup;
 			children = (
 				42A760D32F433BDF00FA9E46 /* timeSliceApp */,
+				42F200112FA5000000AA1122 /* timeSliceOCR */,
 				42A760E52F433BDF00FA9E46 /* TimeSliceCore */,
 				42A761142F449A3C00FA9E46 /* Resources */,
 			);
@@ -244,6 +285,14 @@
 			path = Update;
 			sourceTree = "<group>";
 		};
+		42F200112FA5000000AA1122 /* timeSliceOCR */ = {
+			isa = PBXGroup;
+			children = (
+				42F200032FA5000000AA1122 /* OCRHelper.swift */,
+			);
+			path = timeSliceOCR;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -254,10 +303,12 @@
 				42A7608C2F433B8200FA9E46 /* Sources */,
 				42A7608D2F433B8200FA9E46 /* Frameworks */,
 				42A7608E2F433B8200FA9E46 /* Resources */,
+				42F2000B2FA5000000AA1122 /* Embed OCR Helper */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				42F2000D2FA5000000AA1122 /* PBXTargetDependency */,
 			);
 			name = timeSlice;
 			packageProductDependencies = (
@@ -266,6 +317,22 @@
 			productName = timeSlice;
 			productReference = 42A760902F433B8200FA9E46 /* timeSlice.app */;
 			productType = "com.apple.product-type.application";
+		};
+		42F200012FA5000000AA1122 /* timeSliceOCR */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42F200102FA5000000AA1122 /* Build configuration list for PBXNativeTarget "timeSliceOCR" */;
+			buildPhases = (
+				42F200092FA5000000AA1122 /* Sources */,
+				42F2000A2FA5000000AA1122 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = timeSliceOCR;
+			productName = timeSliceOCR;
+			productReference = 42F200022FA5000000AA1122 /* timeSliceOCR */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -301,6 +368,7 @@
 			projectRoot = "";
 			targets = (
 				42A7608F2F433B8200FA9E46 /* timeSlice */,
+				42F200012FA5000000AA1122 /* timeSliceOCR */,
 			);
 		};
 /* End PBXProject section */
@@ -357,7 +425,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		42F200092FA5000000AA1122 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42F200052FA5000000AA1122 /* OCRHelper.swift in Sources */,
+				42F200062FA5000000AA1122 /* VisionTextRecognizer.swift in Sources */,
+				42F200072FA5000000AA1122 /* TextRecognizing.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42F2000D2FA5000000AA1122 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42F200012FA5000000AA1122 /* timeSliceOCR */;
+			targetProxy = 42F2000C2FA5000000AA1122 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		42A761152F449A3C00FA9E46 /* Localizable.strings */ = {
@@ -517,7 +603,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -529,7 +615,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -554,7 +640,7 @@
 				CODE_SIGN_ENTITLEMENTS = timeSlice.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -566,7 +652,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dmng.timeslice.timeSlice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -575,6 +661,35 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		42F2000E2FA5000000AA1122 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		42F2000F2FA5000000AA1122 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -596,6 +711,15 @@
 			buildConfigurations = (
 				42A760B22F433B8300FA9E46 /* Debug */,
 				42A760B32F433B8300FA9E46 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42F200102FA5000000AA1122 /* Build configuration list for PBXNativeTarget "timeSliceOCR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42F2000E2FA5000000AA1122 /* Debug */,
+				42F2000F2FA5000000AA1122 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

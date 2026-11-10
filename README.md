@@ -107,6 +107,8 @@ First, it checks whether the frontmost app name or window title partially matche
 
 If not excluded, the Vision Framework extracts text from the window. If the content matches the previous record (same hash), it is skipped as a duplicate; a new record is only saved when the content changes.
 
+Each image is recognized in a new local OCR process that exits when finished, giving each capture a fresh recognition session. Recognition can take several seconds to initialize and has a 45-second time limit. A temporary image is created even when image saving is disabled; it is deleted when recognition finishes, fails, or is canceled. All processing stays on your Mac.
+
 Saved data includes a JSON record (always) and an image file (if enabled in settings). Image format can be set to `PNG` or `JPG`. The JSON contains: timestamp, app name, window title, recognized text, capture trigger (scheduled or manual), comment, browser URL, document file path (if available), and app bundle path (for icon resolution).
 
 ### Browser URL Capture
